@@ -19,7 +19,8 @@ therock_cmake_subproject_activate(rocm-cmake)
 therock_cmake_subproject_declare(rocm-core
   EXTERNAL_SOURCE_DIR "rocm-core"
   CMAKE_ARGS
-    "-DBUILD_SHARED_LIBS=ON"
+    # "-DBUILD_SHARED_LIBS=ON"
+    "-DBUILD_SHARED_LIBS=OFF"
     "-DROCM_VERSION=${ROCM_MAJOR_VERSION}.${ROCM_MINOR_VERSION}.${ROCM_PATCH_VERSION}"
 )
 therock_cmake_subproject_glob_c_sources(rocm-core
@@ -33,18 +34,18 @@ therock_cmake_subproject_activate(rocm-core)
 # rocm_smi_lib
 ################################################################################
 
-therock_cmake_subproject_declare(rocm_smi_lib
-  EXTERNAL_SOURCE_DIR "rocm_smi_lib"
-  INTERFACE_LINK_DIRS
-    "lib"
-)
-therock_cmake_subproject_glob_c_sources(rocm_smi_lib
-  SUBDIRS
-    include
-    src
-)
-therock_cmake_subproject_provide_package(rocm_smi_lib rocm_smi lib/cmake/rocm_smi)
-therock_cmake_subproject_activate(rocm_smi_lib)
+# therock_cmake_subproject_declare(rocm_smi_lib
+#   EXTERNAL_SOURCE_DIR "rocm_smi_lib"
+#   INTERFACE_LINK_DIRS
+#     "lib"
+# )
+# therock_cmake_subproject_glob_c_sources(rocm_smi_lib
+#   SUBDIRS
+#     include
+#     src
+# )
+# therock_cmake_subproject_provide_package(rocm_smi_lib rocm_smi lib/cmake/rocm_smi)
+# therock_cmake_subproject_activate(rocm_smi_lib)
 
 
 ################################################################################
@@ -52,19 +53,19 @@ therock_cmake_subproject_activate(rocm_smi_lib)
 # This is a stub that helps runtime libraries and profiles rendezvous
 ################################################################################
 
-therock_cmake_subproject_declare(rocprofiler-register
-  EXTERNAL_SOURCE_DIR "rocprofiler-register"
-  INTERFACE_LINK_DIRS
-    "lib"
-)
-therock_cmake_subproject_glob_c_sources(rocprofiler-register
-  SUBDIRS
-    source/include
-    source/lib
-)
-therock_cmake_subproject_provide_package(rocprofiler-register
-  rocprofiler-register lib/cmake/rocprofiler-register)
-therock_cmake_subproject_activate(rocprofiler-register)
+# therock_cmake_subproject_declare(rocprofiler-register
+#   EXTERNAL_SOURCE_DIR "rocprofiler-register"
+#   INTERFACE_LINK_DIRS
+#     "lib"
+# )
+# therock_cmake_subproject_glob_c_sources(rocprofiler-register
+#   SUBDIRS
+#     source/include
+#     source/lib
+# )
+# therock_cmake_subproject_provide_package(rocprofiler-register
+#   rocprofiler-register lib/cmake/rocprofiler-register)
+# therock_cmake_subproject_activate(rocprofiler-register)
 
 
 ################################################################################
