@@ -42,7 +42,7 @@ index 182b0ba..d02b3b5 100644
  /* General purpose function that fills the directory to find rocm related stuff */
  /* returns the offset into the buffer for the terminating NUL or -1 for error */
 -/* The buffer should be at least PATH_MAX */
-+/* The buffer should be at least FILENAME_MAX */
++/* The buffer should be at least LIBRARY_FILENAME_BUFSZ */
  static int getROCmBase(char *buf)
  {
    int len=0;
