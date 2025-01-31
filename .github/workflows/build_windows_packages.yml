@@ -58,7 +58,7 @@ jobs:
         with:
           key: windows-build-packages-v1
 
-      - name: Build Projects
+      - name: Configure Projects
         run: |
           # Generate a new build id.
           package_version="${{ inputs.package_version }}"
@@ -69,6 +69,14 @@ jobs:
             -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -DTHEROCK_AMDGPU_FAMILIES=gfx110X-dgpu \
             -DTHEROCK_PACKAGE_VERSION="${package_version}"
+
+      - name: Debug files
+        run: |
+          ls -la base/
+          ls -la base/rocm-cmake
+
+      - name: Build Projects
+        run: |
           cmake --build build
 
       - name: Report
