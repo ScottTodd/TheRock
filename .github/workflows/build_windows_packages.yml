@@ -31,6 +31,9 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: List files (symlinks?)
+        run: ls -la base/
+
       - name: Fetch sources
         run: |
           git config --global user.email "nobody@amd.com"
