@@ -29,6 +29,10 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Show git config
+        run: |
+          cat .git/config
+
       - name: Fetch sources
         run: |
           git config --global user.email "nobody@amd.com"
