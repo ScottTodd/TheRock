@@ -19,7 +19,7 @@ index 182b0ba..d02b3b5 100644
  #include <stdlib.h>
 -#include <limits.h> /* PATH_MAX */
  #include <stdio.h>
-+#if defined(_WIN32) && defined(__CYGWIN__)
++#if defined(_WIN32) || defined(__CYGWIN__)
 +// No Windows-specific includes.
 +#else
  #include <link.h>
