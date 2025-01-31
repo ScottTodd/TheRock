@@ -2,7 +2,7 @@ if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
     message(FATAL_ERROR "In-source builds are not allowed. Please create a separate build directory.")
 endif()
 
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.25)
 
 # Set the default build type to Release if not specified
 if(NOT CMAKE_BUILD_TYPE)
@@ -17,6 +17,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(CMakeDependentOption)
 include(ExternalProject)
 include(therock_amdgpu_targets)
+include(therock_artifacts)
 include(therock_subproject)
 include(therock_job_pools)
 
@@ -83,14 +84,9 @@ configure_file(HIP_VERSION.in ${ROCM_GIT_DIR}/HIP/VERSION)
 
 set(STAGING_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/staging_install")
 
-################################################################################
-# External project setup
-################################################################################
-
 # On some distributions, this will install to lib64. We would like
 # consistency in built packages, so hard-code it.
 set(CMAKE_INSTALL_LIBDIR "lib")
-
 
 if(CMAKE_C_VISIBILITY_PRESET)
   list(APPEND DEFAULT_CMAKE_ARGS ${CMAKE_C_VISIBILITY_PRESET})
@@ -98,6 +94,11 @@ endif()
 if(CMAKE_CXX_VISIBILITY_PRESET)
   list(APPEND DEFAULT_CMAKE_ARGS ${CMAKE_CXX_VISIBILITY_PRESET})
 endif()
+
+
+################################################################################
+# External project setup
+################################################################################
 
 # Add subdirectories in dependency DAG order (which happens to be semi-alpha:
 # don't be fooled).
@@ -112,6 +113,7 @@ add_subdirectory(base)
 # if(THEROCK_ENABLE_ML_FRAMEWORKS)
 #   add_subdirectory(ml-frameworks)
 # endif()
+
 
 # ################################################################################
 # # Testing
