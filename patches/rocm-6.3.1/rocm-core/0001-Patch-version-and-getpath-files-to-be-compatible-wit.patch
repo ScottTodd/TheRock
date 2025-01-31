@@ -20,7 +20,7 @@ index 182b0ba..c78e1e4 100644
  #include <stdlib.h>
 -#include <limits.h> /* PATH_MAX */
  #include <stdio.h>
-+#if BUILD_SHARED_LIBS
++#if defined(_WIN32) || defined(__CYGWIN__)
  #include <link.h>
  #include <dlfcn.h>
 +#endif
