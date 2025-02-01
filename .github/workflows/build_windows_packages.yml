@@ -70,10 +70,14 @@ jobs:
             -DTHEROCK_AMDGPU_FAMILIES=gfx110X-dgpu \
             -DTHEROCK_PACKAGE_VERSION="${package_version}"
 
-      - name: Debug files
-        run: |
-          ls -la base/
-          ls -la base/rocm-cmake
+      - name: List files under base/
+        run: ls -la base/
+
+      - name: List files under base/rocm-cmake
+        run: ls -la base/rocm-cmake
+
+      - name: Stat base/rocm-cmake/CMakeLists.txt
+        run: stat base/rocm-cmake/CMakeLists.txt
 
       - name: Build Projects
         run: |
