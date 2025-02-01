@@ -34,14 +34,17 @@ jobs:
       - name: List files (symlinks?)
         run: ls -la base/
 
-      - name: Check ninja version
-        run: ninja --version
-
       - name: Check CMake version
         run: cmake --version
 
       - name: Check git version
         run: git --version
+
+      - name: Install ninja
+        run: choco install ninja --yes
+
+      - name: Check ninja version
+        run: ninja --version
 
       - name: Fetch sources
         run: |
