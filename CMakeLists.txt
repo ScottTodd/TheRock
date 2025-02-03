@@ -105,7 +105,7 @@ endif()
 
 # Add subdirectories in dependency DAG order (which happens to be semi-alpha:
 # don't be fooled).
-# add_subdirectory(third-party)  # DO NOT SUBMIT
+add_subdirectory(third-party)
 add_subdirectory(base)
 
 if(NOT WIN32)
