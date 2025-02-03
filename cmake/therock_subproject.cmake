@@ -415,7 +415,7 @@ function(therock_cmake_subproject_activate target_name)
       "${_binary_dir}/cmake_install.cmake"
       "${_compile_commands_file}"
     DEPENDS
-      "${_cmake_source_dir}/CMakeLists.txt"
+      # "${_cmake_source_dir}/CMakeLists.txt"
       "${_cmake_project_toolchain_file}"
       "${_cmake_project_init_file}"
       "${_injected_file}"
