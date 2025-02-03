@@ -112,10 +112,11 @@ therock_provide_artifact(base
   TARGET_NEUTRAL
   DESCRIPTOR artifact.toml
   COMPONENTS
-    run
-    dev
     dbg
+    dev
     doc
+    lib
+    run
     test
   SUBPROJECT_DEPS
     ${_optional_subproject_deps}
