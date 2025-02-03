@@ -55,10 +55,10 @@ jobs:
       # The full checkout is very large: ~16GB, 9 of which is GIT stuff.
       # So we delete the latter. This must be done after getting any git
       # stamps or such things.
-      - name: Trim Disk Space
-        run: |
-          rm -Rf sources/.repo
-          df -h
+      # - name: Trim Disk Space
+      #   run: |
+      #     rm -Rf sources/.repo
+      #     df -h
 
       - name: Configure MSVC
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
