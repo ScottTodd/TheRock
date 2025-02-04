@@ -40,6 +40,12 @@ jobs:
       - name: Check git version
         run: git --version
 
+      - name: Check git config
+        run: cat .git/config
+
+      - name: Run git status
+        run: git status
+
       - name: Install ninja
         run: choco install ninja --yes
 
