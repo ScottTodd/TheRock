@@ -74,6 +74,13 @@ jobs:
           rm base/rocm-core
           rm base/rocm_smi_lib
           rm base/rocprofiler-register
+
+          rm -rf sources/half/.git
+          rm -rf sources/rocm-cmake/.git
+          rm -rf sources/rocm-core/.git
+          rm -rf sources/rocm_smi_lib/.git
+          rm -rf sources/rocprofiler-register/.git
+
           cp -r sources/half base
           cp -r sources/rocm-cmake base
           cp -r sources/rocm-core base
