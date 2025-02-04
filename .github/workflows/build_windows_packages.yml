@@ -31,8 +31,6 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: List files (symlinks?)
-        run: ls -la base/
 
       - name: Check CMake version
         run: cmake --version
@@ -65,6 +63,25 @@ jobs:
       #   run: |
       #     rm -Rf sources/.repo
       #     df -h
+
+      - name: List files (symlinks?)
+        run: ls -la base/
+
+      - name: Replace symlinks with copies
+        run: |
+          rm base/half
+          rm base/rocm-cmake
+          rm base/rocm-core
+          rm base/rocm_smi_lib
+          rm base/rocprofiler-register
+          cp -r sources/half base
+          cp -r sources/rocm-cmake base
+          cp -r sources/rocm-core base
+          cp -r sources/rocm_smi_lib base
+          cp -r sources/rocprofiler-register base
+
+      - name: List files (copied)
+        run: ls -la base/
 
       - name: Configure MSVC
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
