@@ -20,6 +20,7 @@ set_property(GLOBAL PROPERTY THEROCK_DEFAULT_CMAKE_VARS
   THEROCK_SOURCE_DIR
   THEROCK_BINARY_DIR
   ROCM_GIT_DIR
+  ROCM_SYMLINK_LIBS
 )
 
 set_property(GLOBAL PROPERTY THEROCK_SUBPROJECT_COMPILE_COMMANDS_FILES)
@@ -755,10 +756,23 @@ function(_therock_cmake_subproject_setup_toolchain compiler_toolchain toolchain_
   if(NOT compiler_toolchain)
     # Make any additional customizations if no toolchain specified.
   elseif(compiler_toolchain STREQUAL "amd-llvm" OR compiler_toolchain STREQUAL "amd-hip")
-    # amd-llvm toolchain: The private built LLVM in isolation.
-    _therock_assert_is_cmake_subproject("amd-llvm")
-    get_target_property(_amd_llvm_dist_dir amd-llvm THEROCK_DIST_DIR)
-    get_target_property(_amd_llvm_stamp_dir amd-llvm THEROCK_STAMP_DIR)
+    # The "amd-llvm" and "amd-hip" toolchains are configured very similarly so
+    # we commingle them, but they are different:
+    #   "amd-llvm": Just the base LLVM compiler and device libraries. This
+    #     doesn't know anything about hip (i.e. it doesn't have hipconfig, etc).
+    #   "amd-hip": Superset of "amd-llvm" which also includes hipcc, hip headers,
+    #     and hip version info. This has hipconfig in it.
+    # The main difference is that for "amd-llvm", we derive the configuration from
+    # the amd-llvm project's dist/ tree. And for "amd-hip", from the hip-clr
+    # project (which has runtime dependencies on the underlying toolchain).
+    if (compiler_toolchain STREQUAL "amd-hip")
+      set(_toolchain_subproject "hip-clr")
+    else()
+      set(_toolchain_subproject "amd-llvm")
+    endif()
+    _therock_assert_is_cmake_subproject("${_toolchain_subproject}")
+    get_target_property(_amd_llvm_dist_dir "${_toolchain_subproject}" THEROCK_DIST_DIR)
+    get_target_property(_amd_llvm_stamp_dir "${_toolchain_subproject}" THEROCK_STAMP_DIR)
     # Add a dependency on the toolchain's dist
     set(AMD_LLVM_C_COMPILER "${_amd_llvm_dist_dir}/lib/llvm/bin/clang")
     set(AMD_LLVM_CXX_COMPILER "${_amd_llvm_dist_dir}/lib/llvm/bin/clang++")
@@ -770,7 +784,9 @@ function(_therock_cmake_subproject_setup_toolchain compiler_toolchain toolchain_
     string(APPEND _toolchain_contents "set(CMAKE_C_COMPILER @AMD_LLVM_C_COMPILER@)\n")
     string(APPEND _toolchain_contents "set(CMAKE_CXX_COMPILER @AMD_LLVM_CXX_COMPILER@)\n")
     string(APPEND _toolchain_contents "set(CMAKE_LINKER @AMD_LLVM_LINKER@)\n")
+    # TODO: AMDGPU_TARGETS is being deprecated. For now we set both.
     string(APPEND _toolchain_contents "set(AMDGPU_TARGETS @THEROCK_AMDGPU_TARGETS@ CACHE STRING \"From super-project\" FORCE)\n")
+    string(APPEND _toolchain_contents "set(GPU_TARGETS @THEROCK_AMDGPU_TARGETS@ CACHE STRING \"From super-project\" FORCE)\n")
     string(APPEND _toolchain_contents "string(APPEND CMAKE_CXX_FLAGS_INIT \" ${_amd_llvm_cxx_flags_spaces}\")\n")
 
     message(STATUS "Compiler toolchain ${compiler_toolchain}:")
@@ -778,7 +794,7 @@ function(_therock_cmake_subproject_setup_toolchain compiler_toolchain toolchain_
     message(STATUS "CMAKE_C_COMPILER = ${AMD_LLVM_C_COMPILER}")
     message(STATUS "CMAKE_CXX_COMPILER = ${AMD_LLVM_CXX_COMPILER}")
     message(STATUS "CMAKE_LINKER = ${AMD_LLVM_LINKER}")
-    message(STATUS "AMDGPU_TARGETS = ${THEROCK_AMDGPU_TARGETS_SPACES}")
+    message(STATUS "GPU_TARGETS = ${THEROCK_AMDGPU_TARGETS_SPACES}")
   else()
     message(FATAL_ERROR "Unsupported COMPILER_TOOLCHAIN = ${compiler_toolchain} (supported: 'amd-llvm' or none)")
   endif()

@@ -2,8 +2,8 @@
 # If a project is using an amd-hip or amd-llvm toolchain, then it will already
 # have an implicit dep on the toolchain, so it is safe to reference binaries
 # here without worrying about build deps.
-therock_cmake_subproject_dist_dir(_toolchain_dir amd-llvm)
-cmake_path(APPEND _toolchain_dir lib/llvm)
+therock_cmake_subproject_dist_dir(_hip_dir hip-clr)
+cmake_path(APPEND _hip_dir lib/llvm OUTPUT_VARIABLE _toolchain_dir)
 
 #################################################################################
 # hipBLAS-common
@@ -51,8 +51,13 @@ therock_cmake_subproject_declare(hipBLASLt
     -DTensile_CODE_OBJECT_VERSION=default
     -DTensile_CPU_THREADS=
     -DTensile_LIBRARY_FORMAT=msgpack
-    "-DTensile_ROCM_ASSEMBLER_PATH=${_toolchain_dir}/bin/clang++"
-    "-DTensile_ROCM_OFFLOAD_BUNDLER_PATH=${_toolchain_dir}/bin/clang-offload-bundler"
+    -DTensile_HIP_CONFIG=${_hip_dir}/bin/hipconfig
+    "-DTensile_C_COMPILER=${_toolchain_dir}/bin/clang"
+    "-DTensile_CXX_COMPILER=${_toolchain_dir}/bin/clang++"
+    "-DTensile_ASSEMBLER=${_toolchain_dir}/bin/clang++"
+    "-DTensile_OFFLOAD_BUNDLER=${_toolchain_dir}/bin/clang-offload-bundler"
+    # TODO(#55): Enable once roctracer is added
+    -DHIPBLASLT_ENABLE_MARKER=OFF
     # TODO: Enable clients.
   COMPILER_TOOLCHAIN
     amd-hip
@@ -187,4 +192,152 @@ therock_provide_artifact(rand
     lib
     run
   SUBPROJECT_DEPS rocRAND
+)
+
+#################################################################################
+# rocPRIM
+#################################################################################
+
+therock_cmake_subproject_declare(rocPRIM
+  EXTERNAL_SOURCE_DIR "rocPRIM"
+  BACKGROUND_BUILD
+  CMAKE_ARGS
+    -DHIP_PLATFORM=amd
+    -DROCM_PATH=
+    -DROCM_DIR=
+  COMPILER_TOOLCHAIN
+    amd-hip
+  RUNTIME_DEPS
+    hip-clr
+)
+therock_cmake_subproject_glob_c_sources(rocPRIM
+  SUBDIRS
+    .
+)
+therock_cmake_subproject_provide_package(rocPRIM rocprim lib/cmake/rocprim)
+therock_cmake_subproject_activate(rocPRIM)
+
+therock_provide_artifact(prim
+  DESCRIPTOR artifact-prim.toml
+  COMPONENTS
+    dev
+    doc
+  SUBPROJECT_DEPS rocPRIM
+)
+
+#################################################################################
+# rocSPARSE
+#################################################################################
+set(_sparse_subproject_names)
+
+therock_cmake_subproject_declare(rocSPARSE
+  EXTERNAL_SOURCE_DIR "rocSPARSE"
+  BACKGROUND_BUILD
+  CMAKE_ARGS
+    -DHIP_PLATFORM=amd
+    -DROCM_PATH=
+    -DROCM_DIR=
+    -DBUILD_WITH_ROCBLAS=ON
+    -DBUILD_CLIENTS_SAMPLES=OFF
+    -DBUILD_CLIENTS_BENCHMARKS=OFF
+    -DBUILD_CLIENTS_SAMPLES=OFF
+  COMPILER_TOOLCHAIN
+    amd-hip
+  BUILD_DEPS
+    rocBLAS
+    rocPRIM
+  RUNTIME_DEPS
+    hip-clr
+)
+therock_cmake_subproject_glob_c_sources(rocSPARSE
+  SUBDIRS
+    .
+)
+therock_cmake_subproject_provide_package(rocSPARSE rocsparse lib/cmake/rocsparse)
+therock_cmake_subproject_activate(rocSPARSE)
+list(APPEND _sparse_subproject_names rocSPARSE)
+
+#################################################################################
+# hipSPARSE
+#################################################################################
+
+therock_cmake_subproject_declare(hipSPARSE
+  EXTERNAL_SOURCE_DIR "hipSPARSE"
+  BACKGROUND_BUILD
+  CMAKE_ARGS
+    -DHIP_PLATFORM=amd
+    -DROCM_PATH=
+    -DROCM_DIR=
+    -DBUILD_CLIENTS_SAMPLES=OFF
+    -DBUILD_CLIENTS_BENCHMARKS=OFF
+    -DBUILD_CLIENTS_SAMPLES=OFF
+  COMPILER_TOOLCHAIN
+    amd-hip
+  BUILD_DEPS
+    rocSPARSE
+  RUNTIME_DEPS
+    hip-clr
+)
+therock_cmake_subproject_glob_c_sources(hipSPARSE
+  SUBDIRS
+    .
+)
+therock_cmake_subproject_provide_package(hipSPARSE hipsparse lib/cmake/hipsparse)
+therock_cmake_subproject_activate(hipSPARSE)
+list(APPEND _sparse_subproject_names hipSPARSE)
+
+#################################################################################
+# sparse artifact
+#################################################################################
+
+therock_provide_artifact(sparse
+  DESCRIPTOR artifact-sparse.toml
+  COMPONENTS
+    dbg
+    dev
+    doc
+    lib
+    run
+  SUBPROJECT_DEPS ${_sparse_subproject_names}
+)
+
+#################################################################################
+# rocSOLVER
+#################################################################################
+
+therock_cmake_subproject_declare(rocSOLVER
+  EXTERNAL_SOURCE_DIR "rocSOLVER"
+  BACKGROUND_BUILD
+  CMAKE_ARGS
+    -DHIP_PLATFORM=amd
+    -DROCM_PATH=
+    -DROCM_DIR=
+    # Requires LAPACK
+    -DBUILD_CLIENTS_BENCHMARKS=OFF
+    -DBUILD_CLIENTS_TESTS=OFF
+  COMPILER_TOOLCHAIN
+    amd-hip
+  BUILD_DEPS
+    rocBLAS
+    rocPRIM
+    therock-fmt
+  RUNTIME_DEPS
+    hip-clr
+)
+therock_cmake_subproject_glob_c_sources(rocSOLVER
+  SUBDIRS
+    .
+)
+therock_cmake_subproject_provide_package(rocSOLVER rocsolver lib/cmake/rocsolver)
+therock_cmake_subproject_activate(rocSOLVER)
+
+therock_provide_artifact(solver
+  DESCRIPTOR artifact-solver.toml
+  COMPONENTS
+    dbg
+    dev
+    doc
+    lib
+    run
+  SUBPROJECT_DEPS rocSOLVER
 )
