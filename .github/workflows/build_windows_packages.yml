@@ -31,58 +31,17 @@ jobs:
         with:
           python-version: "3.11"
 
-
-      - name: Check CMake version
-        run: cmake --version
-
-      - name: Check git version
-        run: git --version
-
-      - name: Check git config
-        run: cat .git/config
-
-      - name: Run git status
-        run: git status
-
       - name: Install ninja
         run: choco install ninja --yes
-
-      - name: Check ninja version
-        run: ninja --version
 
       - name: Fetch sources
         run: |
           git config --global user.email "nobody@amd.com"
           git config --global user.name "Nobody"
           python ./build_tools/fetch_sources.py --depth 1
-
-      # The full checkout is very large: ~16GB, 9 of which is GIT stuff.
-      # So we delete the latter. This must be done after getting any git
-      # stamps or such things.
-      # - name: Trim Disk Space
-      #   run: |
-      #     rm -Rf sources/.repo
-      #     df -h
-
-      - name: List files (symlinks?)
-        run: ls -la base/
-
+      # TODO(scotttodd): Get symlinks working on CI runners instead of this
       - name: Replace symlinks with copies
-        run: |
-          rm base/half
-          rm base/rocm-cmake
-          rm base/rocm-core
-
-          rm -rf sources/half/.git
-          rm -rf sources/rocm-cmake/.git
-          rm -rf sources/rocm-core/.git
-
-          cp -r sources/half base
-          cp -r sources/rocm-cmake base
-          cp -r sources/rocm-core base
-
-      - name: List files (copied)
-        run: ls -la base/
+        run: ./build_tools/patch_symlinks_for_windows_ci.sh
 
       - name: Configure MSVC
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
@@ -109,18 +68,8 @@ jobs:
             -DTHEROCK_ENABLE_MATH_LIBS=OFF \
             -DTHEROCK_ENABLE_ML_LIBS=OFF
 
-      - name: List files under base/
-        run: ls -la base/
-
-      - name: List files under base/rocm-cmake
-        run: ls -la base/rocm-cmake
-
-      - name: Stat base/rocm-cmake/CMakeLists.txt
-        run: stat base/rocm-cmake/CMakeLists.txt
-
       - name: Build Projects
-        run: |
-          cmake --build build
+        run: cmake --build build
 
       - name: Report
         if: ${{ !cancelled() }}
