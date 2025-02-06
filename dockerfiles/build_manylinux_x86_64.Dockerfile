@@ -29,7 +29,7 @@ RUN ./install_ccache.sh "4.9" && rm -rf /install-ccache
 
 ######## CMake ########
 WORKDIR /install-cmake
-ENV CMAKE_VERSION="3.30.3"
+ENV CMAKE_VERSION="3.25.2"
 COPY install_cmake.sh ./
 RUN ./install_cmake.sh "${CMAKE_VERSION}" && rm -rf /install-cmake
 
@@ -43,7 +43,6 @@ RUN ./install_ninja.sh "${CMAKE_VERSION}" && rm -rf /install-ninja
 RUN yum install -y epel-release && \
     yum install -y clang lld && \
     yum install -y numactl-devel elfutils-libelf-devel vim-common git-lfs && \
-    yum install -y msgpack-devel && \
     yum install -y bzip2-devel && \
     yum install -y gtest-devel && \
     yum clean all && \

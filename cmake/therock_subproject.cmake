@@ -20,6 +20,7 @@ set_property(GLOBAL PROPERTY THEROCK_DEFAULT_CMAKE_VARS
   THEROCK_SOURCE_DIR
   THEROCK_BINARY_DIR
   ROCM_GIT_DIR
+  ROCM_SYMLINK_LIBS
 )
 
 set_property(GLOBAL PROPERTY THEROCK_SUBPROJECT_COMPILE_COMMANDS_FILES)
@@ -30,6 +31,18 @@ endif()
 if(CMAKE_CXX_VISIBILITY_PRESET)
   list(APPEND THEROCK_DEFAULT_CMAKE_VARS ${CMAKE_CXX_VISIBILITY_PRESET})
 endif()
+
+# CXX flags that we hard-code in the toolchain file when building projects
+# that use amd-llvm. In these cases, because it is our built toolchain, we
+# don't need to probe warning flag availability and just have a hard-coded
+# list. We only squelch warnings here that do not signal code correctness
+# issues.
+# TODO: Clean up warning flags (https://github.com/nod-ai/TheRock/issues/47)
+set(THEROCK_AMD_LLVM_DEFAULT_CXX_FLAGS
+  -Wno-documentation-unknown-command
+  -Wno-documentation-pedantic
+  -Wno-unused-command-line-argument
+)
 
 # therock_subproject_fetch
 # Fetches arbitrary content. This mostly defers to ExternalProject_Add to get
@@ -66,11 +79,11 @@ function(therock_subproject_fetch target_name)
   endif()
   if(ARG_TOUCH)
     list(APPEND _extra
-      INSTALL_COMMAND "${CMAKE_COMMAND}" -E touch ${ARG_TOUCH}
-      INSTALL_BYPRODUCTS ${ARG_TOUCH}
+      BUILD_COMMAND "${CMAKE_COMMAND}" -E touch ${ARG_TOUCH}
+      BUILD_BYPRODUCTS ${ARG_TOUCH}
     )
   else()
-    list(APPEND _extra "INSTALL_COMMAND" "")
+    list(APPEND _extra "BUILD_COMMAND" "")
   endif()
 
   ExternalProject_Add(
@@ -79,7 +92,7 @@ function(therock_subproject_fetch target_name)
     PREFIX "${ARG_PREFIX}"
     SOURCE_DIR "${ARG_SOURCE_DIR}"
     CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
     TEST_COMMAND ""
     ${_extra}
     ${ARG_UNPARSED_ARGUMENTS}
@@ -350,6 +363,7 @@ function(therock_cmake_subproject_activate target_name)
     string(APPEND _init_contents "string(APPEND CMAKE_EXE_LINKER_FLAGS \" -Wl,-rpath-link,${_private_link_dir}\")\n")
     string(APPEND _init_contents "string(APPEND CMAKE_SHARED_LINKER_FLAGS \" -Wl,-rpath-link,${_private_link_dir}\")\n")
   endforeach()
+  string(APPEND _init_contents "set(CMAKE_INSTALL_MESSAGE NEVER)\n")
   string(APPEND _init_contents "${_compiler_toolchain_init_contents}")
   if(_dep_provider_file)
     string(APPEND _init_contents "include(${_dep_provider_file})\n")
@@ -482,18 +496,18 @@ function(therock_cmake_subproject_activate target_name)
 
   # dist install target.
   set(_dist_stamp_file "${_stamp_dir}/dist.stamp")
-  set(_merge_dist_script "${THEROCK_SOURCE_DIR}/build_tools/merge_dist_dir.cmake")
+  set(_fileset_tool "${THEROCK_SOURCE_DIR}/build_tools/fileset_tool.py")
   _therock_cmake_subproject_get_stage_dirs(
     _dist_source_dirs "${target_name}" ${_runtime_deps})
   add_custom_command(
     OUTPUT "${_dist_stamp_file}"
-    COMMAND "${CMAKE_COMMAND}" -P "${_merge_dist_script}" "${_dist_dir}" ${_dist_source_dirs}
+    COMMAND "${Python3_EXECUTABLE}" "${_fileset_tool}" copy "${_dist_dir}" ${_dist_source_dirs}
     COMMAND "${CMAKE_COMMAND}" -E touch "${_dist_stamp_file}"
     COMMENT "Merging sub-project dist directory for ${target_name}"
     ${_terminal_option}
     DEPENDS
       "${_stage_stamp_file}"
-      "${_merge_dist_script}"
+      "${_fileset_tool}"
   )
   add_custom_target(
     "${target_name}+dist"
@@ -729,11 +743,11 @@ function(_therock_cmake_subproject_setup_toolchain compiler_toolchain toolchain_
   string(APPEND _toolchain_contents "set(CMAKE_PLATFORM_NO_VERSIONED_SONAME @CMAKE_PLATFORM_NO_VERSIONED_SONAME@)\n")
 
   # Propagate super-project flags to the sub-project by default.
-  string(APPEND _toolchain_contents "set(CMAKE_C_COMPILER @CMAKE_C_COMPILER@)\n")
-  string(APPEND _toolchain_contents "set(CMAKE_CXX_COMPILER @CMAKE_CXX_COMPILER@)\n")
-  string(APPEND _toolchain_contents "set(CMAKE_LINKER @CMAKE_LINKER@)\n")
-  string(APPEND _toolchain_contents "set(CMAKE_C_COMPILER_LAUNCHER @CMAKE_C_COMPILER_LAUNCHER@)\n")
-  string(APPEND _toolchain_contents "set(CMAKE_CXX_COMPILER_LAUNCHER @CMAKE_CXX_COMPILER_LAUNCHER@)\n")
+  string(APPEND _toolchain_contents "set(CMAKE_C_COMPILER \"@CMAKE_C_COMPILER@\")\n")
+  string(APPEND _toolchain_contents "set(CMAKE_CXX_COMPILER \"@CMAKE_CXX_COMPILER@\")\n")
+  string(APPEND _toolchain_contents "set(CMAKE_LINKER \"@CMAKE_LINKER@\")\n")
+  string(APPEND _toolchain_contents "set(CMAKE_C_COMPILER_LAUNCHER \"@CMAKE_C_COMPILER_LAUNCHER@\")\n")
+  string(APPEND _toolchain_contents "set(CMAKE_CXX_COMPILER_LAUNCHER \"@CMAKE_CXX_COMPILER_LAUNCHER@\")\n")
   string(APPEND _toolchain_contents "set(CMAKE_C_FLAGS_INIT @CMAKE_C_FLAGS@)\n")
   string(APPEND _toolchain_contents "set(CMAKE_CXX_FLAGS_INIT @CMAKE_CXX_FLAGS@)\n")
   string(APPEND _toolchain_contents "set(CMAKE_EXE_LINKER_FLAGS_INIT @CMAKE_EXE_LINKER_FLAGS@)\n")
@@ -742,26 +756,45 @@ function(_therock_cmake_subproject_setup_toolchain compiler_toolchain toolchain_
   if(NOT compiler_toolchain)
     # Make any additional customizations if no toolchain specified.
   elseif(compiler_toolchain STREQUAL "amd-llvm" OR compiler_toolchain STREQUAL "amd-hip")
-    # amd-llvm toolchain: The private built LLVM in isolation.
-    _therock_assert_is_cmake_subproject("amd-llvm")
-    get_target_property(_amd_llvm_dist_dir amd-llvm THEROCK_DIST_DIR)
-    get_target_property(_amd_llvm_stamp_dir amd-llvm THEROCK_STAMP_DIR)
+    # The "amd-llvm" and "amd-hip" toolchains are configured very similarly so
+    # we commingle them, but they are different:
+    #   "amd-llvm": Just the base LLVM compiler and device libraries. This
+    #     doesn't know anything about hip (i.e. it doesn't have hipconfig, etc).
+    #   "amd-hip": Superset of "amd-llvm" which also includes hipcc, hip headers,
+    #     and hip version info. This has hipconfig in it.
+    # The main difference is that for "amd-llvm", we derive the configuration from
+    # the amd-llvm project's dist/ tree. And for "amd-hip", from the hip-clr
+    # project (which has runtime dependencies on the underlying toolchain).
+    if (compiler_toolchain STREQUAL "amd-hip")
+      set(_toolchain_subproject "hip-clr")
+    else()
+      set(_toolchain_subproject "amd-llvm")
+    endif()
+    _therock_assert_is_cmake_subproject("${_toolchain_subproject}")
+    get_target_property(_amd_llvm_dist_dir "${_toolchain_subproject}" THEROCK_DIST_DIR)
+    get_target_property(_amd_llvm_stamp_dir "${_toolchain_subproject}" THEROCK_STAMP_DIR)
     # Add a dependency on the toolchain's dist
     set(AMD_LLVM_C_COMPILER "${_amd_llvm_dist_dir}/lib/llvm/bin/clang")
     set(AMD_LLVM_CXX_COMPILER "${_amd_llvm_dist_dir}/lib/llvm/bin/clang++")
     set(AMD_LLVM_LINKER "${_amd_llvm_dist_dir}/lib/llvm/bin/lld")
+    set(_amd_llvm_cxx_flags_spaces )
+    string(JOIN " " _amd_llvm_cxx_flags_spaces ${THEROCK_AMD_LLVM_DEFAULT_CXX_FLAGS})
+
     list(APPEND _compiler_toolchain_addl_depends "${_amd_llvm_stamp_dir}/dist.stamp")
     string(APPEND _toolchain_contents "set(CMAKE_C_COMPILER @AMD_LLVM_C_COMPILER@)\n")
     string(APPEND _toolchain_contents "set(CMAKE_CXX_COMPILER @AMD_LLVM_CXX_COMPILER@)\n")
     string(APPEND _toolchain_contents "set(CMAKE_LINKER @AMD_LLVM_LINKER@)\n")
+    # TODO: AMDGPU_TARGETS is being deprecated. For now we set both.
     string(APPEND _toolchain_contents "set(AMDGPU_TARGETS @THEROCK_AMDGPU_TARGETS@ CACHE STRING \"From super-project\" FORCE)\n")
+    string(APPEND _toolchain_contents "set(GPU_TARGETS @THEROCK_AMDGPU_TARGETS@ CACHE STRING \"From super-project\" FORCE)\n")
+    string(APPEND _toolchain_contents "string(APPEND CMAKE_CXX_FLAGS_INIT \" ${_amd_llvm_cxx_flags_spaces}\")\n")
 
     message(STATUS "Compiler toolchain ${compiler_toolchain}:")
     string(APPEND CMAKE_MESSAGE_INDENT "  ")
     message(STATUS "CMAKE_C_COMPILER = ${AMD_LLVM_C_COMPILER}")
     message(STATUS "CMAKE_CXX_COMPILER = ${AMD_LLVM_CXX_COMPILER}")
     message(STATUS "CMAKE_LINKER = ${AMD_LLVM_LINKER}")
-    message(STATUS "AMDGPU_TARGETS = ${THEROCK_AMDGPU_TARGETS_SPACES}")
+    message(STATUS "GPU_TARGETS = ${THEROCK_AMDGPU_TARGETS_SPACES}")
   else()
     message(FATAL_ERROR "Unsupported COMPILER_TOOLCHAIN = ${compiler_toolchain} (supported: 'amd-llvm' or none)")
   endif()

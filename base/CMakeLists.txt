@@ -6,7 +6,7 @@ therock_cmake_subproject_declare(rocm-cmake
   EXTERNAL_SOURCE_DIR "rocm-cmake"
 )
 therock_cmake_subproject_provide_package(rocm-cmake
-  ROCmCMakeBuildToolsConfig share/rocmcmakebuildtools/cmake)
+  ROCmCMakeBuildTools share/rocmcmakebuildtools/cmake)
 therock_cmake_subproject_provide_package(rocm-cmake
   ROCM share/rocm/cmake)
 therock_cmake_subproject_activate(rocm-cmake)
@@ -81,3 +81,26 @@ therock_cmake_subproject_glob_c_sources(rocm-half
     include
 )
 therock_cmake_subproject_activate(rocm-half)
+
+
+################################################################################
+# Artifacts
+################################################################################
+
+therock_provide_artifact(base
+  TARGET_NEUTRAL
+  DESCRIPTOR artifact.toml
+  COMPONENTS
+    dbg
+    dev
+    doc
+    lib
+    run
+    test
+  SUBPROJECT_DEPS
+    rocm-cmake
+    rocm-core
+    rocm_smi_lib
+    rocprofiler-register
+    rocm-half
+)

@@ -12,6 +12,9 @@ if(THEROCK_ENABLE_RCCL)
       -DROCM_PATH=
       -DROCM_DIR=
       "-DEXPLICIT_ROCM_VERSION=${ROCM_MAJOR_VERSION}.${ROCM_MINOR_VERSION}.${ROCM_PATCH_VERSION}"
+      # TODO(#56): Enable once reworked.
+      -DENABLE_MSCCLPP=OFF
+      -DENABLE_MSCCL_KERNEL=OFF
     COMPILER_TOOLCHAIN
       amd-hip
     IGNORE_PACKAGES
@@ -32,6 +35,18 @@ if(THEROCK_ENABLE_RCCL)
       src
   )
   therock_cmake_subproject_activate(rccl)
+
+  therock_provide_artifact(rccl
+    DESCRIPTOR artifact-rccl.toml
+    COMPONENTS
+      dbg
+      dev
+      doc
+      lib
+      run
+    SUBPROJECT_DEPS
+      rccl
+  )
 else()
   message(STATUS "Not building RCCL (THEROCK_ENABLE_RCCL=OFF)")
 endif()
