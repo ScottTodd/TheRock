@@ -865,16 +865,8 @@ function(_therock_cmake_subproject_setup_toolchain compiler_toolchain toolchain_
   string(APPEND _toolchain_contents "set(CMAKE_C_COMPILER_LAUNCHER \"@CMAKE_C_COMPILER_LAUNCHER@\")\n")
   string(APPEND _toolchain_contents "set(CMAKE_CXX_COMPILER_LAUNCHER \"@CMAKE_CXX_COMPILER_LAUNCHER@\")\n")
   string(APPEND _toolchain_contents "set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT \"@CMAKE_MSVC_DEBUG_INFORMATION_FORMAT@\")\n")
-
-  if(NOT WIN32)
-    string(APPEND _toolchain_contents "set(CMAKE_C_FLAGS_INIT \"@CMAKE_C_FLAGS@\")\n")
-    string(APPEND _toolchain_contents "set(CMAKE_CXX_FLAGS_INIT \"@CMAKE_CXX_FLAGS@\")\n")
-  else()
-    string(APPEND _toolchain_contents "set(CMAKE_C_FLAGS_INIT)\n")
-    # string(APPEND _toolchain_contents "set(CMAKE_CXX_FLAGS_INIT)\n")
-    # Copied from toolchain-windows.cmake files provided by each project.
-    string(APPEND _toolchain_contents "set(CMAKE_CXX_FLAGS_INIT \"-DWIN32 -D_CRT_SECURE_NO_WARNINGS -std=c++14 -fms-extensions -fms-compatibility -Wno-ignored-attributes -D__HIP_PLATFORM_AMD__ -D__HIP_ROCclr__\")\n")
-  endif()
+  string(APPEND _toolchain_contents "set(CMAKE_C_FLAGS_INIT \"@CMAKE_C_FLAGS@\")\n")
+  string(APPEND _toolchain_contents "set(CMAKE_CXX_FLAGS_INIT \"@CMAKE_CXX_FLAGS@\")\n")
 
   string(APPEND _toolchain_contents "set(CMAKE_EXE_LINKER_FLAGS_INIT \"@CMAKE_EXE_LINKER_FLAGS@\")\n")
   string(APPEND _toolchain_contents "set(CMAKE_SHARED_LINKER_FLAGS_INIT \"@CMAKE_SHARED_LINKER_FLAGS@\")\n")
@@ -919,6 +911,13 @@ function(_therock_cmake_subproject_setup_toolchain compiler_toolchain toolchain_
     string(APPEND _toolchain_contents "set(AMDGPU_TARGETS @THEROCK_AMDGPU_TARGETS@ CACHE STRING \"From super-project\" FORCE)\n")
     string(APPEND _toolchain_contents "set(GPU_TARGETS @THEROCK_AMDGPU_TARGETS@ CACHE STRING \"From super-project\" FORCE)\n")
     # string(APPEND _toolchain_contents "string(APPEND CMAKE_CXX_FLAGS_INIT \" ${_amd_llvm_cxx_flags_spaces}\")\n")
+
+    if(WIN32)
+      string(APPEND _toolchain_contents "set(CMAKE_C_FLAGS_INIT)\n")
+      # string(APPEND _toolchain_contents "set(CMAKE_CXX_FLAGS_INIT)\n")
+      # Copied from toolchain-windows.cmake files provided by each project.
+      string(APPEND _toolchain_contents "set(CMAKE_CXX_FLAGS_INIT \"-DWIN32 -D_CRT_SECURE_NO_WARNINGS -std=c++14 -fms-extensions -fms-compatibility -Wno-ignored-attributes -D__HIP_PLATFORM_AMD__ -D__HIP_ROCclr__\")\n")
+    endif()
 
     if(THEROCK_VERBOSE)
       message(STATUS "Compiler toolchain ${compiler_toolchain}:")
