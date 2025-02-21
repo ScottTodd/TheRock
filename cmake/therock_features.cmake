@@ -21,6 +21,10 @@ function(therock_add_feature feature_name)
     "REQUIRES"
   )
 
+  if(THEROCK_VERBOSE)
+    message(STATUS "Adding feature ${feature_name}")
+  endif()
+
   set(_default_enabled ON)
   if(ARG_GROUP)
     if(NOT "${THEROCK_ENABLE_${ARG_GROUP}}")
@@ -29,6 +33,11 @@ function(therock_add_feature feature_name)
   endif()
   if(THEROCK_RESET_FEATURES)
     set(_force "FORCE")
+  endif()
+
+  if(THEROCK_VERBOSE)
+    message(STATUS "  _default_enabled: ${_default_enabled}")
+    message(STATUS "  _force: ${_force}")
   endif()
 
   # Validate.
@@ -45,6 +54,9 @@ function(therock_add_feature feature_name)
   # scope.
   set(THEROCK_ENABLE_${feature_name} ${_default_enabled} CACHE BOOL "${ARG_DESCRIPTION}" ${_force})
   set(_actual $CACHE{THEROCK_ENABLE_${feature_name}})
+  if(THEROCK_VERBOSE)
+    message(STATUS "  _actual: ${_actual}")
+  endif()
   set(THEROCK_ENABLE_${feature_name} "${_actual}" PARENT_SCOPE)
   set(THEROCK_REQUIRES_${feature_name} ${ARG_REQUIRES} PARENT_SCOPE)
   set(_all_features ${THEROCK_ALL_FEATURES})
@@ -53,6 +65,9 @@ function(therock_add_feature feature_name)
 endfunction()
 
 function(therock_finalize_features)
+  if(THEROCK_VERBOSE)
+    message(STATUS "Finalizing features, all available: ${THEROCK_ALL_FEATURES}")
+  endif()
   # Force enable any features required of an enabled feature.
   # These are processed in reverse declaration order, which ensures a DAG.
   set(all_features_reversed ${THEROCK_ALL_FEATURES})
@@ -62,6 +77,9 @@ function(therock_finalize_features)
     if(THEROCK_ENABLE_${feature_name})
       foreach(require ${THEROCK_REQUIRES_${feature_name}})
         if(NOT THEROCK_ENABLE_${require})
+          if(THEROCK_VERBOSE)
+            message(STATUS "  THEROCK_ENABLE_${feature_name} requires ${require}, forcing THEROCK_ENABLE_${require} enabled")
+          endif()
           set(THEROCK_ENABLE_${require} ON PARENT_SCOPE)
           set(THEROCK_ENABLE_${require} ON)
           list(APPEND _implicit_features ${require})

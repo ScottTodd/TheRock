@@ -38,11 +38,15 @@ endif()
 # list. We only squelch warnings here that do not signal code correctness
 # issues.
 # TODO: Clean up warning flags (https://github.com/nod-ai/TheRock/issues/47)
-set(THEROCK_AMD_LLVM_DEFAULT_CXX_FLAGS
-  -Wno-documentation-unknown-command
-  -Wno-documentation-pedantic
-  -Wno-unused-command-line-argument
-)
+# if(NOT WIN32)
+  set(THEROCK_AMD_LLVM_DEFAULT_CXX_FLAGS
+    -Wno-documentation-unknown-command
+    -Wno-documentation-pedantic
+    -Wno-unused-command-line-argument
+  )
+# else()
+#   set(THEROCK_AMD_LLVM_DEFAULT_CXX_FLAGS)
+# endif()
 
 # Generates a command prefix that can be prepended to any custom command line
 # to perform log/console redirection and pretty printing.
@@ -861,10 +865,19 @@ function(_therock_cmake_subproject_setup_toolchain compiler_toolchain toolchain_
   string(APPEND _toolchain_contents "set(CMAKE_C_COMPILER_LAUNCHER \"@CMAKE_C_COMPILER_LAUNCHER@\")\n")
   string(APPEND _toolchain_contents "set(CMAKE_CXX_COMPILER_LAUNCHER \"@CMAKE_CXX_COMPILER_LAUNCHER@\")\n")
   string(APPEND _toolchain_contents "set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT \"@CMAKE_MSVC_DEBUG_INFORMATION_FORMAT@\")\n")
-  string(APPEND _toolchain_contents "set(CMAKE_C_FLAGS_INIT @CMAKE_C_FLAGS@)\n")
-  string(APPEND _toolchain_contents "set(CMAKE_CXX_FLAGS_INIT @CMAKE_CXX_FLAGS@)\n")
-  string(APPEND _toolchain_contents "set(CMAKE_EXE_LINKER_FLAGS_INIT @CMAKE_EXE_LINKER_FLAGS@)\n")
-  string(APPEND _toolchain_contents "set(CMAKE_SHARED_LINKER_FLAGS_INIT @CMAKE_SHARED_LINKER_FLAGS@)\n")
+
+  if(NOT WIN32)
+    string(APPEND _toolchain_contents "set(CMAKE_C_FLAGS_INIT \"@CMAKE_C_FLAGS@\")\n")
+    string(APPEND _toolchain_contents "set(CMAKE_CXX_FLAGS_INIT \"@CMAKE_CXX_FLAGS@\")\n")
+  else()
+    string(APPEND _toolchain_contents "set(CMAKE_C_FLAGS_INIT)\n")
+    # string(APPEND _toolchain_contents "set(CMAKE_CXX_FLAGS_INIT)\n")
+    # Copied from toolchain-windows.cmake files provided by each project.
+    string(APPEND _toolchain_contents "set(CMAKE_CXX_FLAGS_INIT \"-DWIN32 -D_CRT_SECURE_NO_WARNINGS -std=c++14 -fms-extensions -fms-compatibility -Wno-ignored-attributes -D__HIP_PLATFORM_AMD__ -D__HIP_ROCclr__\")\n")
+  endif()
+
+  string(APPEND _toolchain_contents "set(CMAKE_EXE_LINKER_FLAGS_INIT \"@CMAKE_EXE_LINKER_FLAGS@\")\n")
+  string(APPEND _toolchain_contents "set(CMAKE_SHARED_LINKER_FLAGS_INIT \"@CMAKE_SHARED_LINKER_FLAGS@\")\n")
 
   if(NOT compiler_toolchain)
     # Make any additional customizations if no toolchain specified.
@@ -887,9 +900,11 @@ function(_therock_cmake_subproject_setup_toolchain compiler_toolchain toolchain_
     get_target_property(_amd_llvm_dist_dir "${_toolchain_subproject}" THEROCK_DIST_DIR)
     get_target_property(_amd_llvm_stamp_dir "${_toolchain_subproject}" THEROCK_STAMP_DIR)
     # Add a dependency on the toolchain's dist
-    set(AMD_LLVM_C_COMPILER "${_amd_llvm_dist_dir}/lib/llvm/bin/clang")
-    set(AMD_LLVM_CXX_COMPILER "${_amd_llvm_dist_dir}/lib/llvm/bin/clang++")
-    set(AMD_LLVM_LINKER "${_amd_llvm_dist_dir}/lib/llvm/bin/lld")
+    # set(AMD_LLVM_C_COMPILER "${_amd_llvm_dist_dir}/lib/llvm/bin/clang")
+    # set(AMD_LLVM_CXX_COMPILER "${_amd_llvm_dist_dir}/lib/llvm/bin/clang++")
+    set(AMD_LLVM_C_COMPILER "${_amd_llvm_dist_dir}/lib/llvm/bin/clang.exe")
+    set(AMD_LLVM_CXX_COMPILER "${_amd_llvm_dist_dir}/lib/llvm/bin/clang++.exe")
+    set(AMD_LLVM_LINKER "${_amd_llvm_dist_dir}/lib/llvm/bin/lld.exe")
     set(_amd_llvm_cxx_flags_spaces )
     string(JOIN " " _amd_llvm_cxx_flags_spaces ${THEROCK_AMD_LLVM_DEFAULT_CXX_FLAGS})
 
@@ -903,7 +918,7 @@ function(_therock_cmake_subproject_setup_toolchain compiler_toolchain toolchain_
     # TODO: AMDGPU_TARGETS is being deprecated. For now we set both.
     string(APPEND _toolchain_contents "set(AMDGPU_TARGETS @THEROCK_AMDGPU_TARGETS@ CACHE STRING \"From super-project\" FORCE)\n")
     string(APPEND _toolchain_contents "set(GPU_TARGETS @THEROCK_AMDGPU_TARGETS@ CACHE STRING \"From super-project\" FORCE)\n")
-    string(APPEND _toolchain_contents "string(APPEND CMAKE_CXX_FLAGS_INIT \" ${_amd_llvm_cxx_flags_spaces}\")\n")
+    # string(APPEND _toolchain_contents "string(APPEND CMAKE_CXX_FLAGS_INIT \" ${_amd_llvm_cxx_flags_spaces}\")\n")
 
     if(THEROCK_VERBOSE)
       message(STATUS "Compiler toolchain ${compiler_toolchain}:")
