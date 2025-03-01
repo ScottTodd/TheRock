@@ -97,7 +97,8 @@ therock_add_feature(CORE_RUNTIME
 therock_add_feature(HIP_RUNTIME
   GROUP CORE
   DESCRIPTION "Enables the HIP runtime"
-  REQUIRES COMPILER CORE_RUNTIME
+  # REQUIRES COMPILER CORE_RUNTIME
+  REQUIRES COMPILER
 )
 
 # Profiler Features.

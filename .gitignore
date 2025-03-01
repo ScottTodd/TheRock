@@ -13,3 +13,5 @@ build/
 install/
 sources/
 .vscode/
+venv/
+*.venv/

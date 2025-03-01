@@ -70,20 +70,63 @@ if(THEROCK_ENABLE_HIP_RUNTIME)
     CMAKE_ARGS
       -DHIP_PLATFORM=amd
       "-DHIP_COMMON_DIR=${CMAKE_CURRENT_SOURCE_DIR}/HIP"
+      -DCLR_BUILD_OCL=OFF
       -DCLR_BUILD_HIP=ON
       # Legacy: Disable various auto-detection logic that breaks out of jail
       # and can use local machine tools.
       -DHIPCC_BIN_DIR=
+
+      # TODO:
+      # [build] [hip-clr configure] CMake Error at rocclr/cmake/ROCclr.cmake:47 (add_library):
+      # [build] [hip-clr configure]   add_library cannot create target "rocclr" because another target with the
+      # [build] [hip-clr configure]   same name already exists.  The existing target is a static library created
+      # [build] [hip-clr configure]   in source directory "D:/projects/TheRock/core/clr/rocclr".  See
+      # [build] [hip-clr configure]   documentation for policy CMP0002 for more details.
+
+      # ==================================
+      # Windows-specific options
+      -DUSE_PROF_API=OFF
+      -DROCCLR_ENABLE_HSAIL=OFF
+      -DROCCLR_ENABLE_LC=ON
+      -DROCCLR_ENABLE_HSA=OFF
+      -DROCCLR_ENABLE_PAL=ON
+
+      # TODO: set this as needed by FindAMD_PAL.cmake
+      # -DAMD_DRIVERS_PATH=
+
+      # TODO: import PAL into sources
+      -DAMD_SC_PATH=D:/projects/pal/src/core/imported/hsa
+
+      # Disable pre-compiled hip headers (may be possible to use, but requires some toolchain / deps setup)
+      -D__HIP_ENABLE_PCH=OFF
+
+      -DPAL_CLOSED_SOURCE=OFF
+      # ==================================
     BUILD_DEPS
       rocm-cmake
     RUNTIME_DEPS
       amd-llvm
       amd-comgr
       hipcc     # For hipconfig
-      rocm-core
-      rocminfo  # Various things expect to be able to find the rocminfo tools
+      # rocm-core
+      # rocminfo  # Various things expect to be able to find the rocminfo tools
       rocprofiler-register
-      ROCR-Runtime
+
+      # -----------------------------------------------------------------------
+      # This may be needed for some header files... or not. TBD. Probably not
+      # needed as a full runtime or build dep at least?
+      # For example:
+      #   `core/clr/rocclr/device/pal/palprogram.cpp` wants `amd_hsa_loader.hpp`
+      #   A version of that file is available at
+      #   `core/ROCR-Runtime/runtime/hsa-runtime/core/inc/amd_hsa_loader.hpp`
+      #   Another public source is under
+      #   https://github.com/HSAFoundation/HSA-Runtime-Reference-Source/
+      #   This header can also come from the closed source HSAIL compiler, but
+      #   we build CLR with the LC (amd-llvm/amd-comgr) compiler, not HSAIL
+      #
+      # See also `core/clr/rocclr/FindAMD_HSA_LOADER.cmake`
+      # -----------------------------------------------------------------------
+      # ROCR-Runtime
     INTERFACE_LINK_DIRS
       "lib"
   )
