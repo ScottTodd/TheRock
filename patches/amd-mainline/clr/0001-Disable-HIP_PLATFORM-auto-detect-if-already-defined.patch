@@ -1,7 +1,7 @@
-From 54553db0d22c76c25863b5af9467d03afb94a9d3 Mon Sep 17 00:00:00 2001
+From 0401854bacea333a720a3a58281fb0548b6adcd3 Mon Sep 17 00:00:00 2001
 From: Stella Laurenzo <stellaraccident@gmail.com>
 Date: Wed, 22 Jan 2025 14:01:50 -0800
-Subject: [PATCH] Disable HIP_PLATFORM auto-detect if already defined.
+Subject: [PATCH 1/2] Disable HIP_PLATFORM auto-detect if already defined.
 
 This code appears to be old copy-pasta and is effectively just a no-op if -DHIP_PLATFORM=amd is passed explicitly. It has a number of nit-picky checks which will fail in this case for no real reason.
 
@@ -151,5 +151,5 @@ index 1fcdcd970..d033c09ac 100755
 +  set(HIP_HIPCONFIG_EXECUTABLE ${hip_HIPCONFIG_EXECUTABLE})
 +endif()
 -- 
-2.43.0
+2.47.1.windows.2
 

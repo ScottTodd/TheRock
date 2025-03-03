@@ -1,0 +1,93 @@
+From 6b4bcccb44e28223f5d7c56321b5d42521dbe8ae Mon Sep 17 00:00:00 2001
+From: Scott <scott.todd0@gmail.com>
+Date: Mon, 3 Mar 2025 11:12:59 -0800
+Subject: [PATCH 2/2] Hack on build for TheRock.
+
+---
+ hipamd/CMakeLists.txt          | 18 ++++++++++--------
+ rocclr/cmake/FindAMD_PAL.cmake | 15 ++++++++++++---
+ rocclr/cmake/ROCclrPAL.cmake   |  3 ++-
+ 3 files changed, 24 insertions(+), 12 deletions(-)
+
+diff --git a/hipamd/CMakeLists.txt b/hipamd/CMakeLists.txt
+index 7babbfc36..477a6623b 100755
+--- a/hipamd/CMakeLists.txt
++++ b/hipamd/CMakeLists.txt
+@@ -88,7 +88,7 @@ endmacro()
+ #############################
+ # Setup version information
+ #############################
+-find_package(Perl REQUIRED)
++# find_package(Perl REQUIRED)
+ 
+ # Determine HIP_BASE_VERSION
+ set(ENV{HIP_PATH} "")
+@@ -115,13 +115,15 @@ if(GIT_FOUND)
+ 
+   # get date information based on UTC
+   # use the last two digits of year + week number + day in the week as HIP_VERSION_GITDATE
+-  execute_process(COMMAND ${PERL_EXECUTABLE} "-MPOSIX=strftime" "-le" "print strftime \'%y%W%w\',gmtime(${HIP_VERSION_UNIXDATE})"
+-    RESULT_VARIABLE git_result
+-    OUTPUT_VARIABLE git_output
+-    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+-    OUTPUT_STRIP_TRAILING_WHITESPACE)
+-  if(git_result EQUAL 0)
+-    set(HIP_VERSION_GITDATE ${git_output})
++  # execute_process(COMMAND ${PERL_EXECUTABLE} "-MPOSIX=strftime" "-le" "print strftime \'%y%W%w\',gmtime(${HIP_VERSION_UNIXDATE})"
++  #   RESULT_VARIABLE perl_result
++  #   OUTPUT_VARIABLE perl_output
++  #   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
++  #   OUTPUT_STRIP_TRAILING_WHITESPACE)
++  set(perl_result 0)
++  set(perl_output "12345")
++  if(perl_result EQUAL 0)
++    set(HIP_VERSION_GITDATE ${perl_output})
+   endif()
+ 
+   # get commit short hash
+diff --git a/rocclr/cmake/FindAMD_PAL.cmake b/rocclr/cmake/FindAMD_PAL.cmake
+index 557444458..c5ff8ec3f 100644
+--- a/rocclr/cmake/FindAMD_PAL.cmake
++++ b/rocclr/cmake/FindAMD_PAL.cmake
+@@ -57,12 +57,21 @@ find_path(AMD_PAL_INCLUDE_DIR pal.h
+   PATH_SUFFIXES
+     inc/core)
+ 
++# include(FindPackageHandleStandardArgs)
++# find_package_handle_standard_args(AMD_PAL
++#   "\nPAL not found"
++#   AMD_ASIC_REG_INCLUDE_DIR AMD_HSAIL_INCLUDE_DIR AMD_PAL_INCLUDE_DIR)
++# mark_as_advanced(AMD_ASIC_REG_INCLUDE_DIR AMD_HSAIL_INCLUDE_DIR AMD_PAL_INCLUDE_DIR)
++
++# HACK: skip AMD_ASIC_REG_INCLUDE_DIR, might not be needed in open source?
+ include(FindPackageHandleStandardArgs)
+ find_package_handle_standard_args(AMD_PAL
+   "\nPAL not found"
+-  AMD_ASIC_REG_INCLUDE_DIR AMD_HSAIL_INCLUDE_DIR AMD_PAL_INCLUDE_DIR)
+-mark_as_advanced(AMD_ASIC_REG_INCLUDE_DIR AMD_HSAIL_INCLUDE_DIR AMD_PAL_INCLUDE_DIR)
++  AMD_HSAIL_INCLUDE_DIR AMD_PAL_INCLUDE_DIR)
++mark_as_advanced(AMD_HSAIL_INCLUDE_DIR AMD_PAL_INCLUDE_DIR)
+ 
+-set(GLOBAL_ROOT_SRC_DIR "${AMD_ASIC_REG_INCLUDE_DIR}/../../..")
++# HACK: set global root (hardcode to this machine), no AMD_ASIC_REG_INCLUDE_DIR
++# set(GLOBAL_ROOT_SRC_DIR "${AMD_ASIC_REG_INCLUDE_DIR}/../../..")
++set(GLOBAL_ROOT_SRC_DIR "D:/projects")
+ set(PAL_SC_PATH "${AMD_HSAIL_INCLUDE_DIR}/../..")
+ add_subdirectory("${AMD_PAL_INCLUDE_DIR}/../.." ${CMAKE_CURRENT_BINARY_DIR}/pal)
+diff --git a/rocclr/cmake/ROCclrPAL.cmake b/rocclr/cmake/ROCclrPAL.cmake
+index 4d128ee3b..051771071 100644
+--- a/rocclr/cmake/ROCclrPAL.cmake
++++ b/rocclr/cmake/ROCclrPAL.cmake
+@@ -53,7 +53,8 @@ set(PAL_BUILD_PHOENIX1      ON)
+ set(PAL_BRANCHDEFS          ON)
+ 
+ find_package(AMD_PAL)
+-find_package(AMD_HSA_LOADER)
++# HACK: maybe we don't need AMD_HSA_LOADER in open source for just PAL on Windows?
++# find_package(AMD_HSA_LOADER)
+ 
+ target_sources(rocclr PRIVATE
+   ${ROCCLR_SRC_DIR}/device/pal/palappprofile.cpp
+-- 
+2.47.1.windows.2
+
