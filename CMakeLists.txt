@@ -130,7 +130,7 @@ therock_add_feature(BLAS
 therock_add_feature(RAND
   GROUP MATH_LIBS
   DESCRIPTION "Enables rand libraries (hiprand, rocrand)"
-  REQUIRES COMPILER HIP_RUNTIME
+  REQUIRES COMPILER #HIP_RUNTIME
 )
 therock_add_feature(FFT
   GROUP MATH_LIBS

@@ -945,49 +945,90 @@ function(_therock_cmake_subproject_setup_toolchain
   string(APPEND _toolchain_contents "set(CMAKE_C_COMPILER_LAUNCHER \"@CMAKE_C_COMPILER_LAUNCHER@\")\n")
   string(APPEND _toolchain_contents "set(CMAKE_CXX_COMPILER_LAUNCHER \"@CMAKE_CXX_COMPILER_LAUNCHER@\")\n")
   string(APPEND _toolchain_contents "set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT \"@CMAKE_MSVC_DEBUG_INFORMATION_FORMAT@\")\n")
-  string(APPEND _toolchain_contents "set(CMAKE_C_FLAGS_INIT @CMAKE_C_FLAGS@)\n")
-  string(APPEND _toolchain_contents "set(CMAKE_CXX_FLAGS_INIT @CMAKE_CXX_FLAGS@)\n")
-  string(APPEND _toolchain_contents "set(CMAKE_EXE_LINKER_FLAGS_INIT @CMAKE_EXE_LINKER_FLAGS@)\n")
-  string(APPEND _toolchain_contents "set(CMAKE_SHARED_LINKER_FLAGS_INIT @CMAKE_SHARED_LINKER_FLAGS@)\n")
+  # string(APPEND _toolchain_contents "set(CMAKE_C_FLAGS_INIT @CMAKE_C_FLAGS@)\n")
+  # string(APPEND _toolchain_contents "set(CMAKE_CXX_FLAGS_INIT @CMAKE_CXX_FLAGS@)\n")
+  # string(APPEND _toolchain_contents "set(CMAKE_EXE_LINKER_FLAGS_INIT @CMAKE_EXE_LINKER_FLAGS@)\n")
+  # string(APPEND _toolchain_contents "set(CMAKE_SHARED_LINKER_FLAGS_INIT @CMAKE_SHARED_LINKER_FLAGS@)\n")
+  if(NOT WIN32)
+    string(APPEND _toolchain_contents "set(CMAKE_C_FLAGS_INIT \"@CMAKE_C_FLAGS@\")\n")
+    string(APPEND _toolchain_contents "set(CMAKE_CXX_FLAGS_INIT \"@CMAKE_CXX_FLAGS@\")\n")
+    string(APPEND _toolchain_contents "set(CMAKE_EXE_LINKER_FLAGS_INIT @CMAKE_EXE_LINKER_FLAGS@)\n")
+    string(APPEND _toolchain_contents "set(CMAKE_SHARED_LINKER_FLAGS_INIT @CMAKE_SHARED_LINKER_FLAGS@)\n")
+  else()
+    string(APPEND _toolchain_contents "set(CMAKE_C_FLAGS_INIT )\n")
+    string(APPEND _toolchain_contents "set(CMAKE_CXX_FLAGS_INIT \"-DWIN32 -D_CRT_SECURE_NO_WARNINGS\")\n")
+    string(APPEND _toolchain_contents "set(CMAKE_EXE_LINKER_FLAGS_INIT )\n")
+    string(APPEND _toolchain_contents "set(CMAKE_SHARED_LINKER_FLAGS_INIT )\n")
+  endif()
 
   if(NOT compiler_toolchain)
     # Make any additional customizations if no toolchain specified.
   elseif(compiler_toolchain STREQUAL "amd-llvm" OR compiler_toolchain STREQUAL "amd-hip")
-    # The "amd-llvm" and "amd-hip" toolchains are configured very similarly so
-    # we commingle them, but they are different:
-    #   "amd-llvm": Just the base LLVM compiler and device libraries. This
-    #     doesn't know anything about hip (i.e. it doesn't have hipconfig, etc).
-    #   "amd-hip": Superset of "amd-llvm" which also includes hipcc, hip headers,
-    #     and hip version info. This has hipconfig in it.
-    # The main difference is that for "amd-llvm", we derive the configuration from
-    # the amd-llvm project's dist/ tree. And for "amd-hip", from the hip-clr
-    # project (which has runtime dependencies on the underlying toolchain).
-    if (compiler_toolchain STREQUAL "amd-hip")
-      set(_toolchain_subproject "hip-clr")
-    else()
-      set(_toolchain_subproject "amd-llvm")
-    endif()
-    _therock_assert_is_cmake_subproject("${_toolchain_subproject}")
-    get_target_property(_amd_llvm_dist_dir "${_toolchain_subproject}" THEROCK_DIST_DIR)
-    get_target_property(_amd_llvm_stamp_dir "${_toolchain_subproject}" THEROCK_STAMP_DIR)
-    # Add a dependency on the toolchain's dist
-    set(AMD_LLVM_C_COMPILER "${_amd_llvm_dist_dir}/lib/llvm/bin/clang")
-    set(AMD_LLVM_CXX_COMPILER "${_amd_llvm_dist_dir}/lib/llvm/bin/clang++")
-    set(AMD_LLVM_LINKER "${_amd_llvm_dist_dir}/lib/llvm/bin/lld")
-    set(_amd_llvm_cxx_flags_spaces )
-    string(JOIN " " _amd_llvm_cxx_flags_spaces ${THEROCK_AMD_LLVM_DEFAULT_CXX_FLAGS})
+    if (NOT WIN32)
+      # The "amd-llvm" and "amd-hip" toolchains are configured very similarly so
+      # we commingle them, but they are different:
+      #   "amd-llvm": Just the base LLVM compiler and device libraries. This
+      #     doesn't know anything about hip (i.e. it doesn't have hipconfig, etc).
+      #   "amd-hip": Superset of "amd-llvm" which also includes hipcc, hip headers,
+      #     and hip version info. This has hipconfig in it.
+      # The main difference is that for "amd-llvm", we derive the configuration from
+      # the amd-llvm project's dist/ tree. And for "amd-hip", from the hip-clr
+      # project (which has runtime dependencies on the underlying toolchain).
+      if (compiler_toolchain STREQUAL "amd-hip")
+        set(_toolchain_subproject "hip-clr")
+      else()
+        set(_toolchain_subproject "amd-llvm")
+      endif()
+      _therock_assert_is_cmake_subproject("${_toolchain_subproject}")
+      get_target_property(_amd_llvm_dist_dir "${_toolchain_subproject}" THEROCK_DIST_DIR)
+      get_target_property(_amd_llvm_stamp_dir "${_toolchain_subproject}" THEROCK_STAMP_DIR)
+      # Add a dependency on the toolchain's dist
+      set(AMD_LLVM_C_COMPILER "${_amd_llvm_dist_dir}/lib/llvm/bin/clang")
+      set(AMD_LLVM_CXX_COMPILER "${_amd_llvm_dist_dir}/lib/llvm/bin/clang++")
+      set(AMD_LLVM_LINKER "${_amd_llvm_dist_dir}/lib/llvm/bin/lld")
+      set(_amd_llvm_cxx_flags_spaces )
+      string(JOIN " " _amd_llvm_cxx_flags_spaces ${THEROCK_AMD_LLVM_DEFAULT_CXX_FLAGS})
 
-    list(APPEND _compiler_toolchain_addl_depends "${_amd_llvm_stamp_dir}/dist.stamp")
-    # We inject a toolchain root into the subproject so that magic overrides can
-    # use it (i.e. for old projects that require path munging, etc).
-    string(APPEND _toolchain_contents "set(THEROCK_TOOLCHAIN_ROOT \"${_amd_llvm_dist_dir}\")\n")
-    string(APPEND _toolchain_contents "set(CMAKE_C_COMPILER @AMD_LLVM_C_COMPILER@)\n")
-    string(APPEND _toolchain_contents "set(CMAKE_CXX_COMPILER @AMD_LLVM_CXX_COMPILER@)\n")
-    string(APPEND _toolchain_contents "set(CMAKE_LINKER @AMD_LLVM_LINKER@)\n")
-    # TODO: AMDGPU_TARGETS is being deprecated. For now we set both.
-    string(APPEND _toolchain_contents "set(AMDGPU_TARGETS @_filtered_gpu_targets@ CACHE STRING \"From super-project\" FORCE)\n")
-    string(APPEND _toolchain_contents "set(GPU_TARGETS @_filtered_gpu_targets@ CACHE STRING \"From super-project\" FORCE)\n")
-    string(APPEND _toolchain_contents "string(APPEND CMAKE_CXX_FLAGS_INIT \" ${_amd_llvm_cxx_flags_spaces}\")\n")
+      list(APPEND _compiler_toolchain_addl_depends "${_amd_llvm_stamp_dir}/dist.stamp")
+      # We inject a toolchain root into the subproject so that magic overrides can
+      # use it (i.e. for old projects that require path munging, etc).
+      string(APPEND _toolchain_contents "set(THEROCK_TOOLCHAIN_ROOT \"${_amd_llvm_dist_dir}\")\n")
+      string(APPEND _toolchain_contents "set(CMAKE_C_COMPILER @AMD_LLVM_C_COMPILER@)\n")
+      string(APPEND _toolchain_contents "set(CMAKE_CXX_COMPILER @AMD_LLVM_CXX_COMPILER@)\n")
+      string(APPEND _toolchain_contents "set(CMAKE_LINKER @AMD_LLVM_LINKER@)\n")
+      # TODO: AMDGPU_TARGETS is being deprecated. For now we set both.
+      string(APPEND _toolchain_contents "set(AMDGPU_TARGETS @_filtered_gpu_targets@ CACHE STRING \"From super-project\" FORCE)\n")
+      string(APPEND _toolchain_contents "set(GPU_TARGETS @_filtered_gpu_targets@ CACHE STRING \"From super-project\" FORCE)\n")
+      string(APPEND _toolchain_contents "string(APPEND CMAKE_CXX_FLAGS_INIT \" ${_amd_llvm_cxx_flags_spaces}\")\n")
+    else()
+      # TODO(#36): Windows toolchain
+      message(STATUS "_therock_cmake_subproject_setup_toolchain for Windows -- populate toolchain")
+
+      file(TO_CMAKE_PATH "$ENV{HIP_PATH}" HIP_DIR)
+      message(STATUS "HIP_DIR: '${HIP_DIR}'")
+      string(APPEND _toolchain_contents "string(APPEND CMAKE_PREFIX_PATH \"${HIP_DIR}\")\n")
+
+      # get_target_property(_amd_llvm_dist_dir "${_toolchain_subproject}" THEROCK_DIST_DIR)
+      # get_target_property(_amd_llvm_stamp_dir "${_toolchain_subproject}" THEROCK_STAMP_DIR)
+      # # Add a dependency on the toolchain's dist
+      set(AMD_LLVM_C_COMPILER "${HIP_DIR}/bin/clang.exe")
+      set(AMD_LLVM_CXX_COMPILER "${HIP_DIR}/bin/clang++.exe")
+      set(AMD_LLVM_LINKER "${HIP_DIR}/bin/lld.exe")
+      set(_amd_llvm_cxx_flags_spaces )
+      string(JOIN " " _amd_llvm_cxx_flags_spaces ${THEROCK_AMD_LLVM_DEFAULT_CXX_FLAGS})
+
+      # list(APPEND _compiler_toolchain_addl_depends "${_amd_llvm_stamp_dir}/dist.stamp")
+      # # We inject a toolchain root into the subproject so that magic overrides can
+      # # use it (i.e. for old projects that require path munging, etc).
+      # string(APPEND _toolchain_contents "set(THEROCK_TOOLCHAIN_ROOT \"${_amd_llvm_dist_dir}\")\n")
+      string(APPEND _toolchain_contents "set(CMAKE_C_COMPILER \"@AMD_LLVM_C_COMPILER@\")\n")
+      string(APPEND _toolchain_contents "set(CMAKE_CXX_COMPILER \"@AMD_LLVM_CXX_COMPILER@\")\n")
+      string(APPEND _toolchain_contents "set(CMAKE_LINKER \"@AMD_LLVM_LINKER@\")\n")
+      # # TODO: AMDGPU_TARGETS is being deprecated. For now we set both.
+      string(APPEND _toolchain_contents "set(AMDGPU_TARGETS @_filtered_gpu_targets@ CACHE STRING \"From super-project\" FORCE)\n")
+      string(APPEND _toolchain_contents "set(GPU_TARGETS @_filtered_gpu_targets@ CACHE STRING \"From super-project\" FORCE)\n")
+      string(APPEND _toolchain_contents "string(APPEND CMAKE_CXX_FLAGS_INIT \" ${_amd_llvm_cxx_flags_spaces}\")\n")
+    endif()
 
     if(THEROCK_VERBOSE)
       string(JOIN " " _filtered_gpu_targets_spaces ${_filtered_gpu_targets})
@@ -1004,16 +1045,20 @@ function(_therock_cmake_subproject_setup_toolchain
 
   # Configure additional HIP dependencies.
   if (compiler_toolchain STREQUAL "amd-hip")
-  _therock_assert_is_cmake_subproject("hip-clr")
-    get_target_property(_hip_dist_dir hip-clr THEROCK_DIST_DIR)
-    get_target_property(_hip_stamp_dir hip-clr THEROCK_STAMP_DIR)
-    # Add a dependency on HIP's stamp.
-    set(_amd_llvm_device_lib_path "${_amd_llvm_dist_dir}/lib/llvm/amdgcn/bitcode")
-    list(APPEND _compiler_toolchain_addl_depends "${_hip_stamp_dir}/dist.stamp")
-    string(APPEND _toolchain_contents "string(APPEND CMAKE_CXX_FLAGS_INIT \" --hip-path=@_hip_dist_dir@\")\n")
-    string(APPEND _toolchain_contents "string(APPEND CMAKE_CXX_FLAGS_INIT \" --hip-device-lib-path=@_amd_llvm_device_lib_path@\")\n")
-    if(THEROCK_VERBOSE)
-      message(STATUS "HIP_DIR = ${_hip_dist_dir}")
+    if (NOT WIN32)
+      _therock_assert_is_cmake_subproject("hip-clr")
+      get_target_property(_hip_dist_dir hip-clr THEROCK_DIST_DIR)
+      get_target_property(_hip_stamp_dir hip-clr THEROCK_STAMP_DIR)
+      # Add a dependency on HIP's stamp.
+      set(_amd_llvm_device_lib_path "${_amd_llvm_dist_dir}/lib/llvm/amdgcn/bitcode")
+      list(APPEND _compiler_toolchain_addl_depends "${_hip_stamp_dir}/dist.stamp")
+      string(APPEND _toolchain_contents "string(APPEND CMAKE_CXX_FLAGS_INIT \" --hip-path=@_hip_dist_dir@\")\n")
+      string(APPEND _toolchain_contents "string(APPEND CMAKE_CXX_FLAGS_INIT \" --hip-device-lib-path=@_amd_llvm_device_lib_path@\")\n")
+      if(THEROCK_VERBOSE)
+        message(STATUS "HIP_DIR = ${_hip_dist_dir}")
+      endif()
+    else()
+      message(STATUS "_therock_cmake_subproject_setup_toolchain for Windows -- additional HIP deps")
     endif()
   endif()
 

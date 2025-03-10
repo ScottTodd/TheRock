@@ -14,7 +14,7 @@ if(THEROCK_ENABLE_RAND)
     COMPILER_TOOLCHAIN
       amd-hip
     RUNTIME_DEPS
-      hip-clr
+      # hip-clr
   )
   therock_cmake_subproject_glob_c_sources(rocRAND
     SUBDIRS
@@ -28,27 +28,27 @@ if(THEROCK_ENABLE_RAND)
   # hipRAND
   ##############################################################################
 
-  therock_cmake_subproject_declare(hipRAND
-    EXTERNAL_SOURCE_DIR "hipRAND"
-    BACKGROUND_BUILD
-    CMAKE_ARGS
-      -DHIP_PLATFORM=amd
-      -DROCM_PATH=
-      -DROCM_DIR=
-    COMPILER_TOOLCHAIN
-      amd-hip
-    BUILD_DEPS
-      rocRAND
-    RUNTIME_DEPS
-      hip-clr
-  )
-  therock_cmake_subproject_glob_c_sources(hipRAND
-    SUBDIRS
-      .
-  )
-  therock_cmake_subproject_provide_package(hipRAND hiprand lib/cmake/hiprand)
-  therock_cmake_subproject_activate(hipRAND)
-  list(APPEND _rand_subproject_names hipRAND)
+  # therock_cmake_subproject_declare(hipRAND
+  #   EXTERNAL_SOURCE_DIR "hipRAND"
+  #   BACKGROUND_BUILD
+  #   CMAKE_ARGS
+  #     -DHIP_PLATFORM=amd
+  #     -DROCM_PATH=
+  #     -DROCM_DIR=
+  #   COMPILER_TOOLCHAIN
+  #     amd-hip
+  #   BUILD_DEPS
+  #     rocRAND
+  #   RUNTIME_DEPS
+  #     hip-clr
+  # )
+  # therock_cmake_subproject_glob_c_sources(hipRAND
+  #   SUBDIRS
+  #     .
+  # )
+  # therock_cmake_subproject_provide_package(hipRAND hiprand lib/cmake/hiprand)
+  # therock_cmake_subproject_activate(hipRAND)
+  # list(APPEND _rand_subproject_names hipRAND)
 
   ##############################################################################
   # rand artifact

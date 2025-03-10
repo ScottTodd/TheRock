@@ -1,0 +1,44 @@
+From 8630ecf6b86e8314ccd633dc7b581f5f9192a45e Mon Sep 17 00:00:00 2001
+From: Scott <scott.todd0@gmail.com>
+Date: Mon, 10 Mar 2025 16:08:19 -0700
+Subject: [PATCH] Patch VerifyCompiler for Windows.
+
+---
+ CMakeLists.txt             | 1 -
+ cmake/VerifyCompiler.cmake | 8 ++++++--
+ 2 files changed, 6 insertions(+), 3 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index ef8102f..84af8b6 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -80,7 +80,6 @@ if( CMAKE_CXX_COMPILER MATCHES ".*/hipcc$" )
+ endif()
+ 
+ # Verify that hipcc compiler is used on ROCM platform
+-# TODO: Fix VerifyCompiler for Windows
+ # This will run for NVIDIA too, which is unnecessary, but not harmful, since we use the CUDA cmake
+ # language in that case which will ignore GPU_TARGETS.
+ # The reason for this is that this has to happen before find_package(hip), because we're providing
+diff --git a/cmake/VerifyCompiler.cmake b/cmake/VerifyCompiler.cmake
+index fa41627..2433f95 100644
+--- a/cmake/VerifyCompiler.cmake
++++ b/cmake/VerifyCompiler.cmake
+@@ -30,8 +30,12 @@ if(CMAKE_CXX_COMPILER MATCHES ".*/nvcc$" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL
+     endif()
+ else()
+     # compiling for ROCm
+-    message("Looking in $ENV{ROCM_PATH}...")
+-    find_package(hip REQUIRED CONFIG PATHS $ENV{ROCM_PATH})
++    if(WIN32)
++        find_package(HIP REQUIRED)
++    else()
++        message("Looking in $ENV{ROCM_PATH}...")
++        find_package(hip REQUIRED CONFIG PATHS $ENV{ROCM_PATH})
++    endif()
+ endif()
+ 
+ if(HIP_COMPILER STREQUAL "nvcc")
+-- 
+2.45.1.windows.1
+
