@@ -4,6 +4,8 @@ endif()
 
 cmake_minimum_required(VERSION 3.25)
 
+message(STATUS "Test CMake change")
+
 # Set the default build type to Release if not specified
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
