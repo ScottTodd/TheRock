@@ -55,10 +55,10 @@ def is_path_skippable(path: str) -> bool:
     return any(fnmatch.fnmatch(path, pattern) for pattern in SKIPPABLE_PATH_PATTERNS)
 
 
-def modifies_non_skippable_paths(paths: Optional[Iterable[str]]) -> bool:
-    """Returns true if not all modified paths are in the skippable set."""
+def check_for_non_skippable_path(paths: Optional[Iterable[str]]) -> bool:
+    """Returns true if at least one path is not in the skippable set."""
     if paths is None:
-        return True
+        return False
     return any(not is_path_skippable(p) for p in paths)
 
 
@@ -91,8 +91,11 @@ def set_github_output(d: Mapping[str, str]):
     """Sets GITHUB_OUTPUT values.
     See https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/passing-information-between-jobs
     """
-    print(f"Setting outputs:\n  {d}")
-    step_output_file = os.environ["GITHUB_OUTPUT"]
+    print(f"Setting github output:\n{d}")
+    step_output_file = os.environ.get("GITHUB_OUTPUT", "")
+    if not step_output_file:
+        print("Warning: GITHUB_OUTPUT env var not set, can't set github outputs")
+        return
     with open(step_output_file, "a") as f:
         f.writelines(f"{k}={v}" + "\n" for k, v in d.items())
 
@@ -101,27 +104,37 @@ def write_job_summary(summary: str):
     """Appends a string to the GitHub Actions job summary.
     See https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#adding-a-job-summary
     """
-    step_summary_file = os.environ["GITHUB_STEP_SUMMARY"]
+    print(f"Writing job summary:\n{summary}")
+    step_summary_file = os.environ.get("GITHUB_STEP_SUMMARY", "")
+    if not step_summary_file:
+        print("Warning: GITHUB_STEP_SUMMARY env var not set, can't write job summary")
+        return
     with open(step_summary_file, "a") as f:
         # Use double newlines to split sections in markdown.
         f.write(summary + "\n\n")
 
 
 def main():
-    is_pr = os.environ["GITHUB_EVENT_NAME"] == "pull_request"
+    is_pr = os.environ.get("GITHUB_EVENT_NAME", "") == "pull_request"
     labels = get_pr_labels() if is_pr else []
     # TODO(#199): Use labels or remove the code for handling them
-    base_ref = os.environ["BASE_REF"]
+    base_ref = os.environ.get("BASE_REF", "HEAD^1")
     print("Found metadata:")
     print("  is_pr:", is_pr)
     print("  labels:", labels)
 
+    enable_build_jobs = False
+
     try:
         modified_paths = get_modified_paths(base_ref)
-        print("modified_paths[:10] :", modified_paths[:10])
+        print("modified_paths (max 200):", modified_paths[:200])
 
-        enable_build_jobs = modifies_non_skippable_paths(modified_paths)
-        print("enable_build_jobs :", enable_build_jobs)
+        includes_non_skippable_path = check_for_non_skippable_path(modified_paths)
+        if includes_non_skippable_path:
+            print("Enabling build jobs since a non-skippable path was modified")
+            enable_build_jobs = True
+        else:
+            print("Only skippable paths were modified, keeping build jobs disabled")
     except ValueError as e:
         print(e)
         sys.exit(1)
@@ -129,7 +142,7 @@ def main():
     write_job_summary(
         f"""## Workflow configure results
 
-* enable_build_jobs: {enable_build_jobs}
+* `enable_build_jobs`: {enable_build_jobs}
     """
     )
 
