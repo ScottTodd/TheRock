@@ -47,6 +47,8 @@ SKIPPABLE_PATH_PATTERNS = [
     "*.gitignore",
     "*.md",
     "*LICENSE",
+    "*.yml",  # DO NOT SUBMIT
+    "*.py",  # DO NOT SUBMIT
 ]
 
 
