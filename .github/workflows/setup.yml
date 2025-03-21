@@ -28,5 +28,5 @@ jobs:
       - name: "Configuring CI options"
         id: configure
         env:
-          PR_LABELS: ${{ github.event.pull_request.labels }}
+          PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
         run: ./build_tools/configure_ci.py
