@@ -22,8 +22,7 @@
 -----------
 
   Written to GITHUB_OUTPUT:
-  * enable_builds : true/false
-  * enable_tests  : true/false
+  * enable_build_jobs : true/false
 
   Written to GITHUB_STEP_SUMMARY:
   * Human-readable summary for most contributors
@@ -121,20 +120,20 @@ def main():
         modified_paths = get_modified_paths(base_ref)
         print("modified_paths:", modified_paths)
 
-        run_ci = modifies_non_skippable_paths(modified_paths)
-        print("run_ci:", run_ci)
+        enable_build_jobs = modifies_non_skippable_paths(modified_paths)
+        print("enable_build_jobs:", enable_build_jobs)
     except ValueError as e:
         print(e)
         sys.exit(1)
 
     write_job_summary(
-        f"""##Summary
+        f"""## Summary
       labels: {labels}
     """
     )
 
     output = {
-        "run_ci": json.dumps(run_ci),
+        "enable_build_jobs": json.dumps(enable_build_jobs),
     }
     set_github_output(output)
 

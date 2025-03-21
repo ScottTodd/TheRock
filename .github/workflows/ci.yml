@@ -26,13 +26,34 @@ jobs:
   setup:
     uses: ./.github/workflows/setup.yml
 
-  test:
-    name: Test after setup
+  build:
+    name: Build
     needs: setup
+    if: needs.setup.outputs.enable_build_jobs
     runs-on: ubuntu-24.04
     steps:
-      - name: Run test command
-        run: echo "Hello world"
+      - name: Echo
+        run: echo "Build!"
+
+  test:
+    name: Test
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Echo
+        run: echo "Test!"
+
+  ci_summary:
+    if: always()
+    needs:
+      - setup
+
+      - build
+      - test
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Echo
+        run: echo "Summary!"
 
   # build_linux_packages:
   #   permissions:
