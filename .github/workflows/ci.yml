@@ -29,7 +29,7 @@ jobs:
   build:
     name: Build
     needs: setup
-    if: needs.setup.outputs.enable_build_jobs
+    if: ${{ needs.setup.outputs.enable_build_jobs }}
     runs-on: ubuntu-24.04
     steps:
       - name: Echo
