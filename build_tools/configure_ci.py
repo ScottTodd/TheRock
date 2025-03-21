@@ -47,8 +47,6 @@ SKIPPABLE_PATH_PATTERNS = [
     "*.gitignore",
     "*.md",
     "*LICENSE",
-    "*.yml",  # DO NOT SUBMIT
-    "*.py",  # DO NOT SUBMIT
 ]
 
 
@@ -74,7 +72,7 @@ def get_modified_paths(base_ref: str) -> Optional[Iterable[str]]:
             text=True,
             timeout=60,
         ).stdout.splitlines()
-    except TimeoutError as e:
+    except TimeoutError:
         print(
             "Computing modified files timed out. Not using PR diff to determine"
             " jobs to run.",
@@ -93,7 +91,7 @@ def set_github_output(d: Mapping[str, str]):
     """Sets GITHUB_OUTPUT values.
     See https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/passing-information-between-jobs
     """
-    print(f"Setting outputs: {d}")
+    print(f"Setting outputs:\n  {d}")
     step_output_file = os.environ["GITHUB_OUTPUT"]
     with open(step_output_file, "a") as f:
         f.writelines(f"{k}={v}" + "\n" for k, v in d.items())
@@ -112,25 +110,26 @@ def write_job_summary(summary: str):
 def main():
     is_pr = os.environ["GITHUB_EVENT_NAME"] == "pull_request"
     labels = get_pr_labels() if is_pr else []
+    # TODO(#199): Use labels or remove the code for handling them
     base_ref = os.environ["BASE_REF"]
-
-    print("Determined metadata:")
+    print("Found metadata:")
     print("  is_pr:", is_pr)
     print("  labels:", labels)
 
     try:
         modified_paths = get_modified_paths(base_ref)
-        print("modified_paths:", modified_paths)
+        print("modified_paths[:10] :", modified_paths[:10])
 
         enable_build_jobs = modifies_non_skippable_paths(modified_paths)
-        print("enable_build_jobs:", enable_build_jobs)
+        print("enable_build_jobs :", enable_build_jobs)
     except ValueError as e:
         print(e)
         sys.exit(1)
 
     write_job_summary(
-        f"""## Summary
-      labels: {labels}
+        f"""## Workflow configure results
+
+* enable_build_jobs: {enable_build_jobs}
     """
     )
 
