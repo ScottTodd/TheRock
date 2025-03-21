@@ -1,6 +1,16 @@
 #!/usr/bin/env python3
 
-"""Configures a CI workflow run given info about changed files, labels, etc."""
+"""Configures a CI workflow run given info about changed files, labels, etc.
+
+The following environment variables are required:
+- GITHUB_EVENT_NAME: GitHub event name, e.g. pull_request.
+- GITHUB_OUTPUT: path to write workflow output variables.
+- GITHUB_STEP_SUMMARY: path to write workflow summary output.
+
+When GITHUB_EVENT_NAME is "pull_request", these variables are also used:
+- PR_LABELS (optional): JSON list of PR label names.
+- BASE_REF (required): base commit SHA of the PR.
+"""
 
 import fnmatch
 import json

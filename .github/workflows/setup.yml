@@ -1,0 +1,32 @@
+name: Setup
+
+on:
+  workflow_call:
+    outputs:
+      run_ci:
+        description: Whether to run CI jobs.
+        value: ${{ jobs.setup.outputs.run-ci }}
+
+permissions:
+  contents: read
+
+jobs:
+  setup:
+    runs-on: ubuntu-24.04
+    env:
+      # The commit being checked out is the merge commit for a PR. Its first
+      # parent will be the tip of the base branch.
+      BASE_REF: HEAD^
+    outputs:
+      run-ci: ${{ steps.configure.outputs.run-ci }}
+    steps:
+      - name: "Checking out repository"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          # We need the parent commit to do a diff
+          fetch-depth: 2
+      - name: "Configuring CI options"
+        id: configure
+        env:
+          PR_LABELS: ${{ github.event.pull_request.labels }}
+        run: ./build_tools/configure_ci.py

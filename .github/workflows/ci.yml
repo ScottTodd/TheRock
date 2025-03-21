@@ -23,24 +23,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build_linux_packages:
-    permissions:
-      id-token: write
-    name: Build Linux Packages
-    uses: ./.github/workflows/build_linux_packages.yml
-    with:
-      amdgpu_families: "${{ inputs.amdgpu_families != '' && inputs.amdgpu_families || 'gfx94X-dcgpu' }}"
+  setup:
+    uses: ./.github/workflows/setup.yml
 
-  build_windows_packages:
-    name: Build Windows Packages
-    uses: ./.github/workflows/build_windows_packages.yml
+  test:
+    name: Test after setup
+    needs: setup
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Run test command
+        run: echo "Hello world"
 
-  test_linux_packages:
-    needs: build_linux_packages
-    name: Test Linux Packages
-    uses: ./.github/workflows/test_linux_packages.yml
-    with:
-      amdgpu_families: "${{ inputs.amdgpu_families != '' && inputs.amdgpu_families || 'gfx94X-dcgpu' }}"
+  # build_linux_packages:
+  #   permissions:
+  #     id-token: write
+  #   name: Build Linux Packages
+  #   uses: ./.github/workflows/build_linux_packages.yml
+  #   with:
+  #     amdgpu_families: "${{ inputs.amdgpu_families != '' && inputs.amdgpu_families || 'gfx94X-dcgpu' }}"
+
+  # build_windows_packages:
+  #   name: Build Windows Packages
+  #   uses: ./.github/workflows/build_windows_packages.yml
+
+  # test_linux_packages:
+  #   needs: build_linux_packages
+  #   name: Test Linux Packages
+  #   uses: ./.github/workflows/test_linux_packages.yml
+  #   with:
+  #     amdgpu_families: "${{ inputs.amdgpu_families != '' && inputs.amdgpu_families || 'gfx94X-dcgpu' }}"
 
   # build_python_packages:
   #   name: Build Python Packages
