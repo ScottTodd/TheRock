@@ -1,15 +1,35 @@
 #!/usr/bin/env python3
 
-"""Configures a CI workflow run given info about changed files, labels, etc.
+"""Configures metadata for a CI workflow run.
 
-The following environment variables are required:
-- GITHUB_EVENT_NAME: GitHub event name, e.g. pull_request.
-- GITHUB_OUTPUT: path to write workflow output variables.
-- GITHUB_STEP_SUMMARY: path to write workflow summary output.
+----------
+| Inputs |
+----------
 
-When GITHUB_EVENT_NAME is "pull_request", these variables are also used:
-- PR_LABELS (optional): JSON list of PR label names.
-- BASE_REF (required): base commit SHA of the PR.
+  Environment variables (for all triggers):
+  * GITHUB_EVENT_NAME    : GitHub event name, e.g. pull_request.
+  * GITHUB_OUTPUT        : path to write workflow output variables.
+  * GITHUB_STEP_SUMMARY  : path to write workflow summary output.
+
+  Environment variables (for pull requests):
+  * PR_LABELS (optional) : JSON list of PR label names.
+  * BASE_REF  (required) : base commit SHA of the PR.
+
+  Local git history with at least fetch-depth of 2 for file diffing.
+
+-----------
+| Outputs |
+-----------
+
+  Written to GITHUB_OUTPUT:
+  * enable_builds : true/false
+  * enable_tests  : true/false
+
+  Written to GITHUB_STEP_SUMMARY:
+  * Human-readable summary for most contributors
+
+  Written to stdout/stderr:
+  * Detailed information for CI maintainers
 """
 
 import fnmatch
@@ -91,8 +111,11 @@ def write_job_summary(summary: str):
 def main():
     is_pr = os.environ["GITHUB_EVENT_NAME"] == "pull_request"
     labels = get_pr_labels() if is_pr else []
-    print("labels:", labels)
     base_ref = os.environ["BASE_REF"]
+
+    print("Determined metadata:")
+    print("  is_pr:", is_pr)
+    print("  labels:", labels)
 
     try:
         modified_paths = get_modified_paths(base_ref)
