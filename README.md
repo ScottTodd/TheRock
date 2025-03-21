@@ -2,6 +2,8 @@
 
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
 
+Test change.
+
 The HIP Environment and ROCm Kit - A lightweight open source build system for HIP and ROCm.
 
 We are currently in an **early preview state** but welcome contributors. Come try us out!
