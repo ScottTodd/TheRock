@@ -4,6 +4,8 @@
 
 The HIP Environment and ROCm Kit - A lightweight open source build system for HIP and ROCm.
 
+README CHANGE
+
 We are currently in an **early preview state** but welcome contributors. Come try us out!
 Please see [CONTRIBUTING.md](CONTRIBUTING.md) for more info.
 
