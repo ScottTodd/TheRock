@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - configure-ci-testing
   workflow_dispatch:
     inputs:
       amdgpu_families:
