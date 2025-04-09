@@ -95,6 +95,27 @@ jobs:
       test_runs_on: ${{ matrix.families.test-runs-on }}
       artifact_run_id: ${{ inputs.artifact_run_id }}
 
+  test_windows_packages:
+    needs: [setup, build_windows_packages]
+    name: Test windows Packages
+    if: |
+      ${{
+        !cancelled() &&
+        needs.setup.outputs.test_windows_amdgpu_families != '[]' &&
+        (
+          needs.build_windows_packages.result == 'success' ||
+          needs.build_windows_packages.result == 'skipped'
+        )
+      }}
+    strategy:
+      matrix:
+        families: ${{ fromJSON(needs.setup.outputs.test_windows_amdgpu_families) }}
+    uses: ./.github/workflows/test_windows_packages.yml
+    with:
+      amdgpu_families: ${{ matrix.families.target }}
+      test_runs_on: ${{ matrix.families.test-runs-on }}
+      artifact_run_id: ${{ inputs.artifact_run_id }}
+
   # build_python_packages:
   #   name: Build Python Packages
   #   uses: ./.github/workflows/build_python_packages.yml

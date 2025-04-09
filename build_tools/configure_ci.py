@@ -192,11 +192,11 @@ amdgpu_family_info_matrix = {
     },
     "gfx110X": {
         "linux": {
-            "test-runs-on": "",
+            "test-runs-on": "linux-w7900-rocm",
             "target": "gfx110X-dgpu",
         },
         "windows": {
-            "test-runs-on": "",
+            "test-runs-on": "windows-9070XT",
             "target": "gfx110X-dgpu",
         },
     },

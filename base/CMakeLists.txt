@@ -128,9 +128,15 @@ if(NOT WIN32)
   list(APPEND _optional_subproject_deps rocprofiler-register)
 endif()
 
+if(NOT WIN32)
+  set(ARTIFACT_NAME artifact.toml)
+else()
+  set(ARTIFACT_NAME artifact_windows.toml)
+endif()
+
 therock_provide_artifact(base
   TARGET_NEUTRAL
-  DESCRIPTOR artifact.toml
+  DESCRIPTOR ${ARTIFACT_NAME}  # OR artifact_windows.toml
   COMPONENTS
     dbg
     dev

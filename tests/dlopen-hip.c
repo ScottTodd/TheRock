@@ -3,11 +3,14 @@
 
 int main(int argc, char **argv) {
   if (argc != 2) {
+    // libamdhip64_6.so?
+    // amdhip64_6.dll?
     fprintf(stderr, "Syntax error: Expected library path\n");
     return 1;
   }
   char *lib_path = argv[1];
   int rc;
+  // LoadLibraryA
   void *h = dlopen(lib_path, RTLD_NOW);
   int (*hipRuntimeGetVersion)(int *) =
       (int (*)(int *))dlsym(h, "hipRuntimeGetVersion");

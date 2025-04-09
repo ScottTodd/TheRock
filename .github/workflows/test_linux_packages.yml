@@ -1,4 +1,4 @@
-name: Test Linux Packages
+name: Test Packages
 
 on:
   workflow_dispatch:
@@ -61,6 +61,7 @@ jobs:
       test_runs_on: ${{ inputs.test_runs_on }}
 
   test_rocthrust:
+    # if matrix.os != windows
     name: 'Test rocTHRUST math-lib'
     uses: './.github/workflows/test_rocthrust.yml'
     needs: test_sanity_check
