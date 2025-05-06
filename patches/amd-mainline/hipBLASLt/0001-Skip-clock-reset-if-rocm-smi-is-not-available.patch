@@ -1,4 +1,4 @@
-From 6d884cba70257255dc6776372292b93cf1a1a4cb Mon Sep 17 00:00:00 2001
+From 98335d6e34ce76af65ffc146d2594fa9f723a038 Mon Sep 17 00:00:00 2001
 From: Stella Laurenzo <stellaraccident@gmail.com>
 Date: Tue, 29 Apr 2025 17:48:40 -0700
 Subject: [PATCH 1/2] Skip clock reset if rocm-smi is not available.
@@ -61,5 +61,5 @@ index 3efc6209..a01633c9 100644
      atexit.register(restoreClocks)
  
 -- 
-2.41.0.windows.1
+2.49.0.windows.1
 

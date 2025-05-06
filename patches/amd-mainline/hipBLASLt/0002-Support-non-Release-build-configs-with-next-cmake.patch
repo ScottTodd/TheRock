@@ -1,0 +1,36 @@
+From 1b6639e033ef300bbc0347e5e33c81b534caea31 Mon Sep 17 00:00:00 2001
+From: Aaryaman Vasishta <jem456.vasishta@gmail.com>
+Date: Tue, 6 May 2025 20:37:12 +0530
+Subject: [PATCH 2/2] Support non-Release build configs with next-cmake
+
+---
+ next-cmake/CMakeLists.txt | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/next-cmake/CMakeLists.txt b/next-cmake/CMakeLists.txt
+index 300b4f10..f508a7b7 100644
+--- a/next-cmake/CMakeLists.txt
++++ b/next-cmake/CMakeLists.txt
+@@ -35,6 +35,19 @@ include(GenerateExportHeader)
+ include(CMakeDependentOption)
+ include(hipblaslt_python)
+ 
++# Set a default build type if none was specified
++if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
++  message(STATUS "Setting build type to 'Release' as none was specified.")
++  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build." FORCE)
++  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "" "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
++endif()
++
++message(STATUS "Setting CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
++
++if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
++    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
++endif()
++
+ set(HIPBLASLT_ENABLE_DEVICE ON CACHE BOOL "Build hipBLASLt device libraries.")
+ set(HIPBLASLT_ENABLE_CLIENT ON CACHE BOOL "Build hipBLASLt client apps.")
+ cmake_dependent_option(HIPBLASLT_ENABLE_HOST "Build hipBLASLt host library." ON "HIPBLASLT_ENABLE_CLIENT" OFF)
+-- 
+2.49.0.windows.1
+
