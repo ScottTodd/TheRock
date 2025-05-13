@@ -18,16 +18,16 @@ Primary usage:
 
 The checkout process combines the following activities:
 
-* Clones the pytorch repository into `THIS_MAIN_REPO_NAME` with a requested `--repo-hashtag`
+* Clones the pytorch repository into `THIS_MAIN_REPO_NAME` with a requested `--repo-ref`
   tag (default to latest release).
 * Configures PyTorch submodules to be ignored for any local changes (so that
   the result is suitable for development with local patches).
 * Applies "base" patches to the pytorch repo and any submodules (by using
-  `git am` with patches from `patches/pytorch_ref_to_patches_dir_name(<repo-hashtag>)/<repo-name>/base`).
+  `git am` with patches from `patches/pytorch_ref_to_patches_dir_name(<repo-ref>)/<repo-name>/base`).
 * Runs `hipify` to prepare sources for AMD GPU and commits the result to the
   main repo and any modified submodules.
 * Applies "hipified" patches to the pytorch repo and any submodules (by using
-  `git am` with patches from `patches/<repo-hashtag>/<repo-name>/hipified`).
+  `git am` with patches from `patches/<repo-ref>/<repo-name>/hipified`).
 * Records some tag information for subsequent activities.
 
 For one-shot builds and CI use, the above is sufficient. But this tool can also
@@ -72,7 +72,7 @@ def main(cl_args: list[str]):
         )
 
     p = argparse.ArgumentParser("ptbuild.py")
-    default_repo_hashtag = "v0.22.0"
+    default_repo_ref = "v0.22.0"
     sub_p = p.add_subparsers(required=True)
     checkout_p = sub_p.add_parser("checkout", help="Clone PyTorch locally and checkout")
     add_common(checkout_p)
@@ -82,8 +82,8 @@ def main(cl_args: list[str]):
         help="git repository url",
     )
     checkout_p.add_argument(
-        "--repo-hashtag",
-        default=default_repo_hashtag,
+        "--repo-ref",
+        default=default_repo_ref,
         help="Git repository ref/tag to checkout",
     )
     checkout_p.add_argument("--depth", type=int, help="Fetch depth")
@@ -98,7 +98,7 @@ def main(cl_args: list[str]):
         "--patch",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="Apply patches for the repo-hashtag",
+        help="Apply patches for the repo-ref",
     )
     checkout_p.set_defaults(func=repo_management.do_checkout)
 
@@ -111,8 +111,8 @@ def main(cl_args: list[str]):
     )
     add_common(save_patches_p)
     save_patches_p.add_argument(
-        "--repo-hashtag",
-        default=default_repo_hashtag,
+        "--repo-ref",
+        default=default_repo_ref,
         help="Git repository ref/tag to checkout",
     )
     save_patches_p.set_defaults(func=repo_management.do_save_patches)

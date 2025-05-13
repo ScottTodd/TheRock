@@ -178,8 +178,8 @@ def apply_all_patches(
         )
 
 
-# repo_hashtag_to_patches_dir_name('2.7.0-rc9') -> '2.7.0'
-def repo_hashtag_to_patches_dir_name(version_ref: str) -> str:
+# repo_ref_to_patches_dir_name('2.7.0-rc9') -> '2.7.0'
+def repo_ref_to_patches_dir_name(version_ref: str) -> str:
     pos = version_ref.find("-")
     if pos != -1:
         return version_ref[:pos]
@@ -193,7 +193,7 @@ def do_checkout(args: argparse.Namespace):
     if check_git_dir.exists():
         print(f"Not cloning repository ({check_git_dir} exists)")
     else:
-        print(f"Cloning repository at {args.repo_hashtag}")
+        print(f"Cloning repository at {args.repo_ref}")
         repo_dir.mkdir(parents=True, exist_ok=True)
         exec(["git", "init", "--initial-branch=main"], cwd=repo_dir)
         exec(["git", "config", "advice.detachedHead", "false"], cwd=repo_dir)
@@ -205,7 +205,7 @@ def do_checkout(args: argparse.Namespace):
         fetch_args.extend(["--depth", str(args.depth)])
     if args.jobs:
         fetch_args.extend(["-j", str(args.jobs)])
-    exec(["git", "fetch"] + fetch_args + ["origin", args.repo_hashtag], cwd=repo_dir)
+    exec(["git", "fetch"] + fetch_args + ["origin", args.repo_ref], cwd=repo_dir)
     exec(["git", "checkout", "FETCH_HEAD"], cwd=repo_dir)
     exec(["git", "tag", "-f", TAG_UPSTREAM_DIFFBASE, "-m", '""'], cwd=repo_dir)
     try:
@@ -233,7 +233,7 @@ def do_checkout(args: argparse.Namespace):
     if args.patch:
         apply_all_patches(
             repo_dir,
-            repo_patch_dir_base / repo_hashtag_to_patches_dir_name(args.repo_hashtag),
+            repo_patch_dir_base / repo_ref_to_patches_dir_name(args.repo_ref),
             args.repo_name,
             "base",
         )
@@ -246,7 +246,7 @@ def do_checkout(args: argparse.Namespace):
     if args.patch:
         apply_all_patches(
             repo_dir,
-            repo_patch_dir_base / repo_hashtag_to_patches_dir_name(args.repo_hashtag),
+            repo_patch_dir_base / repo_ref_to_patches_dir_name(args.repo_ref),
             args.repo_name,
             "hipified",
         )
@@ -274,9 +274,7 @@ def do_hipify(args: argparse.Namespace):
 def do_save_patches(args: argparse.Namespace):
     repo_name = args.repo_name
     repo_patch_dir_base = args.patch_dir
-    patches_dir = repo_patch_dir_base / repo_hashtag_to_patches_dir_name(
-        args.repo_hashtag
-    )
+    patches_dir = repo_patch_dir_base / repo_ref_to_patches_dir_name(args.repo_ref)
     save_repo_patches(args.repo, patches_dir / repo_name)
     relative_sm_paths = list_submodules(args.repo, relative=True)
     for relative_sm_path in relative_sm_paths:
