@@ -15,15 +15,25 @@ with the following changes:
 
 from typing import Callable
 import argparse
+import os
 from pathlib import Path
 import platform
 import sys
 import shutil
+import time
 import tarfile
 
 from _therock_utils.artifacts import ArtifactPopulator
 from _therock_utils.hash_util import calculate_hash, write_hash
 from _therock_utils.pattern_match import PatternMatcher
+
+
+def human_readable_size(size, decimal_places=2):
+    for unit in ["B", "KiB", "MiB", "GiB", "TiB", "PiB"]:
+        if size < 1024.0 or unit == "PiB":
+            break
+        size /= 1024.0
+    return f"{size:.{decimal_places}f} {unit}"
 
 
 def evaluate_optional(optional_value) -> bool:
@@ -235,7 +245,9 @@ def do_artifact_archive(args):
         output_path.unlink()
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with _open_archive(output_path) as arc:
+    compression_preset = 9
+
+    with _open_archive(output_path, compression_preset=compression_preset) as arc:
         for artifact_path in args.artifact:
             manifest_path: Path = artifact_path / "artifact_manifest.txt"
             relpaths = manifest_path.read_text().splitlines()
@@ -251,15 +263,26 @@ def do_artifact_archive(args):
                 pm.add_basedir(source_dir)
                 for subpath, dir_entry in pm.all.items():
                     fullpath = f"{relpath}/{subpath}"
+                    # print(f"  adding '{fullpath}'...")
                     arc.add(dir_entry.path, arcname=fullpath, recursive=False)
+                    duration_seconds = time.time() - start_time_seconds
+                    # print(f"  duration: {duration_seconds:.2f} seconds, added {fullpath}")
+
+    archive_duration_seconds = time.time() - start_time_seconds
+    print(
+        f"Archive duration: {archive_duration_seconds:.2f} seconds (preset {compression_preset})"
+    )
 
     if args.hash_file:
         digest = calculate_hash(output_path, args.hash_algorithm)
         write_hash(args.hash_file, digest)
 
+    file_size = os.path.getsize(output_path)
+    print(f"Archive size: {human_readable_size(file_size)}")
 
-def _open_archive(p: Path) -> tarfile.TarFile:
-    return tarfile.TarFile.open(p, mode="x:xz")
+
+def _open_archive(p: Path, compression_preset: int) -> tarfile.TarFile:
+    return tarfile.TarFile.open(p, mode="x:xz", preset=compression_preset)
 
 
 def _do_artifact_flatten(args):
@@ -401,5 +424,11 @@ def main(cl_args: list[str]):
     args.func(args)
 
 
+start_time_seconds = time.time()
+
 if __name__ == "__main__":
     main(sys.argv[1:])
+    end_time_seconds = time.time()
+
+    total_duration_seconds = time.time() - start_time_seconds
+    print(f"Total duration: {total_duration_seconds:.2f} seconds")
