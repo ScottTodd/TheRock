@@ -161,8 +161,11 @@ jobs:
             -DTHEROCK_ENABLE_ML_LIBS=OFF \
             ${extra_cmake_options}
 
-      - name: Build Projects
-        run: cmake --build "${{ env.BUILD_DIR_BASH }}" --target therock-archives therock-dist
+      - name: Build therock-dist
+        run: cmake --build "${{ env.BUILD_DIR_BASH }}" --target therock-dist
+
+      - name: Build therock-archives
+        run: cmake --build "${{ env.BUILD_DIR_BASH }}" --target therock-archives
 
       - name: Report
         if: ${{ !cancelled() }}
