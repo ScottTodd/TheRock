@@ -142,6 +142,9 @@ def retrieve_base_artifacts(args, run_id, build_dir, s3_artifacts):
     ]
     if args.blas:
         base_artifacts.append("host-blas_lib")
+    if args.dev:
+        base_artifacts.append("core-runtime_dev")
+        base_artifacts.append("amd-llvm_dev")
 
     artifacts_to_retrieve = collect_artifacts_urls(
         base_artifacts, run_id, build_dir, GENERIC_VARIANT, s3_artifacts
@@ -184,6 +187,8 @@ def retrieve_enabled_artifacts(args, target, run_id, build_dir, s3_artifacts):
         enabled_artifacts.append(f"{base_path}_lib")
         if args.tests:
             enabled_artifacts.append(f"{base_path}_test")
+        if args.dev:
+            enabled_artifacts.append(f"{base_path}_dev")
 
     artifacts_to_retrieve = collect_artifacts_urls(
         enabled_artifacts, run_id, build_dir, target, s3_artifacts

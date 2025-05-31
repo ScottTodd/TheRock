@@ -11,8 +11,8 @@ set -eo pipefail
 
 if [ -n "$1" ]; then
     export PYTORCH_ROCM_ARCH=$1
-    echo "Setting PYTORCH_ROCM_ARCH to $PYTORCH_ROCM_ARCH"
-elif [ -z "$PYTORCH_ROCM_ARCH" ]; then
+    echo "Setting PYTORCH_ROCM_ARCH to ${PYTORCH_ROCM_ARCH}"
+elif [ -z "${PYTORCH_ROCM_ARCH}" ]; then
     echo "PYTORCH_ROCM_ARCH must be set as an env var or passed as a script arg"
     exit 1
 fi
@@ -21,12 +21,14 @@ SCRIPT_DIR="$(cd $(dirname $0) && pwd)"
 
 if [ ! -n "${ROCM_HOME}" ]; then
     export ROCM_HOME=$(realpath $SCRIPT_DIR/../../build/dist/rocm)
-    echo "ROCM_HOME: $ROCM_HOME"
+    echo "Setting ROCM_HOME from default build dir: ${ROCM_HOME}"
+else
+    echo "Using existing ROCM_HOME value of ${ROCM_HOME}"
 fi
 if [ -d ${ROCM_HOME} ]; then
     export PATH=${ROCM_HOME}/bin:$PATH
 else
-    echo "Could not find ROCM_HOME: $ROCM_HOME"
+    echo "Could not find ROCM_HOME: ${ROCM_HOME}"
     exit 1
 fi
 
@@ -37,8 +39,6 @@ fi
 # When we rewrite this script in Python we can use Pathlib instead.
 export ROCM_HOME_WIN=$(cygpath -w ${ROCM_HOME})
 echo "ROCM_HOME_WIN: $ROCM_HOME_WIN"
-
-BUILD_DIR_ROOT=${ROCM_HOME?}/../..
 
 # Environment variables recommended here:
 # https://github.com/ROCm/TheRock/discussions/409#discussioncomment-13032345

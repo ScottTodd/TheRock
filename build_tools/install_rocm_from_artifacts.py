@@ -176,6 +176,8 @@ def retrieve_artifacts_by_run_id(args):
     flattener = ArtifactPopulator(output_path=output_dir, verbose=True, flatten=True)
     flattener(*tar_file_paths)
     for file_path in tar_file_paths:
+        # TODO: keep the original files in a temp/cache dir to avoid redownloading on re-run?
+        # TODO: Log when deleting
         file_path.unlink()
 
     log(f"Retrieved artifacts for run ID {run_id}")
@@ -335,6 +337,13 @@ def main(argv):
         "--tests",
         default=False,
         help="Include all test artifacts for enabled libraries",
+        action=argparse.BooleanOptionalAction,
+    )
+
+    artifacts_group.add_argument(
+        "--dev",
+        default=False,
+        help="Include all dev artifacts for enabled libraries",
         action=argparse.BooleanOptionalAction,
     )
 
