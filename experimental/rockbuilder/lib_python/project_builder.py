@@ -86,8 +86,8 @@ class RockProjectBuilder(configparser.ConfigParser):
             self.post_config_cmd = None
         try:
             build_cmd = None
-            is_dos = any(platform.win32_ver())
-            if is_dos and self.has_option("project_info", "build_cmd_windows"):
+            is_windows = any(platform.win32_ver())
+            if is_windows and self.has_option("project_info", "build_cmd_windows"):
                 self.build_cmd = self.get("project_info", "build_cmd_windows")
             else:
                 self.build_cmd = self.get("project_info", "build_cmd")
@@ -202,11 +202,12 @@ class RockProjectBuilder(configparser.ConfigParser):
             self.printout_error_and_terminate("pre_config")
 
     def config(self):
-        res = True
         if self.cmake_config:
+            # in case that project has cmake configure/build/install needs
             res = self.project_repo.do_cmake_config(self.cmake_config)
-        if res:
-            res = self.project_repo.do_config(self.config_cmd)
+            if not res:
+                self.printout_error_and_terminate("cmake_config")
+        res = self.project_repo.do_config(self.config_cmd)
         if not res:
             self.printout_error_and_terminate("config")
 
@@ -216,20 +217,21 @@ class RockProjectBuilder(configparser.ConfigParser):
             self.printout_error_and_terminate("post_config")
 
     def build(self):
-        res = True
         if self.cmake_config:
+            # not all projects have things to build with cmake
             res = self.project_repo.do_cmake_build(self.cmake_config)
-        if res:
-            res = self.project_repo.do_build(self.build_cmd)
+            if not res:
+                self.printout_error_and_terminate("cmake_build")
+        res = self.project_repo.do_build(self.build_cmd)
         if not res:
             self.printout_error_and_terminate("build")
 
     def install(self):
-        res = True
         if self.cmake_config:
             res = self.project_repo.do_cmake_install(self.cmake_config)
-        if res:
-            res = self.project_repo.do_install(self.install_cmd)
+            if not res:
+                self.printout_error_and_terminate("cmake_install")
+        res = self.project_repo.do_install(self.install_cmd)
         if not res:
             self.printout_error_and_terminate("install")
 

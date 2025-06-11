@@ -103,6 +103,9 @@ class RockProjectRepo:
         print(ret)
         return ret
 
+    # 1) search the latest wheel file from certain directory
+    # 2) install it to current python environment
+    # 3) copy it also to packages/wheel directory
     def __handle_FIND_AND_HANDLE_LATEST_PYTHON_WHEEL_CMD(self, install_cmd):
         ret = True
         install_cmd_arr = install_cmd.split()
@@ -116,6 +119,11 @@ class RockProjectRepo:
             os.environ["PIP_BREAK_SYSTEM_PACKAGES"] = "1"
             # res = subprocess.call([ "pip", "install", latest_whl])
             inst_cmd = "pip uninstall -y " + latest_whl
+            # we do not check the uninstall fails by purpose because the
+            # reason for failure is most likely that the previous version of wheel
+            # is not installed. But in cases that we do multiple builds for same
+            # wheel version with little changes, we need to do the uninstall first
+            # before we do the install for the package with same wheel version.
             self.__exec_subprocess_cmd(inst_cmd, self.project_exec_dir)
             inst_cmd = "pip install " + latest_whl
             ret = self.__exec_subprocess_cmd(inst_cmd, self.project_exec_dir)
@@ -132,7 +140,10 @@ class RockProjectRepo:
         if cmd_exec_dir:
             cmd_exec_dir = os.path.expandvars(cmd_exec_dir)
         ret = Path(cmd_exec_dir).is_dir()
-        # handle first special command or commands in multi-command array. (They must be the first commands)
+        # Handle first special API command or commands:
+        #  - Special commands are keywords that will trigger the execution
+        #    of internal python function.
+        #  - Special commands needs to be the first commands executed
         while (
             (ret == True)
             and (exec_cmd is not None)
@@ -150,15 +161,18 @@ class RockProjectRepo:
             else:
                 exec_cmd = None
             ret = self.__handle_FIND_AND_HANDLE_LATEST_PYTHON_WHEEL_CMD(special_cmd)
-        # then handle regular command or commands
+        # then handle regular command or multiple commands
         if (ret == True) and (exec_cmd is not None):
             is_multiline = self.is_multiline_text(exec_cmd)
             if is_multiline:
-                is_dos = any(platform.win32_ver())
-                if is_dos:
-                    # pythons supprocess.run does not handle the execution of multiple
-                    # directly in dos-prompt based shell. It needs to be written to bat-file
-                    # that can then be executed
+                is_windows = any(platform.win32_ver())
+                if is_windows:
+                    # subprocess.run does not handle the execution of multiple
+                    # commands together in same in dos-prompt based command shell
+                    # and instead they would each need to be separated with &&
+                    # which would cause each of them to be run on own shell.
+                    # Therefore in case of multiple commands, we need to write them
+                    # first to bat-file and then execute that bat-file.
                     os.makedirs(self.project_build_dir, exist_ok=True)
                     build_cmd_file = os.path.join(
                         self.project_build_dir, exec_phase + ".bat"
@@ -167,12 +181,14 @@ class RockProjectRepo:
                         file.write(exec_cmd)
                     ret = self.__exec_subprocess_batch_file(str(build_cmd_file))
                 else:
+                    # bash can execute multiple commands in same subprocess.run process
                     print("------ " + exec_phase + " start ----------")
                     self.__exec_subprocess_cmd("env", cmd_exec_dir)
                     print("------ " + exec_phase + " end ----------")
                     time.sleep(1)
                     ret = self.__exec_subprocess_cmd(exec_cmd, cmd_exec_dir)
             else:
+                # execute just a single command
                 print("------ " + exec_phase + " start ----------")
                 self.__exec_subprocess_cmd("env", cmd_exec_dir)
                 print("------ " + exec_phase + " end ----------")
