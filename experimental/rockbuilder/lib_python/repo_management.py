@@ -20,6 +20,7 @@ HIPIFY_COMMIT_MESSAGE = "DO NOT SUBMIT: HIPIFY"
 class RockProjectRepo:
     def __init__(
         self,
+        wheel_install_dir,
         project_name,
         project_root_dir,
         project_src_dir,
@@ -29,6 +30,7 @@ class RockProjectRepo:
         project_version_hashtag,
         project_patch_dir_root,
     ):
+        self.wheel_install_dir = wheel_install_dir
         self.project_name = project_name
         self.project_src_dir = Path(project_src_dir)
         self.project_build_dir = Path(project_build_dir)
@@ -104,8 +106,8 @@ class RockProjectRepo:
         return ret
 
     # 1) search the latest wheel file from certain directory
-    # 2) install it to current python environment
-    # 3) copy it also to packages/wheel directory
+    # 2) copy wheel to packages/wheel directory
+    # 3) install wheel to current python environment
     def __handle_FIND_AND_HANDLE_LATEST_PYTHON_WHEEL_CMD(self, install_cmd):
         ret = True
         install_cmd_arr = install_cmd.split()
@@ -114,22 +116,44 @@ class RockProjectRepo:
             wheel_search_path = install_cmd_arr[1]
             wheel_search_path = self.__replace_env_variables(wheel_search_path)
             print("wheel_search_path: " + wheel_search_path)
+            # 1) search the wheel
             latest_whl = self.__get_latest_file(wheel_search_path, "*.whl")
-            print("latest_whl: " + latest_whl)
-            os.environ["PIP_BREAK_SYSTEM_PACKAGES"] = "1"
-            # res = subprocess.call([ "pip", "install", latest_whl])
-            inst_cmd = "pip uninstall -y " + latest_whl
-            # we do not check the uninstall fails by purpose because the
-            # reason for failure is most likely that the previous version of wheel
-            # is not installed. But in cases that we do multiple builds for same
-            # wheel version with little changes, we need to do the uninstall first
-            # before we do the install for the package with same wheel version.
-            self.__exec_subprocess_cmd(inst_cmd, self.project_exec_dir)
-            inst_cmd = "pip install " + latest_whl
-            ret = self.__exec_subprocess_cmd(inst_cmd, self.project_exec_dir)
-            if not ret:
-                print("Install failed for " + self.project_name)
-                print("Failed command: " + install_cmd)
+            if latest_whl:
+                # shutil.copy will throw exception in error cases
+                try:
+                    print("latest_whl: " + latest_whl)
+                    # 2) copy wheel
+                    ret = self.wheel_install_dir.is_dir()
+                    if not ret:
+                        self.wheel_install_dir.mkdir(parents=True, exist_ok=True)
+                    ret = self.wheel_install_dir.is_dir()
+                    if ret:
+                        shutil.copy2(latest_whl, self.wheel_install_dir)
+                    # 3) install wheel
+                    os.environ["PIP_BREAK_SYSTEM_PACKAGES"] = "1"
+                    # res = subprocess.call([ "pip", "install", latest_whl])
+                    inst_cmd = "pip uninstall -y " + latest_whl
+                    # we do not check the uninstall fails by purpose because the
+                    # reason for failure is most likely that the previous version of wheel
+                    # is not installed. But in cases that we do multiple builds for same
+                    # wheel version with little changes, we need to do the uninstall first
+                    # before we do the install for the package with same wheel version.
+                    self.__exec_subprocess_cmd(inst_cmd, self.project_exec_dir)
+                    inst_cmd = "pip install " + latest_whl
+                    ret = self.__exec_subprocess_cmd(inst_cmd, self.project_exec_dir)
+                    if not ret:
+                        print("Install failed for " + self.project_name)
+                        print("Failed command: " + install_cmd)
+                        ret = False
+                except:
+                    print(
+                        "Python wheel copy or install failed for project: "
+                        + self.project_name
+                    )
+                    ret = False
+            else:
+                # no wheel found
+                print("Failed to find python wheel from project: " + self.project_name)
                 ret = False
         return ret
 

@@ -12,10 +12,12 @@ class RockProjectBuilder(configparser.ConfigParser):
         super(RockProjectBuilder, self).__init__(allow_no_value=True)
 
         self.is_posix = not any(platform.win32_ver())
+        self.rock_builder_root_dir = rock_builder_root_dir
         self.project_name = project_name
         self.cfg_file_path = (
             Path(rock_builder_root_dir) / "projects" / f"{project_name}.cfg"
         )
+        self.wheel_install_dir = Path(rock_builder_root_dir) / "packages" / "wheels"
         if self.cfg_file_path.exists():
             self.read(self.cfg_file_path)
         else:
@@ -128,6 +130,7 @@ class RockProjectBuilder(configparser.ConfigParser):
         )
         self.project_patch_dir_root = self.project_patch_dir_root.resolve()
         self.project_repo = RockProjectRepo(
+            self.wheel_install_dir,
             self.project_name,
             self.project_root_dir_path,
             self.project_src_dir_path,
