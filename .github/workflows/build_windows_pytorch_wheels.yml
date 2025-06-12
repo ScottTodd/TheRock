@@ -87,7 +87,14 @@ jobs:
 
       - name: Build PyTorch
         env:
-          ROCM_HOME: ${{ github.workspace }}/rocm-tarball
+          # ROCM_HOME: ${{ github.workspace }}/rocm-tarball
+          # TODO(#827): Windows paths... ugh... (check if ROCM_HOME is needed in torch or just our scripts, sanitize)
+          #     CMake Error at torch_hip_generated_FillKernel.hip.obj.cmake:49 (set):
+          #     Syntax error in cmake code at
+          #       C:/home/runner/_work/TheRock/TheRock/external-builds/pytorch/pytorch/build/caffe2/CMakeFiles/torch_hip.dir/__/aten/src/ATen/native/hip/torch_hip_generated_FillKernel.hip.obj.cmake:49
+          #     when parsing string
+          #       C:\home\runner\_work\TheRock\TheRock/rocm-tarball/lib/llvm/bin
+          ROCM_HOME: C:/home/runner/_work/TheRock/TheRock/rocm-tarball
         run: |
           echo "Building PyTorch wheels for ${{ inputs.AMDGPU_FAMILIES }}"
           bash ./external-builds/pytorch/build_pytorch_windows.sh ${{ inputs.AMDGPU_FAMILIES }}
