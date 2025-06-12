@@ -83,7 +83,7 @@ jobs:
 
       - name: Build PyTorch
         env:
-          ROCM_HOME: rocm-tarball
+          ROCM_HOME: ${{ github.workspace }}/rocm-tarball
         run: |
           echo "Building PyTorch wheels for ${{ inputs.AMDGPU_FAMILIES }}"
           bash ./external-builds/pytorch/build_pytorch_windows.sh ${{ inputs.AMDGPU_FAMILIES }}
