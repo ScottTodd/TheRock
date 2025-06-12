@@ -67,6 +67,7 @@ jobs:
           aws s3 cp s3://therock-dev-tarball/therock-dist-windows-gfx110X-dgpu-6.5.0.dev0+8fa909d3ab28e3c728d79334f6339a6ab933f787.tar.gz . --no-sign-request --no-progress
           mkdir -p rocm-tarball
           tar -xf *.tar.gz -C rocm-tarball
+          ls -lh rocm-tarball
 
       - name: Checkout PyTorch Source Repos
         run: |
