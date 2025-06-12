@@ -60,13 +60,15 @@ cd ${PYTORCH_SRC_DIR}
 
 # TODO(#590): Fix/disable warning logs that flood the console buffer and output
 # 			  to console instead, or match TheRock's build/logs/ setup.
-LOGS_DIR="${HOME}/.therock"
-mkdir -p ${LOGS_DIR}
-printf -v DATE_STR '%(%Y-%m-%d_%H%M%S)T' -1
-LOG_FILE_NAME="${LOGS_DIR}/logs_pytorch_windows_${DATE_STR}.txt"
+# LOGS_DIR="${HOME}/.therock"
+# mkdir -p ${LOGS_DIR}
+# printf -v DATE_STR '%(%Y-%m-%d_%H%M%S)T' -1
+# LOG_FILE_NAME="${LOGS_DIR}/logs_pytorch_windows_${DATE_STR}.txt"
 
-echo "Running \"python setup.py bdist_wheel\", directing output to ${LOG_FILE_NAME}"
-python setup.py bdist_wheel > ${LOG_FILE_NAME} 2>&1
+# echo "Running \"python setup.py bdist_wheel\", directing output to ${LOG_FILE_NAME}"
+# python setup.py bdist_wheel > ${LOG_FILE_NAME} 2>&1
+echo "Running \"python setup.py bdist_wheel\""
+python setup.py bdist_wheel
 
 echo ""
 echo ""
