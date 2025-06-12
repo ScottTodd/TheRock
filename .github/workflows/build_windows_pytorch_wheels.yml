@@ -77,6 +77,10 @@ jobs:
           # python ./external-builds/pytorch/pytorch_audio_repo.py checkout
           # python ./external-builds/pytorch/pytorch_vision_repo.py checkout
 
+      - name: Install python deps
+        run: |
+          pip install -r external-builds/pytorch/pytorch/requirements.txt
+
       - name: Build PyTorch
         env:
           ROCM_HOME: rocm-tarball
