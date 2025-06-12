@@ -8,15 +8,15 @@ Project can be application, library or some other buildable or installable entit
 
 ## List of applications build
 
-At the moment RockBuilder will build following applications for linux and windows
+At the moment RockBuilder will build by default a following list of applications in Linux and Windows:
 
 - pytorch
 - pytorch vision
 - pytorch audio
 - torch migraphx (linux only)
 
-Full list of applications build is defined the project list configuration file
-projects/core_apps.pcfg.
+Full list of applications build is defined in the project list configuration file.
+(projects/core_apps.pcfg)
 
 # Usage
 
@@ -25,10 +25,12 @@ and how to use it either to build all projects or to use it for just to execute 
 
 ## Build everything by using TheRock ROCm build
 
-Build firth the Rock base system by following the instructions in
-the TheRock/README.md and then build the RockBuilder projects from the experimental/rockbuilder directory.
+First build the TheRock base system by following the instructions in
+[README.md](../../README.md#building-from-source).
+Then build the RockBuilder projects from the
+experimental/rockbuilder directory. Example:
 
-Example for building and testing everything on Linux.
+Example commands to build and test on Linux:
 
 ```bash
 cd TheRock
@@ -48,7 +50,7 @@ python torch_vision_hello_world.py
 python torch_audio_hello_world.py
 ```
 
-Example for building and testing everything on Windows on x64 Native MSVC command prompt
+Example commands to build and test on Windows by using the 'x64 Native MSVC command prompt':
 
 ```bash
 cd c:\TheRock
@@ -69,7 +71,7 @@ python torch_audio_hello_world.py
 
 ```
 
-Example output from test apps in Windows from AMD Radeon W7900 GPU
+Example output from test apps in Windows when using the AMD Radeon W7900 GPU:
 
 ```bash
 (.venv) D:\rock\TheRock\experimental\rockbuilder\examples>python torch_gpu_hello_world.py
@@ -95,9 +97,10 @@ pytorch audio version: 2.7.0
 
 ## Build everything by using TheRock ROCm install
 
-1. Build firth TheRock base system by following the instructions in
-   the TheRock/README.md. and then build the RockBuilder projects from the
-   experimental/rockbuilder directory. For example:
+1. First build the TheRock base system by following the instructions in
+   [README.md](../../README.md#building-from-source).
+   Then build the RockBuilder projects from the
+   experimental/rockbuilder directory. Example:
 
 ```bash
 export ROCM_HOME=/opt/rocm
@@ -154,7 +157,8 @@ If ROCM_HOME is not defined, RockBuilder will try to find it from the directory
 Rockbuilder expects by default that Python venv is activated as it is the
 recommended way to use and install python applications that are required by the
 RockBuilder. Applications that are build by the RockBuilder will also be installed
-to the python environment that is used.
+to the python environment that is used as they may be required by other applications
+that are later build by the rockbuilder.
 
 Recommended python version should be same than what is used to build TheRock and
 can be for example python 3.11, 3.12 or 3.13.
@@ -166,9 +170,10 @@ cd TheRock
 source .venv/bin/activate
 ```
 
-If you want to use instead real python environment instead of venv,
-you must force that by defining ROCK_PYTHON_PATH environment variable.
-For example on Linux:
+By default the RockBuilder will refuse to run if you are trying to use a real
+python virtual environment instead of using a virtual env. You can change that behaviour
+by setting the ROCK_PYTHON_PATH environment variable that will point to python directory.
+In Linux this can be set for example in a following way:
 
 ```bash
 export ROCK_PYTHON_PATH=/usr/bin
@@ -199,7 +204,7 @@ project_list=
     torch_migraphx
 ```
 
-## Project specific configuration file
+## Project specific configuration files
 
 projects/pytorch.cfg is an example from the project configuration file.
 
@@ -218,8 +223,23 @@ can override this for example by specifying single command. For example:
 python rockbuilder.py --checkout
 ```
 
-There can be separate action commands for posix based systems(Linux) and dos-based systems(Windows).
+There can be separate action commands for posix based systems(Linux) and windows-based systems.
 
-If specific action is specified (for example --build), RockBuilder does not yet
-check whether other actions needed by the build action are already done. Instead it expected that
-the user knows that before that the checkout and configure steps are needed. This may change in the future.
+If optional action parameter is specified (for example --build), RockBuilder does not yet
+check whether other actions would be needed to be executed before that.
+This is expected to be changed in the future.
+
+## Managing python wheel install and copy in configuration files
+
+If the project's build procedure generates a python wheel installation package,
+there is a built-in API call in the RockBuilder to help the handling of it's
+installation and copy to common directory:
+
+ROCK_CONFIG_CMD__FIND_AND_INSTALL_LATEST_PYTHON_WHEEL <search-path for wheel>
+
+This command will search the latest wheel file from the directory specified,
+then copy it to 'packages/wheels' directory
+and finally install it to the current python environment.
+
+Note that the installation of python wheel may be required to handle
+the build time dependencies to other applications build later.

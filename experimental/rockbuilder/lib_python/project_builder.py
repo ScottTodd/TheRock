@@ -8,6 +8,20 @@ from pathlib import Path, PurePosixPath
 
 
 class RockProjectBuilder(configparser.ConfigParser):
+
+    # Read the value from the config-file's "project_info" section.
+    #
+    # Return value if it exist, otherwise return None
+    def __get_project_info_config_value(config_key):
+        try:
+            ret = self.get("project_info", "init_cmd")
+        except:
+            # just catch what ever exception is thrown by current python
+            # env-version in case that the config-key/value is not specified
+            # in the configuration file. (key/value pairs can be optional)
+            ret = None
+        return ret
+
     def __init__(self, rock_builder_root_dir, project_name):
         super(RockProjectBuilder, self).__init__(allow_no_value=True)
 
@@ -29,88 +43,50 @@ class RockProjectBuilder(configparser.ConfigParser):
         self.project_version = self.get("project_info", "version")
 
         # environment setup can have common and os-specific sections that needs to be appended together
-        self.skip_on_os = None
-        try:
-            if self.is_posix:
-                self.skip_on_os = self.get("project_info", "skip_linux")
-            else:
-                self.skip_on_os = self.get("project_info", "skip_windows")
-        except Exception as ex1:
-            pass
+        if self.is_posix:
+            self.skip_on_os = __get_project_info_config_value("skip_linux")
+        else:
+            self.skip_on_os = __get_project_info_config_value("skip_windows")
         self.env_setup_cmd = None
-        try:
-            value = self.get("project_info", "env_common")
+        value = __get_project_info_config_value("env_common")
+        if value:
             self.env_setup_cmd = list(
                 filter(None, (x.strip() for x in value.splitlines()))
             )
-        except:
-            pass
-        try:
-            if self.is_posix:
-                value = self.get("project_info", "env_linux")
+        if self.is_posix:
+            value = __get_project_info_config_value("env_linux")
+            if value:
                 temp_env_list = list(
                     filter(None, (x.strip() for x in value.splitlines()))
                 )
-            else:
-                value = self.get("project_info", "env_windows")
+        else:
+            value = __get_project_info_config_value("env_windows")
+            if value:
                 temp_env_list = list(
                     filter(None, (x.strip() for x in value.splitlines()))
                 )
-            if self.env_setup_cmd:
-                self.env_setup_cmd.extend(temp_env_list)
-            else:
-                self.env_setup_cmd = temp_env_list
-        except:
-            pass
-        try:
-            self.init_cmd = self.get("project_info", "init_cmd")
-        except:
-            self.init_cmd = None
-        try:
-            self.clean_cmd = self.get("project_info", "clean_cmd")
-        except:
-            self.clean_cmd = None
-        try:
-            self.hipify_cmd = self.get("project_info", "hipify_cmd")
-        except:
-            self.hipify_cmd = None
-        try:
-            self.pre_config_cmd = self.get("project_info", "pre_config_cmd")
-        except:
-            self.pre_config_cmd = None
-        try:
-            self.config_cmd = self.get("project_info", "config_cmd")
-        except:
-            self.config_cmd = None
-        try:
-            self.post_config_cmd = self.get("project_info", "post_config_cmd")
-        except:
-            self.post_config_cmd = None
-        try:
-            build_cmd = None
-            is_windows = any(platform.win32_ver())
-            if is_windows and self.has_option("project_info", "build_cmd_windows"):
-                self.build_cmd = self.get("project_info", "build_cmd_windows")
-            else:
-                self.build_cmd = self.get("project_info", "build_cmd")
-            print("Build_cmd: ------------")
-            print(self.build_cmd)
-            print("------------------------")
-        except Exception as ex1:
-            print(ex1)
-            self.build_cmd = None
-        try:
-            self.cmake_config = self.get("project_info", "cmake_config")
-        except:
-            self.cmake_config = None
-        try:
-            self.install_cmd = self.get("project_info", "install_cmd")
-        except:
-            self.install_cmd = None
-        try:
-            self.post_install_cmd = self.get("project_info", "post_install_cmd")
-        except:
-            self.post_install_cmd = None
+        if self.env_setup_cmd:
+            self.env_setup_cmd.extend(temp_env_list)
+        else:
+            self.env_setup_cmd = temp_env_list
+        self.init_cmd = __get_project_info_config_value("init_cmd")
+        self.clean_cmd = __get_project_info_config_value("clean_cmd")
+        self.hipify_cmd = __get_project_info_config_value("hipify_cmd")
+        self.pre_config_cmd = __get_project_info_config_value("pre_config_cmd")
+        self.config_cmd = __get_project_info_config_value("config_cmd")
+        self.post_config_cmd = __get_project_info_config_value("post_config_cmd")
+
+        is_windows = any(platform.win32_ver())
+        # here we want to check if window option is set
+        # otherwise we use generic "build_cmd" option also on windows
+        if is_windows and self.has_option("project_info", "build_cmd_windows"):
+            self.build_cmd = __get_project_info_config_value("build_cmd_windows")
+        else:
+            self.build_cmd = __get_project_info_config_value("build_cmd")
+        self.cmake_config = __get_project_info_config_value("cmake_config")
+        self.install_cmd = __get_project_info_config_value("install_cmd")
+        self.post_install_cmd = __get_project_info_config_value("post_install_cmd")
+
         self.project_root_dir_path = Path(rock_builder_root_dir)
         self.project_src_dir_path = (
             Path(rock_builder_root_dir) / "src_projects" / self.project_name
@@ -118,9 +94,9 @@ class RockProjectBuilder(configparser.ConfigParser):
         self.project_build_dir_path = (
             Path(rock_builder_root_dir) / "builddir" / self.project_name
         )
-        try:
-            self.cmd_execution_dir = self.get("project_info", "cmd_exec_dir")
-        except:
+
+        self.cmd_execution_dir = __get_project_info_config_value("cmd_exec_dir")
+        if self.cmd_execution_dir is None:
             # default value if not specified in the config-file
             self.cmd_execution_dir = self.project_src_dir_path
         self.project_patch_dir_root = (
