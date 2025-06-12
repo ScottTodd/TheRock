@@ -53,6 +53,21 @@ jobs:
         with:
           python-version: ${{ inputs.python_version }}
 
+      # TODO(amd-justchen): share with build_windows_packages.yml. Include in VM image? Dockerfile?
+      - name: Install requirements
+        run: |
+          choco install --no-progress -y ninja
+          choco install --no-progress -y awscli
+          echo "$PATH;C:\Program Files\Amazon\AWSCLIV2" >> $GITHUB_PATH
+
+      # TODO(scotttodd): replace with latest nightly, or source build, or pip install
+      #                  just hardcoding for now to get things off the ground...
+      - name: Download ROCm
+        run: |
+          aws s3 cp s3://therock-dev-tarball/therock-dist-windows-gfx110X-dgpu-6.5.0.dev0+8fa909d3ab28e3c728d79334f6339a6ab933f787.tar.gz --no-sign-request --no-progress .
+          mkdir -p rocm-tarball
+          tar -xf *.tar.gz -C rocm-tarball
+
       - name: Checkout PyTorch Source Repos
         run: |
           python ./external-builds/pytorch/pytorch_torch_repo.py checkout
@@ -60,7 +75,18 @@ jobs:
           # python ./external-builds/pytorch/pytorch_audio_repo.py checkout
           # python ./external-builds/pytorch/pytorch_vision_repo.py checkout
 
-      # TODO(scotttodd): build wheels, put into a directory location for next step to use
+      - name: Build PyTorch
+        env:
+          ROCM_HOME: rocm-tarball
+        run: |
+          echo "Building PyTorch wheels for ${{ inputs.AMDGPU_FAMILIES }}"
+          bash ./external-builds/pytorch/build_pytorch_windows.sh ${{ inputs.AMDGPU_FAMILIES }}
+
+      # TODO: have script do this itself, during the build
+      - name: Copy wheels to output dir
+        run: |
+          cp ./external-builds/pytorch/pytorch/dist/*.whl ${{ env.PACKAGE_DIST_DIR }}
+          ls -lh ${{ env.PACKAGE_DIST_DIR }}
 
       # TODO(scotttodd): add upload once working
 

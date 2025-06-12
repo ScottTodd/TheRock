@@ -24,8 +24,8 @@ during the build step.
 
 ```
 python pytorch_torch_repo.py checkout
-python pytorch_torch_audio_repo.py checkout
-python pytorch_torch_vision_repo.py checkout
+python pytorch_audio_repo.py checkout
+python pytorch_vision_repo.py checkout
 ```
 
 Note that as of 2025-05-28, some small patches are needed to PyTorch's `__init__.py`
