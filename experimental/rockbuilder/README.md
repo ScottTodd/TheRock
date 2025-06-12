@@ -235,7 +235,7 @@ If the project's build procedure generates a python wheel installation package,
 there is a built-in API call in the RockBuilder to help the handling of it's
 installation and copy to common directory:
 
-ROCK_CONFIG_CMD__FIND_AND_INSTALL_LATEST_PYTHON_WHEEL <search-path for wheel>
+ROCK_CONFIG_CMD\_\_FIND_AND_INSTALL_LATEST_PYTHON_WHEEL <search-path for wheel>
 
 This command will search the latest wheel file from the directory specified,
 then copy it to 'packages/wheels' directory
