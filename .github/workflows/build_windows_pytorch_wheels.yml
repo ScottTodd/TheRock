@@ -1,4 +1,4 @@
-name: Build Linux PyTorch Wheels
+name: Build Windows PyTorch Wheels
 
 on:
   workflow_call:
@@ -30,10 +30,8 @@ permissions:
 
 jobs:
   build_pytorch_wheels:
-    name: Build Linux PyTorch Wheels | ${{ inputs.AMDGPU_FAMILIES }} | Python ${{ inputs.python_version }}
-    runs-on: ${{ github.repository_owner == 'ROCm' && 'azure-linux-scale-rocm' || 'ubuntu-24.04' }}
-    container:
-      image: ghcr.io/rocm/therock_build_manylinux_x86_64@sha256:044b113562629f4bd2ec5d2e64b32eee11562d48fb1a75d7493daec9dd8d8292
+    name: Build Windows PyTorch Wheels | ${{ inputs.AMDGPU_FAMILIES }} | Python ${{ inputs.python_version }}
+    runs-on: ${{ github.repository_owner == 'ROCm' && 'azure-windows-scale-rocm' || 'windows-2022' }}
     env:
       OUTPUT_DIR: ${{ github.workspace }}/output
       PACKAGE_DIST_DIR: ${{ github.workspace }}/output/packages/dist
@@ -48,46 +46,17 @@ jobs:
           git config --global user.name "therockbot"
           git config --global user.email "therockbot@amd.com"
 
-      - name: Add selected Python version to PATH
-        run: |
-          python_dir="/opt/python/${{ inputs.python_version }}"
-          if ! [ -x "${python_dir}/bin/python" ]; then
-            echo "ERROR: Could not find python: ${python_dir}"
-            exit 1
-          fi
-          echo "${python_dir}/bin" >> "$GITHUB_PATH"
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        with:
+          python-version: ${{ inputs.python_version }}
 
       - name: Checkout PyTorch Source Repos
         run: |
-          ./external-builds/pytorch/pytorch_torch_repo.py checkout
-          ./external-builds/pytorch/pytorch_audio_repo.py checkout
-          ./external-builds/pytorch/pytorch_vision_repo.py checkout
+          python ./external-builds/pytorch/pytorch_torch_repo.py checkout
+          python ./external-builds/pytorch/pytorch_audio_repo.py checkout
+          python ./external-builds/pytorch/pytorch_vision_repo.py checkout
 
-      - name: Create pip cache directory
-        run: mkdir -p /tmp/pipcache
-
-      - name: Build PyTorch Wheels
-        run: |
-          echo "Building PyTorch wheels for ${{ inputs.AMDGPU_FAMILIES }}"
-          ./external-builds/pytorch/build_prod_wheels.py \
-            --pip-cache-dir /tmp/pipcache \
-            --find-links "https://${{ env.S3_BUCKET }}.s3.us-east-2.amazonaws.com/${{ inputs.AMDGPU_FAMILIES }}/index.html" \
-            --pre \
-            build \
-            --install-rocm \
-            --clean \
-            --output-dir ${{ env.PACKAGE_DIST_DIR }} \
-
-      - name: Configure AWS Credentials
-        if: always()
-        uses: aws-actions/configure-aws-credentials@ececac1a45f3b08a01d2dd070d28d111c5fe6722 # v4.1.0
-        with:
-          aws-region: us-east-2
-          role-to-assume: arn:aws:iam::692859939525:role/therock-nightly-releases
-
-      - name: Sanity Check Wheel
-        run: |
-          python external-builds/pytorch/sanity_check_wheel.py ${{ env.PACKAGE_DIST_DIR }}/
+      # TODO(scotttodd): build wheels, put into a directory location for next step to use
 
       - name: Upload wheels to S3
         if: ${{ github.repository_owner == 'ROCm' }}
