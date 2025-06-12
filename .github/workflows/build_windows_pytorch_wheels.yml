@@ -60,18 +60,18 @@ jobs:
           choco install --no-progress -y awscli
           echo "$PATH;C:\Program Files\Amazon\AWSCLIV2" >> $GITHUB_PATH
 
-      # TODO(scotttodd): replace with latest nightly, or source build, or pip install
+      # TODO(#827): replace with latest nightly, or source build, or pip install
       #                  just hardcoding for now to get things off the ground...
       - name: Download ROCm
         run: |
-          aws s3 cp s3://therock-dev-tarball/therock-dist-windows-gfx110X-dgpu-6.5.0.dev0+8fa909d3ab28e3c728d79334f6339a6ab933f787.tar.gz --no-sign-request --no-progress .
+          aws s3 cp s3://therock-dev-tarball/therock-dist-windows-gfx110X-dgpu-6.5.0.dev0+8fa909d3ab28e3c728d79334f6339a6ab933f787.tar.gz . --no-sign-request --no-progress
           mkdir -p rocm-tarball
           tar -xf *.tar.gz -C rocm-tarball
 
       - name: Checkout PyTorch Source Repos
         run: |
           python ./external-builds/pytorch/pytorch_torch_repo.py checkout
-      # TODO(scotttodd): include these
+      # TODO(#827): include these
           # python ./external-builds/pytorch/pytorch_audio_repo.py checkout
           # python ./external-builds/pytorch/pytorch_vision_repo.py checkout
 
@@ -88,7 +88,7 @@ jobs:
           cp ./external-builds/pytorch/pytorch/dist/*.whl ${{ env.PACKAGE_DIST_DIR }}
           ls -lh ${{ env.PACKAGE_DIST_DIR }}
 
-      # TODO(scotttodd): add upload once working
+      # TODO(#827): add upload once working
 
       # - name: Upload wheels to S3
       #   if: ${{ github.repository_owner == 'ROCm' }}
