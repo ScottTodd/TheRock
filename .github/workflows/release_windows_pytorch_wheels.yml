@@ -18,8 +18,9 @@ jobs:
       matrix:
         config:
           - { AMDGPU_FAMILIES: gfx110X-dgpu }
-          - { AMDGPU_FAMILIES: gfx1151 }
-          - { AMDGPU_FAMILIES: gfx120X-all }
+          # TODO(scotttodd): enable once nightly builds include these
+          # - { AMDGPU_FAMILIES: gfx1151 }
+          # - { AMDGPU_FAMILIES: gfx120X-all }
         python_version: ["3.11", "3.12"]
 
     uses: ./.github/workflows/build_windows_pytorch_wheels.yml
