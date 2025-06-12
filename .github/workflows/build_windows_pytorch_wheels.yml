@@ -71,6 +71,7 @@ jobs:
 
       - name: Checkout PyTorch Source Repos
         run: |
+          git config --global core.longpaths true
           python ./external-builds/pytorch/pytorch_torch_repo.py checkout
       # TODO(#827): include these
           # python ./external-builds/pytorch/pytorch_audio_repo.py checkout
