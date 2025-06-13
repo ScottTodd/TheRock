@@ -323,8 +323,8 @@ class RockProjectRepo:
         if patches_path.exists():
             shutil.rmtree(patches_path)
         # Get key revisions.
-        upstream_rev = rev_parse(repo_path, TAG_UPSTREAM_DIFFBASE)
-        hipify_rev = rev_parse(repo_path, TAG_HIPIFY_DIFFBASE)
+        upstream_rev = self.rev_parse(repo_path, TAG_UPSTREAM_DIFFBASE)
+        hipify_rev = self.rev_parse(repo_path, TAG_HIPIFY_DIFFBASE)
         if upstream_rev is None:
             print(
                 f"error: Could not find upstream diffbase tag {TAG_UPSTREAM_DIFFBASE}"
@@ -334,11 +334,11 @@ class RockProjectRepo:
         if hipify_rev:
             hipified_revlist = f"{hipify_rev}..HEAD"
             base_revlist = f"{upstream_rev}..{hipify_rev}^"
-            hipified_count = len(rev_list(repo_path, hipified_revlist))
+            hipified_count = len(self.rev_list(repo_path, hipified_revlist))
         else:
             hipified_revlist = None
             base_revlist = f"{upstream_rev}..HEAD"
-        base_count = len(rev_list(repo_path, base_revlist))
+        base_count = len(self.rev_list(repo_path, base_revlist))
         if hipified_count == 0 and base_count == 0:
             return
         print(
@@ -521,7 +521,10 @@ class RockProjectRepo:
             )
             self.exec(["git", "checkout", "FETCH_HEAD"], cwd=self.project_src_dir)
         # add our own git tag to help with the create patches command
-        self.exec(["git", "tag", "-f", TAG_UPSTREAM_DIFFBASE], cwd=self.project_src_dir)
+        self.exec(
+            ["git", "tag", "-f", TAG_UPSTREAM_DIFFBASE, "--no-sign"],
+            cwd=self.project_src_dir,
+        )
         try:
             self.exec(
                 ["git", "submodule", "update", "--init", "--recursive"] + fetch_args,
@@ -536,7 +539,7 @@ class RockProjectRepo:
                 "submodule",
                 "foreach",
                 "--recursive",
-                f"git tag -f {TAG_UPSTREAM_DIFFBASE}",
+                f"git tag -f {TAG_UPSTREAM_DIFFBASE} --no-sign",
             ],
             cwd=self.project_src_dir,
             stdout_devnull=True,
@@ -574,7 +577,10 @@ class RockProjectRepo:
                 self.exec(
                     ["git", "commit", "-m", HIPIFY_COMMIT_MESSAGE], cwd=module_path
                 )
-                self.exec(["git", "tag", "-f", TAG_HIPIFY_DIFFBASE], cwd=module_path)
+                self.exec(
+                    ["git", "tag", "-f", TAG_HIPIFY_DIFFBASE, "--no-sign"],
+                    cwd=module_path,
+                )
             print("do_hipify, hipified files committed")
         # always apply the patches from hipified directory. (even if hipify_cmd was not specified in config file for project)
         self.apply_all_patches(
