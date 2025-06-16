@@ -8,9 +8,10 @@ Example
 -------
 
 ```
-./build_tools/linux_python_package.py \
-    --artifact-dir ./output-linux-portable/build/artifacts \
-    --dest-dir $HOME/tmp/packages
+python -m pip install python-magic python-magic-bin
+python ./build_tools/windows_python_package.py \
+    --artifact-dir ./output-windows/build/artifacts \
+    --dest-dir %HOME%/.therock/packages
 ```
 """
 
