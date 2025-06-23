@@ -4,6 +4,7 @@
 
 import importlib
 from pathlib import Path
+import platform
 import subprocess
 import sys
 import unittest
@@ -12,6 +13,9 @@ from .. import _dist_info as di
 from . import utils
 
 import rocm_sdk
+
+is_windows = platform.system() == "Windows"
+exe_suffix = ".exe" if is_windows else ""
 
 
 class ROCmDevelTest(unittest.TestCase):
@@ -87,7 +91,7 @@ class ROCmDevelTest(unittest.TestCase):
             .decode()
             .strip()
         )
-        path = Path(output) / "llvm" / "bin" / "clang++"
+        path = (Path(output) / "llvm" / "bin" / "clang++").with_suffix(exe_suffix)
         self.assertTrue(path.exists(), msg=f"Expected {path} to exist")
 
     def testSharedLibrariesLoad(self):

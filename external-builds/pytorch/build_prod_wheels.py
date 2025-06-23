@@ -95,6 +95,7 @@ import argparse
 from datetime import date
 import os
 from pathlib import Path
+import platform
 import shutil
 import shlex
 import subprocess
@@ -102,6 +103,8 @@ import sys
 import tempfile
 
 script_dir = Path(__file__).resolve().parent
+
+is_windows = platform.system() == "Windows"
 
 
 def exec(args: list[str | Path], cwd: Path, env: dict[str, str] | None = None):
@@ -262,31 +265,49 @@ def do_build(args: argparse.Namespace):
         "ROCM_HOME": str(root_dir),
         "PYTORCH_EXTRA_INSTALL_REQUIREMENTS": f"rocm[libraries]=={rocm_sdk_version}",
         "PYTORCH_ROCM_ARCH": pytorch_rocm_arch,
-        # TODO: Should get the supported archs from the rocm-sdk install.
-        "PYTORCH_ROCM_ARCH": pytorch_rocm_arch,
         # TODO: Figure out what is blocking GLOO and enable.
         "USE_GLOO": "OFF",
         # TODO: Fix source dep on rocprofiler and enable.
         "USE_KINETO": "OFF",
         # Workaround GCC12 compiler flags.
-        "CXXFLAGS": " -Wno-error=maybe-uninitialized -Wno-error=uninitialized -Wno-error=restrict",
-        "CPPFLAGS": "  -Wno-error=maybe-uninitialized -Wno-error=uninitialized -Wno-error=restrict",
+        # "CXXFLAGS": " -Wno-error=maybe-uninitialized -Wno-error=uninitialized -Wno-error=restrict",
+        # "CPPFLAGS": "  -Wno-error=maybe-uninitialized -Wno-error=uninitialized -Wno-error=restrict",
     }
+
+    if is_windows:
+        env.update(
+            {
+                "HIP_CLANG_PATH": str((root_dir / "lib" / "llvm" / "bin").as_posix()),
+                "CC": str((root_dir / "lib" / "llvm" / "bin" / "clang-cl").as_posix()),
+                "CXX": str((root_dir / "lib" / "llvm" / "bin" / "clang-cl").as_posix()),
+                # "HIP_CLANG_PATH": str(root_dir / "lib" / "llvm" / "bin"),
+                # "CC": str(root_dir / "lib" / "llvm" / "bin" / "clang-cl"),
+                # "CXX": str(root_dir / "lib" / "llvm" / "bin" / "clang-cl"),
+            }
+        )
+    else:
+        env.update(
+            {
+                # Workaround GCC12 compiler flags.
+                "CXXFLAGS": " -Wno-error=maybe-uninitialized -Wno-error=uninitialized -Wno-error=restrict",
+                "CPPFLAGS": "  -Wno-error=maybe-uninitialized -Wno-error=uninitialized -Wno-error=restrict",
+            }
+        )
 
     if pytorch_dir:
         do_build_pytorch(args, pytorch_dir, dict(env))
     else:
         print("--- Not building pytorch (no --pytorch-dir)")
 
-    if pytorch_audio_dir:
-        do_build_pytorch_audio(args, pytorch_audio_dir, dict(env))
-    else:
-        print("--- Not build pytorch-audio (no --pytorch-audio-dir)")
+    # if pytorch_audio_dir:
+    #     do_build_pytorch_audio(args, pytorch_audio_dir, dict(env))
+    # else:
+    #     print("--- Not build pytorch-audio (no --pytorch-audio-dir)")
 
-    if pytorch_vision_dir:
-        do_build_pytorch_vision(args, pytorch_vision_dir, dict(env))
-    else:
-        print("--- Not build pytorch-vision (no --pytorch-vision-dir)")
+    # if pytorch_vision_dir:
+    #     do_build_pytorch_vision(args, pytorch_vision_dir, dict(env))
+    # else:
+    #     print("--- Not build pytorch-vision (no --pytorch-vision-dir)")
 
 
 def do_build_pytorch(args: argparse.Namespace, pytorch_dir: Path, env: dict[str, str]):
@@ -296,6 +317,16 @@ def do_build_pytorch(args: argparse.Namespace, pytorch_dir: Path, env: dict[str,
     print(f"  Default PYTORCH_BUILD_VERSION: {pytorch_build_version}")
     env["PYTORCH_BUILD_VERSION"] = pytorch_build_version
     env["PYTORCH_BUILD_NUMBER"] = args.pytorch_build_number
+
+    if is_windows:
+        env.update(
+            {
+                "USE_ROCM": "ON",
+                "USE_FLASH_ATTENTION": "0",
+                "USE_MEM_EFF_ATTENTION": "0",
+                "DISTUTILS_USE_SDK": "1",
+            }
+        )
 
     print("+++ Uninstalling pytorch:")
     exec([sys.executable, "-m", "pip", "uninstall", "torch"], cwd=tempfile.gettempdir())
@@ -322,6 +353,8 @@ def do_build_pytorch(args: argparse.Namespace, pytorch_dir: Path, env: dict[str,
     remove_dir_if_exists(pytorch_dir / "dist")
     if args.clean:
         remove_dir_if_exists(pytorch_dir / "build")
+    # print("returning before build")
+    # return
     exec([sys.executable, "setup.py", "bdist_wheel"], cwd=pytorch_dir, env=env)
     built_wheel = find_built_wheel(pytorch_dir / "dist", "torch")
     print(f"Found built wheel: {built_wheel}")
