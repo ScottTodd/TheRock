@@ -1,8 +1,8 @@
-From a61d115e37c922fb89f9900954292767c4bb4d17 Mon Sep 17 00:00:00 2001
+From f2c7041fe7fdb2a9951b85853fc65a65ea2f0a6d Mon Sep 17 00:00:00 2001
 From: Scott <scott.todd0@gmail.com>
 Date: Tue, 27 May 2025 13:46:50 -0700
-Subject: [PATCH 2/2] Trim constexpr from isA to improve Windows clang-cl
- support. (#4119)
+Subject: [PATCH] Trim constexpr from isA to improve Windows clang-cl support.
+ (#4119)
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
@@ -65,10 +65,10 @@ fbshipit-source-id: 7009448499fd246afca02e6884271efa30a667f9
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/include/fbgemm/Fbgemm.h b/include/fbgemm/Fbgemm.h
-index eb1f3a01..4d94e22f 100644
+index 1118d7f5..59c97b49 100644
 --- a/include/fbgemm/Fbgemm.h
 +++ b/include/fbgemm/Fbgemm.h
-@@ -122,7 +122,7 @@ class PackMatrix {
+@@ -123,7 +123,7 @@ class PackMatrix {
     * @return true if this is the first input matrix in GEMM (i.e., A in C = A *
     *         B)
     */
