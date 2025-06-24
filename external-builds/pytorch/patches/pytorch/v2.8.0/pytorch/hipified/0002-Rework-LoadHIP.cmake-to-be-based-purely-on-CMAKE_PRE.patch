@@ -1,7 +1,7 @@
 From 3564971e47ca65338bbf4254713b7b79de5cf9e0 Mon Sep 17 00:00:00 2001
 From: Scott Todd <scott.todd0@gmail.com>
 Date: Tue, 24 Jun 2025 16:12:55 -0700
-Subject: [PATCH 2/2] Rework LoadHIP.cmake to be based purely on
+Subject: [PATCH 2/3] Rework LoadHIP.cmake to be based purely on
  CMAKE_PREFIX_PATH.
 
 * Eliminates dependence on `/opt/rocm` and path based heuristics.
