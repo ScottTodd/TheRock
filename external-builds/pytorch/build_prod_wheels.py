@@ -26,6 +26,11 @@ during the build step.
 python pytorch_torch_repo.py checkout
 python pytorch_torch_audio_repo.py checkout
 python pytorch_torch_vision_repo.py checkout
+
+# Or with shorter paths, on Windows.
+python pytorch_torch_repo.py checkout --repo C:/b/pytorch
+python pytorch_torch_audio_repo.py checkout --repo C:/b/pytorch_audio
+python pytorch_torch_vision_repo.py checkout --repo C:/b/pytorch_vision
 ```
 
 Note that as of 2025-05-28, some small patches are needed to PyTorch's `__init__.py`
@@ -61,7 +66,16 @@ Typical usage to build with default architecture from rocm-sdk targets:
 python build_prod_wheels.py build \
     --pytorch-rocm-arch=gfx1100 \
     --output-dir $HOME/tmp/pyout
+
+# Or using custom paths, e.g. on Windows:
+python build_prod_wheels.py build \
+    --pytorch-rocm-arch=gfx1100 \
+    --output-dir %HOME%/tmp/pyout \
+    --pytorch-dir C:/b/pytorch \
+    --pytorch-audio-dir C:/b/pytorch_audio \
+    --pytorch-vision-dir C:/b/pytorch_vision \
 ```
+
 
 ## Building Linux portable wheels
 
@@ -325,6 +339,13 @@ def do_build_pytorch(args: argparse.Namespace, pytorch_dir: Path, env: dict[str,
                 "USE_FLASH_ATTENTION": "0",
                 "USE_MEM_EFF_ATTENTION": "0",
                 "DISTUTILS_USE_SDK": "1",
+                # Compile errors in 'aten/src/ATen/test/hip/hip_vectorized_test.hip':
+                # https://gist.github.com/ScottTodd/befdaf6c02a8af561f5ac1a2bc9c7a76
+                #   error: no member named 'modern' in namespace 'at::native'
+                #     using namespace at::native::modern::detail;
+                #   error: no template named 'has_same_arg_types'
+                #     static_assert(has_same_arg_types<func1_t>::value, "func1_t has the same argument types");
+                "BUILD_TEST": "0",
             }
         )
 
@@ -349,12 +370,26 @@ def do_build_pytorch(args: argparse.Namespace, pytorch_dir: Path, env: dict[str,
         + pip_install_args,
         cwd=pytorch_dir,
     )
+    if is_windows:
+        # As of 2025-06-24, the 'ninja' package on pypi is trailing too far
+        # behind upstream, and version 1.11.1 is buggy on Windows:
+        # * https://pypi.org/project/ninja/#history
+        # * https://github.com/ninja-build/ninja/releases
+        exec(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "uninstall",
+                "ninja",
+                "-y",
+            ],
+            cwd=pytorch_dir,
+        )
     print("+++ Building pytorch:")
     remove_dir_if_exists(pytorch_dir / "dist")
     if args.clean:
         remove_dir_if_exists(pytorch_dir / "build")
-    # print("returning before build")
-    # return
     exec([sys.executable, "setup.py", "bdist_wheel"], cwd=pytorch_dir, env=env)
     built_wheel = find_built_wheel(pytorch_dir / "dist", "torch")
     print(f"Found built wheel: {built_wheel}")
