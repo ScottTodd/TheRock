@@ -350,7 +350,10 @@ def do_build_pytorch(args: argparse.Namespace, pytorch_dir: Path, env: dict[str,
         )
 
     print("+++ Uninstalling pytorch:")
-    exec([sys.executable, "-m", "pip", "uninstall", "torch"], cwd=tempfile.gettempdir())
+    exec(
+        [sys.executable, "-m", "pip", "uninstall", "torch", "-y"],
+        cwd=tempfile.gettempdir(),
+    )
 
     print("+++ Installing pytorch requirements:")
     pip_install_args = []
