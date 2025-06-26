@@ -205,6 +205,9 @@ jobs:
       - name: Build therock-dist
         run: cmake --build "${{ env.BUILD_DIR }}" --target therock-dist
 
+      - name: Build therock-archives
+        run: cmake --build "${{ env.BUILD_DIR }}" --target therock-archives
+
       - name: Compress dist folder
         run: |
           cd ${{ env.BUILD_DIR }}/dist/rocm
