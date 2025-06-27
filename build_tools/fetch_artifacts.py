@@ -16,7 +16,7 @@ additional disk space):
   mkdir -p ~/.therock/artifacts_15685736080
   python build_tools/fetch_artifacts.py \
     --run-id 15685736080 --target gfx110X-dgpu --output-dir ~/.therock/artifacts_15685736080 \
-    --include-everything
+    --all
 """
 
 import argparse
@@ -230,8 +230,8 @@ def retrieve_enabled_artifacts(
 ):
     """Retrieves TheRock artifacts using urllib, based on the enabled arguments.
 
-    If no artifacts have been collected, we assume that we want to install all artifacts
-    If `args.tests` have been enabled, we also collect test artifacts
+    If no artifacts have been collected, we assume that we want to install the default subset.
+    If `args.tests` have been enabled, we also collect test artifacts.
     """
     artifact_paths = []
     all_artifacts = ["blas", "fft", "miopen", "prim", "rand"]
@@ -304,7 +304,7 @@ def run(args):
         log(f"S3 artifacts for {run_id} does not exist. Exiting...")
         return
 
-    if args.include_everything:
+    if args.all:
         retrieve_all_artifacts(run_id, target, output_dir, s3_artifacts)
     else:
         retrieve_base_artifacts(args, run_id, output_dir, s3_artifacts)
@@ -347,7 +347,7 @@ def main(argv):
 
     artifacts_group = parser.add_argument_group("artifacts_group")
     artifacts_group.add_argument(
-        "--include-everything",
+        "--all",
         default=False,
         help="Include all artifacts",
         action=argparse.BooleanOptionalAction,
@@ -399,6 +399,19 @@ def main(argv):
     )
 
     args = parser.parse_args(argv)
+
+    if args.all and (
+        args.blas
+        or args.fft
+        or args.miopen
+        or args.prim
+        or args.rand
+        or args.rccl
+        or args.tests
+        or args.base_only
+    ):
+        parser.error("--all cannot be set together with artifact group options")
+
     run(args)
 
 
