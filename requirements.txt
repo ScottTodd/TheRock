@@ -1,7 +1,8 @@
 CppHeaderParser>=2.7.4
 build>=1.2.2
 meson>=1.7.0
-python-magic>=0.4.27
+python-magic==0.4.27; platform_system != "Windows"
+python-magic @ git+https://github.com/ahupp/python-magic@62bd3c6a562b26e4005a012c30a0e86428b8defc ; platform_system == "Windows"
 python-magic-bin>=0.4.14; platform_system == "Windows"
 setuptools==80.9.0
 PyYAML==6.0.2
