@@ -40,7 +40,9 @@ def retrieve_bucket_info() -> tuple[str, str]:
         if repo_name == "TheRock" and owner == "ROCm"
         else "therock-artifacts-external"
     )
-    return (external_repo, bucket)
+    # HACK: DO NOT SUBMIT
+    # return (external_repo, bucket)
+    return ("", "therock-artifacts")
 
 
 def create_index_file(args: argparse.Namespace):
