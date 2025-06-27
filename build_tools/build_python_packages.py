@@ -23,10 +23,15 @@ from pathlib import Path
 import sys
 
 from _therock_utils.artifacts import ArtifactCatalog, ArtifactName
+
+print("importing from _therock_utils.py_packaging")
 from _therock_utils.py_packaging import Parameters, PopulatedDistPackage, build_packages
+
+print("imported from _therock_utils.py_packaging")
 
 
 def run(args: argparse.Namespace):
+    print("running build_python_packages")
     params = Parameters(
         dest_dir=args.dest_dir,
         version=args.version,

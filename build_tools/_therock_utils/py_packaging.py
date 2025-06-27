@@ -3,7 +3,11 @@
 from typing import Callable, Sequence
 
 import importlib.util
+
+print("trying to import 'magic'")
 import magic
+
+print("import 'magic' was successful")
 import re
 import os
 from pathlib import Path
