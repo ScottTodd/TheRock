@@ -105,7 +105,7 @@ jobs:
         target_bundle: ${{ fromJSON(needs.setup_metadata.outputs.package_targets) }}
     env:
       TEATIME_LABEL_GH_GROUP: 1
-      BUILD_DIR: B:\build
+      BUILD_DIR: C:\build
       CACHE_DIR: "${{github.workspace}}/.cache"
       CCACHE_DIR: "${{github.workspace}}/.cache/ccache"
       CCACHE_MAXSIZE: "4000M"
