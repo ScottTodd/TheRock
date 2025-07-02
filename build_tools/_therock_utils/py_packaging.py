@@ -237,16 +237,26 @@ class PopulatedDistPackage:
         files = self.params.files
         package_dest_dir = self.platform_dir
         for relpath, dir_entry in artifacts.pm.matches():
+            log(f"  populating relpath: '{relpath}, dir_entry: {dir_entry}'", vlog=2)
+            stat = os.stat(dir_entry.path)
+            log(f"    stat: {stat}")
+            log(f"    stat.st_nlink: {stat.st_nlink}")
             if files.has(relpath):
+                log(f"    have relpath already", vlog=2)
                 continue
             dest_path = package_dest_dir / relpath
-            if dir_entry.is_symlink():
+            if dir_entry.is_junction():
+                log(f"    dir_entry.is_junction()", vlog=2)
+            if dir_entry.is_symlink() or stat.st_nlink > 1:
+                log(f"    dir_entry.is_symlink() or stat.st_nlink > 1", vlog=2)
                 # Chase the symlink.
                 self._populate_runtime_symlink(relpath, dest_path, dir_entry)
             else:
+                log(f"    not dir_entry.is_symlink()", vlog=2)
                 # Copy the file.
                 file_type = get_file_type(dir_entry)
                 if file_type == "so":
+                    log(f"    so, populate", vlog=2)
                     # We only populate runtime shared libraries that correspond
                     # with their soname (or that don't have one).
                     soname = get_soname(dir_entry.path)
@@ -259,12 +269,17 @@ class PopulatedDistPackage:
                             self.params.files.soname_aliases[relpath] = soname
                         continue
                 # Otherwise, just copy the file.
+                log(f"    copy file", vlog=2)
                 self._populate_file(relpath, dest_path, dir_entry, resolve_src=True)
         return self
 
     def _populate_runtime_symlink(
         self, relpath: str, dest_path: Path, src_entry: os.DirEntry[str]
     ):
+        log(
+            f"_populate_runtime_symlink, relpath: '{relpath}', dest_path: '{dest_path}",
+            vlog=2,
+        )
         # We can't have any symlinks in a runtime tree.
         # Here is what we do based on what it points to:
         #   1. Dangling or directory symlink: drop
@@ -272,12 +287,15 @@ class PopulatedDistPackage:
         #   3. Executable: Build a little executable launcher in place of the symlink
         #   4. Copy it into place (this should work for scripts and such -- hopefully).
         link_target = Path(src_entry.path).resolve()
+        log(f"  link_target: '{link_target}", vlog=2)
         # Case 1: Drop dangling or directory symlink.
         if link_target.is_dir() or not link_target.exists():
+            log("  link_target.is_dir() or not link_target.exists(), return", vlog=2)
             return
         file_type = get_file_type(link_target)
         # Case 2: Shared library.
         if file_type == "so" and (soname := get_soname(link_target)):
+            log("  file_type == 'so'", vlog=2)
             if soname == src_entry.name:
                 self._populate_file(relpath, dest_path, src_entry, resolve_src=True)
             else:
@@ -285,6 +303,7 @@ class PopulatedDistPackage:
             return
         # Case 3: Executable.
         if file_type == "exe":
+            log("  file_type == 'exe'", vlog=2)
             # Compile a standalone executable that dynamically emulates the symlink.
             raw_link_target = os.readlink(src_entry.path)
             log(f"  EXESTUB: {relpath} (from {raw_link_target})", vlog=2)
@@ -292,6 +311,7 @@ class PopulatedDistPackage:
             self.params.files.mark_populated(self, relpath, dest_path)
             return
         # Case 4: Copy.
+        log("  fallthrough, copy", vlog=2)
         self._populate_file(relpath, dest_path, src_entry, resolve_src=True)
 
     def _populate_file(
@@ -405,13 +425,16 @@ class PopulatedDistPackage:
     def _populate_devel_file(
         self, relpath: str, dest_path: Path, src_entry: os.DirEntry[str]
     ):
+        log(f"_populate_devel_file: {relpath} -> {dest_path}", vlog=2)
         if src_entry.is_dir(follow_symlinks=False):
+            log("  is_dir", vlog=2)
             dest_path.mkdir(parents=True, exist_ok=False)
             return
 
         # Re-add soname aliases.
         soname_alias = self.params.files.soname_aliases.get(relpath)
         if soname_alias is not None:
+            log("  soname_alias is not None", vlog=2)
             # This file is an alias to the proper soname. Just emit a relative
             # link.
             dest_path.symlink_to(soname_alias)
@@ -438,7 +461,7 @@ class PopulatedDistPackage:
             relpath_segment_count = len(Path(relpath).parts)
             backtrack_path = Path(*([".."] * relpath_segment_count))
             link_target = backtrack_path / populated_package.platform_dir.name / relpath
-            log(f"DEVLINK: {relpath} -> {link_target}", vlog=2)
+            log(f"  DEVLINK: {relpath} -> {link_target}", vlog=2)
             if dest_path.exists(follow_symlinks=False):
                 dest_path.unlink()
             dest_path.parent.mkdir(parents=True, exist_ok=True)
@@ -446,16 +469,20 @@ class PopulatedDistPackage:
             return
 
         # If the source is a symlink, faithfully transcribe it.
+        # Linux
+        #   LINK: llvm (to lib/llvm)
+        # Windows
+        #   missing that?
         if src_entry.is_symlink():
             if dest_path.exists(follow_symlinks=False):
                 dest_path.unlink()
             target_path = os.readlink(src_entry.path)
-            log(f"LINK: {relpath} (to {target_path})", vlog=2)
+            log(f"  LINK: {relpath} (to {target_path})", vlog=2)
             os.symlink(target_path, dest_path)
             return
 
         # Otherwise, no one else has emitted it, so just materialize verbatim.
-        log(f"MATERIALIZE: {relpath} (from {src_entry.path})", vlog=2)
+        log(f"  MATERIALIZE: {relpath} (from {src_entry.path})", vlog=2)
         if dest_path.exists(follow_symlinks=False):
             dest_path.unlink()
         dest_path.parent.mkdir(parents=True, exist_ok=True)
