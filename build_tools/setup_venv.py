@@ -27,7 +27,7 @@ THIS_DIR = Path(__file__).resolve().parent
 is_windows = platform.system() == "Windows"
 
 
-def exec(args: list[str | Path], cwd: Path):
+def exec(args: list[str | Path], cwd: Path = Path.cwd()):
     args = [str(arg) for arg in args]
     print(f"++ Exec [{cwd}]$ {shlex.join(args)}")
     subprocess.check_call(args, cwd=str(cwd), stdin=subprocess.DEVNULL)
@@ -64,7 +64,12 @@ def create_venv(venv_dir: Path):
         )
         print("  Run again with --clean to clear the existing directory instead")
     else:
-        exec([sys.executable, "-m", "venv", str(venv_dir)], cwd=cwd)
+        exec([sys.executable, "-m", "venv", str(venv_dir)])
+
+
+def upgrade_pip(python_exe: Path):
+    print("")
+    exec([str(python_exe), "-m", "pip", "install", "--upgrade", "pip"])
 
 
 def run(args: argparse.Namespace):
@@ -75,7 +80,11 @@ def run(args: argparse.Namespace):
         shutil.rmtree(venv_dir)
 
     create_venv(venv_dir)
+    python_exe = find_venv_python(venv_dir)
 
+    upgrade_pip(python_exe)
+
+    # Done with setup, log some useful information then exit.
     print("")
     print(f"Setup complete at '{venv_dir}'! Activate the venv with:")
     if is_windows:
