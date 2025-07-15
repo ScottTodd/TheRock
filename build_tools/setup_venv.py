@@ -12,6 +12,13 @@ There are a few modes this can be used in:
     ```
     python setup_venv.py .venv
     ```
+
+* To install the latest nightly rocm packages for gfx110X-dgpu into the venv:
+
+    ```
+    python setup_venv.py .venv --packages rocm[libraries,devel] \
+        --index-name nightly --index-subdir gfx110X-dgpu
+    ```
 """
 
 import argparse
@@ -25,6 +32,11 @@ import sys
 THIS_DIR = Path(__file__).resolve().parent
 
 is_windows = platform.system() == "Windows"
+
+INDEX_URLS_MAP = {
+    "nightly": "https://d2awnip2yjpvqn.cloudfront.net/v2/",
+    "dev": "https://d25kgig7rdsyks.cloudfront.net/v2/",
+}
 
 
 def exec(args: list[str | Path], cwd: Path = Path.cwd()):
@@ -72,6 +84,30 @@ def upgrade_pip(python_exe: Path):
     exec([str(python_exe), "-m", "pip", "install", "--upgrade", "pip"])
 
 
+def install_packages(args: argparse.Namespace):
+    print("")
+
+    python_exe = find_venv_python(args.venv_dir)
+
+    if args.index_name:
+        index_url = INDEX_URLS_MAP[args.index_name]
+    else:
+        index_url = args.index_url
+    index_url = index_url + args.index_subdir
+
+    command = [
+        str(python_exe),
+        "-m",
+        "pip",
+        "install",
+        f"--index-url={index_url}",
+        args.packages,
+    ]
+    if args.disable_cache:
+        command.append("--no-cache-dir")
+    exec(command)
+
+
 def run(args: argparse.Namespace):
     venv_dir = args.venv_dir
 
@@ -83,6 +119,8 @@ def run(args: argparse.Namespace):
     python_exe = find_venv_python(venv_dir)
 
     upgrade_pip(python_exe)
+    if args.packages:
+        install_packages(args)
 
     # Done with setup, log some useful information then exit.
     print("")
@@ -96,17 +134,50 @@ def run(args: argparse.Namespace):
 def main(argv: list[str]):
     p = argparse.ArgumentParser("setup_venv.py")
     p.add_argument(
-        "venv_dir", type=Path, help="Directory in which to create the venv (e.g. .venv)"
+        "venv_dir",
+        type=Path,
+        help="Directory in which to create the venv, such as '.venv'",
     )
-    p.add_argument(
+
+    general_options = p.add_argument_group("General options")
+    general_options.add_argument(
         "--clean",
         action=argparse.BooleanOptionalAction,
         help="If the venv directory already exists, clear it and start fresh",
     )
-    p.add_argument(
+    general_options.add_argument(
         "--disable-cache",
         action=argparse.BooleanOptionalAction,
         help="Disables the pip cache through the --no-cache-dir option",
+    )
+
+    install_options = p.add_argument_group("Install options")
+    install_options.add_argument(
+        "--packages",
+        type=str,
+        help="List of packages to install, including any extras or explicit versions",
+    )
+    index_group = install_options.add_mutually_exclusive_group()
+    # TODO(#1036): add "auto" mode here that infers the index from the version?
+    # TODO(#1036): Default to nightly?
+    index_group.add_argument(
+        "--index-name",
+        type=str,
+        choices=["nightly", "dev"],
+        help="Shorthand name for an index to use with 'pip install --index-url='",
+    )
+    index_group.add_argument(
+        "--index-url",
+        type=str,
+        help="Full URL for a release index to use with 'pip install --index-url='",
+    )
+    # TODO(#1036): Enumerate possible options here (hardcode or scrape) and
+    #              help the user make a choice
+    install_options.add_argument(
+        "--index-subdir",
+        "--index-subdirectory",
+        type=str,
+        help="Index subdirectory, such as 'gfx110X-dgpu'",
     )
 
     args = p.parse_args(argv)
@@ -114,6 +185,10 @@ def main(argv: list[str]):
     # Validate arguments.
     if args.venv_dir.exists() and not args.venv_dir.is_dir():
         p.error(f"venv_dir '{args.venv_dir}' exists and is not a directory")
+    if args.packages and not (args.index_name or args.index_url):
+        p.error("If --packages is set, one of --index-name or --index-url must be set")
+    if args.packages and not args.index_subdir:
+        p.error("If --packages is set, --index-subdir must be set")
 
     run(args)
 
