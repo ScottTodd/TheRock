@@ -103,6 +103,11 @@ def main(argv: list[str]):
         action=argparse.BooleanOptionalAction,
         help="If the venv directory already exists, clear it and start fresh",
     )
+    p.add_argument(
+        "--disable-cache",
+        action=argparse.BooleanOptionalAction,
+        help="Disables the pip cache through the --no-cache-dir option",
+    )
 
     args = p.parse_args(argv)
 
