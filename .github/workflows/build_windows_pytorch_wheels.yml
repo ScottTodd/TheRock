@@ -59,7 +59,7 @@ permissions:
 
 jobs:
   build_pytorch_wheels:
-    name: Build | ${{ inputs.amdgpu_family }} | Python ${{ inputs.python_version }}
+    name: Build Windows PyTorch Wheels | ${{ inputs.amdgpu_family }} | Python ${{ inputs.python_version }}
     runs-on: ${{ github.repository_owner == 'ROCm' && 'azure-windows-scale-rocm' || 'windows-2022' }}
     env:
       CHECKOUT_ROOT: C:/src
@@ -162,7 +162,7 @@ jobs:
           python ./build_tools/third_party/s3_management/manage.py ${{ inputs.s3_subdir }}/${{ inputs.amdgpu_family }}
 
   test_pytorch_wheels:
-    name: Test | ${{ inputs.amdgpu_family }} | Python ${{ inputs.python_version }}
+    name: Test | ${{ inputs.amdgpu_family }} | ${{ inputs.test_runs_on }}
     if: ${{ inputs.test_runs_on != '' }}
     needs: [build_pytorch_wheels]
     uses: ./.github/workflows/test_pytorch_wheels.yml
