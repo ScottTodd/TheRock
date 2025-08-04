@@ -1,4 +1,4 @@
-From 07e9a462576394bd0ea707cfbadf879ac8c144f3 Mon Sep 17 00:00:00 2001
+From bd7e19e1e8352c5325795e3e5d33c8e8dc71c4b6 Mon Sep 17 00:00:00 2001
 From: Scott Todd <scott.todd0@gmail.com>
 Date: Mon, 30 Jun 2025 11:38:17 -0700
 Subject: [PATCH 16/16] Move rocm_sdk preload ahead of DLL loading, add

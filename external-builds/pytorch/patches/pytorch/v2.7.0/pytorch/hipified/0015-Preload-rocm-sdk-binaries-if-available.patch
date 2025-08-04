@@ -1,7 +1,7 @@
-From 4e33fd6dc6a02b9f609f354e2310b84947c8d384 Mon Sep 17 00:00:00 2001
+From ece740b6a81ed7f6a4fd559b25bd86e15fba35b3 Mon Sep 17 00:00:00 2001
 From: Stella Laurenzo <stellaraccident@gmail.com>
 Date: Tue, 1 Apr 2025 18:49:42 -0700
-Subject: [PATCH 15/15] Preload rocm-sdk binaries if available.
+Subject: [PATCH 15/16] Preload rocm-sdk binaries if available.
 
 Signed-off-by: Mika Laitio <mika.laitio@amd.com>
 ---
@@ -56,5 +56,5 @@ index a531f80bae..a14be9b00a 100644
  
  def _register_device_module(device_type, module):
 -- 
-2.43.0
+2.47.1.windows.2
 

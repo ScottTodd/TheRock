@@ -1,7 +1,7 @@
-From da2601c551f87a5869f2df292ec47bcc2652318d Mon Sep 17 00:00:00 2001
+From b62a455f5342e77bed4264996cdc1148607e59fb Mon Sep 17 00:00:00 2001
 From: ikalinic <ilija.kalinic@amd.com>
 Date: Tue, 8 Apr 2025 16:18:11 +0000
-Subject: [PATCH 10/14] Include AOTriton dependent sources in Windows build
+Subject: [PATCH 10/16] Include AOTriton dependent sources in Windows build
  (#150521)
 
 Includes ATen native transformers hipified sources in ROCm+Windows build. This was removed due to Trinton not being available on Windows, but this causes further linker errors. Setting `USE_FLASH_ATTENTION=0` and `USE_MEM_EFF_ATTENTION=0` during the build will mitigate the missing headers, but also not cause any linker errors, so we will use this approach for now.
@@ -13,7 +13,7 @@ Approved by: https://github.com/jeffdaily
  1 file changed, 2 insertions(+), 6 deletions(-)
 
 diff --git a/aten/src/ATen/CMakeLists.txt b/aten/src/ATen/CMakeLists.txt
-index 67322e8f56e..74e464dda49 100644
+index 67322e8f56..74e464dda4 100644
 --- a/aten/src/ATen/CMakeLists.txt
 +++ b/aten/src/ATen/CMakeLists.txt
 @@ -382,12 +382,11 @@ endif()

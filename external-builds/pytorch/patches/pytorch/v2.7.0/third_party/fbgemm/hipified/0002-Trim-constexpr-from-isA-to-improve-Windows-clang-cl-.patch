@@ -1,4 +1,4 @@
-From a61d115e37c922fb89f9900954292767c4bb4d17 Mon Sep 17 00:00:00 2001
+From 81989bf2ece351d7d0a41dc90a95813d066148f5 Mon Sep 17 00:00:00 2001
 From: Scott <scott.todd0@gmail.com>
 Date: Tue, 27 May 2025 13:46:50 -0700
 Subject: [PATCH 2/2] Trim constexpr from isA to improve Windows clang-cl

@@ -1,8 +1,7 @@
-From 3a588f0eba74652c6284221d5883240d40cef729 Mon Sep 17 00:00:00 2001
+From 4c5b42735573d3fb2f4fc60a48e4355a16560dbb Mon Sep 17 00:00:00 2001
 From: Scott Todd <scott.todd0@gmail.com>
 Date: Wed, 21 May 2025 20:26:52 +0000
-Subject: [PATCH 12/14] [ROCm][Windows] Run hipcc with compatibility flags.
- (#153986)
+Subject: [PATCH 12/16] Run hipcc with compatibility flags. (#153986)
 
 See also https://github.com/ROCm/TheRock/issues/590. Including the `-Wno-ignored-attributes` flag here avoids 700MB of log warning spam while compiling and the `-fms-extensions` seems beneficial to include: https://clang.llvm.org/docs/MSVCCompatibility.html.
 
@@ -19,7 +18,7 @@ Co-authored-by: Aaryaman Vasishta <jem456.vasishta@gmail.com>
  2 files changed, 7 insertions(+)
 
 diff --git a/caffe2/CMakeLists.txt b/caffe2/CMakeLists.txt
-index b32c71c8bd6..e76e05c1255 100644
+index b32c71c8bd..e76e05c125 100644
 --- a/caffe2/CMakeLists.txt
 +++ b/caffe2/CMakeLists.txt
 @@ -1699,6 +1699,10 @@ if(USE_ROCM)
@@ -34,7 +33,7 @@ index b32c71c8bd6..e76e05c1255 100644
    hip_include_directories(${Caffe2_HIP_INCLUDE})
  
 diff --git a/cmake/Dependencies.cmake b/cmake/Dependencies.cmake
-index be45936a8ea..4f6b2e4837c 100644
+index be45936a8e..4f6b2e4837 100644
 --- a/cmake/Dependencies.cmake
 +++ b/cmake/Dependencies.cmake
 @@ -1065,6 +1065,9 @@ if(USE_ROCM)
@@ -48,5 +47,5 @@ index be45936a8ea..4f6b2e4837c 100644
      add_definitions(-DROCM_VERSION=${ROCM_VERSION_DEV_INT})
      add_definitions(-DTORCH_HIP_VERSION=${TORCH_HIP_VERSION})
 -- 
-2.45.1.windows.1
+2.47.1.windows.2
 
