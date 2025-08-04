@@ -37,10 +37,18 @@ on:
   workflow_dispatch:
     inputs:
       amdgpu_family:
-        required: true
-        type: string
+        type: choice
+        options:
+          - gfx110X-dgpu
+          - gfx1151
+          - gfx120X-all
+          - gfx94X-dcgpu
+          - gfx950-dcgpu
+        default: gfx94X-dcgpu
       test_runs_on:
+        description: The runner label to use for tests. Leave this empty to skip testing.
         type: string
+        default: linux-mi325-1gpu-ossci-rocm
       python_version:
         required: true
         type: string

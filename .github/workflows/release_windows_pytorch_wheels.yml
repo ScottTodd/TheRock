@@ -26,10 +26,18 @@ on:
   workflow_dispatch:
     inputs:
       amdgpu_family:
-        required: true
-        type: string
+        type: choice
+        options:
+          - gfx110X-dgpu
+          - gfx1151
+          - gfx120X-all
+          - gfx94X-dcgpu
+          - gfx950-dcgpu
+        default: gfx1151
       test_runs_on:
+        description: The runner label to use for tests. Leave this empty to skip testing.
         type: string
+        default: windows-strix-halo-gpu-rocm
       release_type:
         description: The type of release to build ("nightly", or "dev")
         type: string
