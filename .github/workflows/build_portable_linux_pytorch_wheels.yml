@@ -49,7 +49,7 @@ on:
         description: |
           The runner label to use for tests. Leave this empty to skip testing.
           See available options for each associated family at
-          https://github.com/ROCm/TheRock/blob/main/build_tools/github_actions/amdgpu_family_matrix.py
+          <a href="https://github.com/ROCm/TheRock/blob/main/build_tools/github_actions/amdgpu_family_matrix.py">amdgpu_family_matrix.py</a>
         type: string
         default: linux-mi325-1gpu-ossci-rocm
       python_version:
