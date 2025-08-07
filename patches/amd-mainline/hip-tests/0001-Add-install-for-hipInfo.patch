@@ -1,0 +1,25 @@
+From 12d71dcbc17facfde89a4e22d11873527c1439d6 Mon Sep 17 00:00:00 2001
+From: Scott Todd <scott.todd0@gmail.com>
+Date: Thu, 7 Aug 2025 15:49:03 -0700
+Subject: [PATCH] Add install for hipInfo.
+
+---
+ samples/1_Utils/hipInfo/CMakeLists.txt | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/samples/1_Utils/hipInfo/CMakeLists.txt b/samples/1_Utils/hipInfo/CMakeLists.txt
+index 1ae1a40c..667cab7b 100644
+--- a/samples/1_Utils/hipInfo/CMakeLists.txt
++++ b/samples/1_Utils/hipInfo/CMakeLists.txt
+@@ -75,6 +75,8 @@ if (WIN32 AND HIPINFO_INTERNAL_BUILD)
+      install(FILES ${PROJECT_BINARY_DIR}/hipInfo.exe DESTINATION .)
+ endif()
+ 
++install(TARGETS hipInfo DESTINATION ${CMAKE_INSTALL_BINDIR})
++
+ if(TARGET build_utils)
+ add_dependencies(build_utils hipInfo)
+ endif()
+-- 
+2.45.1.windows.1
+

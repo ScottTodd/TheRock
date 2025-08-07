@@ -160,13 +160,12 @@ if(THEROCK_ENABLE_HIP_RUNTIME)
       EXTERNAL_SOURCE_DIR "hip-tests/samples/1_Utils/hipInfo"
       BACKGROUND_BUILD
       CMAKE_ARGS
-        "-Dhip_DIR=${CMAKE_BINARY_DIR}/core/clr/dist/lib/cmake/hip"
-        "-DCMAKE_PREFIX_PATH=${CMAKE_BINARY_DIR}/core/clr/dist/lib/cmake/hip"
         "-DCMAKE_CXX_COMPILER=${CMAKE_BINARY_DIR}/core/clr/dist/bin/hipcc.bat"
         "-DCMAKE_CXX_LINKER=${CMAKE_BINARY_DIR}/core/clr/dist/bin/hipcc.bat"
-        "-DCMAKE_BUILD_TYPE=Release"
         "-DHIP_PLATFORM=amd"
       BUILD_DEPS
+        hip-clr
+      RUNTIME_DEPS
         hip-clr
     )
     therock_cmake_subproject_glob_c_sources(hipInfo SUBDIRS .)
