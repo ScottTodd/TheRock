@@ -165,7 +165,6 @@ if(THEROCK_ENABLE_HIP_RUNTIME)
       BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/hipInfo"
       BACKGROUND_BUILD
       CMAKE_ARGS
-        "-DHIP_PLATFORM=amd"
         "-DHIP_TESTS_DIR=${THEROCK_ROCM_SYSTEMS_SOURCE_DIR}/projects/hip-tests"
       RUNTIME_DEPS
         hip-clr
