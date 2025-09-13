@@ -12,11 +12,11 @@ import csv
 import os
 import sys
 from collections import defaultdict
-from datetime import datetime
+from pathlib import Path
 
 
-def run_git_command(command, repo_path):
-    """Run a git command and return the output."""
+def run_git_command(command: list[str], repo_path: Path):
+    """Runs a git command and return the output."""
     try:
         result = subprocess.run(
             command, cwd=repo_path, capture_output=True, text=True, check=True
@@ -28,8 +28,8 @@ def run_git_command(command, repo_path):
         return None
 
 
-def get_commit_history(repo_path, start_commit="HEAD"):
-    """Get list of commits from start_commit walking back through history."""
+def get_commit_history(repo_path: Path, start_commit="HEAD"):
+    """Gets a list of commits from start_commit walking back through history."""
     command = ["git", "rev-list", "--first-parent", start_commit]
     output = run_git_command(command, repo_path)
 
@@ -39,26 +39,26 @@ def get_commit_history(repo_path, start_commit="HEAD"):
     return output.split("\n") if output else []
 
 
-def get_commit_info(commit_hash, repo_path):
-    """Get commit information (date, message, author)."""
-    command = ["git", "show", "--format=%ai|%s|%an", "--no-patch", commit_hash]
+def get_commit_date(commit_hash: str, repo_path: Path):
+    """Gets the commit date as 'YYYY-MM-DD HH:MM:SS' in the local timemzone."""
+    command = [
+        "git",
+        "show",
+        "--format=%ad",
+        "--date=iso-local",
+        "--no-patch",
+        commit_hash,
+    ]
     output = run_git_command(command, repo_path)
 
     if output is None:
-        return None, None, None
+        return None
 
-    parts = output.split("|", 2)
-    if len(parts) >= 3:
-        date_str = parts[0]
-        message = parts[1]
-        author = parts[2]
-        return date_str, message, author
-
-    return None, None, None
+    return output[:20]
 
 
 def count_patch_files_at_commit(commit_hash, repo_path, target_dir):
-    """Count .patch files in subdirectories at a specific commit."""
+    """Counts .patch files in subdirectories at a specific commit."""
     # Get list of all files at this commit under target_dir
     command = ["git", "ls-tree", "-r", "--name-only", commit_hash, target_dir]
     output = run_git_command(command, repo_path)
@@ -91,18 +91,22 @@ def main():
         description="Count .patch files in git history by subdirectory"
     )
     parser.add_argument(
-        "root_dir", help="Root directory path to analyze (relative to repo root)"
+        "root_dir",
+        type=Path,
+        help="Root directory path to analyze (relative to repo root)",
     )
     parser.add_argument(
         "--start-commit", default="HEAD", help="Starting commit (default: HEAD)"
     )
     parser.add_argument(
         "--output",
+        type=Path,
         default="patch_history.csv",
         help="Output CSV file (default: patch_history.csv)",
     )
     parser.add_argument(
         "--repo-path",
+        type=Path,
         default=".",
         help="Path to git repository (default: current directory)",
     )
@@ -110,7 +114,7 @@ def main():
     args = parser.parse_args()
 
     # Verify we're in a git repository
-    if not os.path.exists(os.path.join(args.repo_path, ".git")):
+    if not (args.repo_path / ".git").exists():
         print(f"Error: {args.repo_path} does not appear to be a git repository")
         sys.exit(1)
 
@@ -135,8 +139,8 @@ def main():
         if i % 50 == 0:  # Progress indicator
             print(f"  Progress: {i}/{len(commits)} commits")
 
-        # Get commit info
-        date_str, message, author = get_commit_info(commit_hash, args.repo_path)
+        # Get commit date
+        date_str = get_commit_date(commit_hash, args.repo_path)
         if date_str is None:
             continue
 
@@ -152,11 +156,12 @@ def main():
             {
                 "commit": commit_hash,
                 "date": date_str,
-                "message": message[:100],  # Truncate long messages
-                "author": author,
                 "counts": patch_counts,
             }
         )
+
+    # Flip to show older commits first and recent commits last
+    commit_data.reverse()
 
     print(f"Analysis complete! Found {len(all_subdirs)} subdirectories")
 
@@ -167,7 +172,7 @@ def main():
     print(f"Writing results to {args.output}")
     with open(args.output, "w", newline="", encoding="utf-8") as csvfile:
         # Create headers
-        fieldnames = ["commit_hash", "date", "author", "message"] + sorted_subdirs
+        fieldnames = ["commit_hash", "date"] + sorted_subdirs
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
         writer.writeheader()
@@ -176,8 +181,6 @@ def main():
             row = {
                 "commit_hash": commit_info["commit"],
                 "date": commit_info["date"],
-                "author": commit_info["author"],
-                "message": commit_info["message"],
             }
 
             # Add counts for each subdirectory (0 if not present)
