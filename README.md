@@ -90,6 +90,7 @@ python -m venv .venv
 pip install -r requirements.txt
 
 # Download submodules and apply patches
+# Note that dvc is used for pulling large files
 python ./build_tools/fetch_sources.py
 ```
 
@@ -172,7 +173,7 @@ Further flags allow to build components with specific features enabled.
 
 > [!NOTE]
 > Building components with MPI support, currently requires MPI to be
-> pre-installed until [issue #128](https://github.com/ROCm/TheRock/issues/128)
+> pre-installed until [issue #1284](https://github.com/ROCm/TheRock/issues/1284)
 > is resolved.
 
 ### CMake build usage
