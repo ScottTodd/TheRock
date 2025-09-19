@@ -118,6 +118,7 @@ import shutil
 import shlex
 import subprocess
 import sys
+import sysconfig
 import tempfile
 import textwrap
 
@@ -591,6 +592,37 @@ def copy_msvc_libomp_to_torch_lib(pytorch_dir: Path):
     shutil.copy2(omp_path, target_lib)
 
 
+def copy_iomp_to_torch_lib(pytorch_dir: Path):
+    # When USE_OPENMP is set (it is by default), torch_cpu.dll depends on OpenMP.
+    #
+    # Typically implementations of OpenMP are:
+    #   * Intel OpenMP, `libiomp`, which PyTorch upstream uses
+    #   * MSVC OpenMP, `libomp140`, which is available but we don't want to use
+    #   * (?) LLVM OpenMP (https://openmp.llvm.org/)?
+    #
+    # Torch's CMake build selects which OpenMP to use in `FindOpenMP.cmake`,
+    # then the relevant .dll files must be copied into the torch/lib/ folder or
+    # torch will fail to initialize. This feels like something that could be
+    # handled upstream as part of the centralized setup.py and/or CMake build
+    # processes, but given the varied scripts and build workflows upstream and
+    # multiple choices for where to source an implementation, we handle it here.
+
+    # Note: this requires the build environment run either
+    #   * `pip install mkl-static mkl-include`
+    #   * `pip install intel-openmp`
+    bin_dir = Path(sysconfig.get_path("data")) / "Library" / "bin"
+    omp_dll_name = "libiomp5md.dll"
+    omp_dll_path = bin_dir / omp_dll_name
+    if not omp_dll_path.exists():
+        raise FileNotFoundError(
+            f"Did not find '{omp_dll_name}' under '{bin_dir}', can't copy libiomp to torch lib"
+        )
+
+    target_lib = pytorch_dir / "torch" / "lib"
+    print(f"Copying libiomp from '{omp_dll_path}' to '{target_lib}'")
+    shutil.copy2(omp_dll_path, target_lib)
+
+
 def do_build_pytorch(
     args: argparse.Namespace,
     pytorch_dir: Path,
@@ -627,7 +659,8 @@ def do_build_pytorch(
 
     # Windows-specific settings.
     if is_windows:
-        copy_msvc_libomp_to_torch_lib(pytorch_dir)
+        # copy_msvc_libomp_to_torch_lib(pytorch_dir)
+        copy_iomp_to_torch_lib(pytorch_dir)
 
         use_flash_attention = (
             "1" if args.enable_pytorch_flash_attention_windows else "0"
@@ -645,6 +678,11 @@ def do_build_pytorch(
                 #     static_assert(has_same_arg_types<func1_t>::value, "func1_t has the same argument types");
                 # We may want to fix that and other issues to then enable building tests.
                 "BUILD_TEST": "0",
+                # TODO: derive these portably... maybe these? try outside of venv
+                # Path(sysconfig.get_path("data")) / "opt" / "compiler" / "include"
+                # Path(sysconfig.get_path("data")) / "Library" / "lib"
+                "CMAKE_INCLUDE_PATH": "D:/projects/TheRock/external-builds/pytorch/3.12.venv/opt/compiler/include",
+                "CMAKE_LIBRARY_PATH": "D:/projects/TheRock/external-builds/pytorch/3.12.venv/Library/lib",
             }
         )
 
