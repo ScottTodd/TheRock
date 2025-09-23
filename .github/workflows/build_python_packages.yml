@@ -21,6 +21,11 @@ on:
           - gfx94X-dcgpu
           - gfx950-dcgpu
         default: gfx1151
+      # TODO: actual version here, see code in release_windows_packages.yml
+      #   install_requires=['rocm==ADHOCBUILD', 'rocm-sdk-core==ADHOCBUILD']
+      #   extras_require={'libraries': ['rocm-sdk-libraries-gfx1151==ADHOCBUILD'], 'devel': ['rocm-sdk-devel==ADHOCBUILD']}
+      #   Found packages: ['rocm_sdk', 'rocm_sdk.tests']
+      #   error in rocm setup command: 'extras_require' must be a dictionary whose values are strings or lists of strings containing valid project/version requirement specifiers.
       package_version:
         type: string
         default: "ADHOCBUILD"
@@ -61,6 +66,10 @@ jobs:
       #     python-version: '3.12'
 
       # TODO: fork what's needed instead of using this. Too much cruft.
+      #   1. set up python
+      #   2. (optional) create venv
+      #   3. install deps (setuptools)
+      #   4. fetch artifacts (no flatten)
       - name: Run setup test environment workflow
         uses: './.github/actions/setup_test_environment'
         with:
@@ -71,6 +80,7 @@ jobs:
           FETCH_ARTIFACT_ARGS: ""
           IS_PR_FROM_FORK: ${{ github.event.pull_request.head.repo.fork }}
 
+      # TODO: minimial deps (setuptools?)
       - name: Install requirements
         run: |
           pip install -r requirements.txt
