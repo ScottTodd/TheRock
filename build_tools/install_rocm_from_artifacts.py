@@ -134,7 +134,7 @@ def retrieve_artifacts_by_run_id(args):
         args.amdgpu_family,
         "--output-dir",
         str(args.output_dir),
-        "--flatten",
+        # "--flatten",
     ]
     if args.base_only:
         argv.append("--base")
