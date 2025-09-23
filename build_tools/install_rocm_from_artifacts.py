@@ -140,6 +140,7 @@ def retrieve_artifacts_by_run_id(args):
         argv.append("--base")
     else:
         argv.append("--all")
+    log(f"Calling fetch_artifacts_main with args: [{', '.join(argv)}]")
     fetch_artifacts_main(argv)
 
     log(f"Retrieved artifacts for run ID {run_id}")
