@@ -71,6 +71,11 @@ jobs:
           FETCH_ARTIFACT_ARGS: ""
           IS_PR_FROM_FORK: ${{ github.event.pull_request.head.repo.fork }}
 
+      - name: Install requirements
+        run: |
+          pip install -r requirements.txt
+          pip freeze
+
       - name: Build Python Packages
         run: |
           python ./build_tools/build_python_packages.py \
