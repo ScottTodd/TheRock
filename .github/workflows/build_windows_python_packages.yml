@@ -76,7 +76,8 @@ jobs:
       - name: Sanity check Python packages
         run: |
           piprepo build "${{ env.PACKAGES_DIR }}/dist"
-          pip install rocm[devel]==${{ inputs.package_version }} --extra-index-url "${{ env.PACKAGES_DIR }}/dist/simple"
+          pip install rocm[libraries,devel]==${{ inputs.package_version }} \
+            --extra-index-url "${{ env.PACKAGES_DIR }}/dist/simple"
           rocm-sdk test
 
       # TODO: upload packages to artifacts S3 bucket and/or a dedicated Python packages bucket
