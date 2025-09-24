@@ -84,7 +84,7 @@ jobs:
         run: |
           python ./build_tools/fetch_artifacts.py \
             --run-id=${{ env.ARTIFACT_RUN_ID }} \
-            --target=${{ env.AMDGPU_FAMILIES }} \
+            --target=${{ inputs.amdgpu_family }} \
             --output-dir=${{ env.ARTIFACTS_DIR }} \
             --all
 
