@@ -51,6 +51,7 @@ jobs:
       - name: Install Python requirements
         run: pip install boto3 packaging piprepo setuptools
 
+      # TODO: skip fetching test and dbg artifacts?
       - name: Fetch artifacts
         env:
           IS_PR_FROM_FORK: ${{ github.event.pull_request.head.repo.fork }}
@@ -58,20 +59,24 @@ jobs:
           python ./build_tools/fetch_artifacts.py \
             --run-id=${{ env.ARTIFACT_RUN_ID }} \
             --target=${{ inputs.amdgpu_family }} \
-            --output-dir=${{ env.ARTIFACTS_DIR }} \
+            --output-dir="${{ env.ARTIFACTS_DIR }}" \
             --all
 
       - name: Build Python packages
         run: |
           python ./build_tools/build_python_packages.py \
-            --artifact-dir=${{ env.ARTIFACTS_DIR }} \
-            --dest-dir=${{ env.PACKAGES_DIR }} \
+            --artifact-dir="${{ env.ARTIFACTS_DIR }}" \
+            --dest-dir="${{ env.PACKAGES_DIR }}" \
             --version=${{ inputs.package_version }}
+
+      - name: Inspect Python packages
+        run: |
+          ls -la "${{ env.PACKAGES_DIR }}"
 
       - name: Sanity check Python packages
         run: |
-          piprepo build ${{ env.PACKAGES_DIR }}
-          pip install rocm[devel]==${{ inputs.package_version }} --extra-index-url ${{ env.PACKAGES_DIR }}/simple
+          piprepo build "${{ env.PACKAGES_DIR }}"
+          pip install "rocm[devel]"==${{ inputs.package_version }} --extra-index-url "${{ env.PACKAGES_DIR }}/simple"
           rocm-sdk test
 
       # TODO: upload packages to artifacts S3 bucket and/or a dedicated Python packages bucket
