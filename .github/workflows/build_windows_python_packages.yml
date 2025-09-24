@@ -38,8 +38,8 @@ jobs:
     runs-on: ${{ github.repository_owner == 'ROCm' && 'azure-windows-scale-rocm' || 'windows-2022' }}
     env:
       ARTIFACT_RUN_ID: "${{ inputs.artifact_run_id != '' && inputs.artifact_run_id || github.run_id }}"
-      ARTIFACTS_DIR: "./artifacts"
-      PACKAGES_DIR: "./packages"
+      ARTIFACTS_DIR: "${{ github.workspace }}/artifacts"
+      PACKAGES_DIR: "${{ github.workspace }}/packages"
     defaults:
       run:
         shell: bash
@@ -71,7 +71,7 @@ jobs:
       - name: Sanity check Python packages
         run: |
           piprepo build ${{ env.PACKAGES_DIR }}
-          pip install rocm[devel]==${{ inputs.package_version }} --extra-index-url ${{ env.PACKAGES_DIR }}
+          pip install rocm[devel]==${{ inputs.package_version }} --extra-index-url ${{ env.PACKAGES_DIR }}/simple
           rocm-sdk test
 
       # TODO: upload packages to artifacts S3 bucket and/or a dedicated Python packages bucket
