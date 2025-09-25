@@ -51,7 +51,6 @@ jobs:
       - name: Install Python requirements
         run: pip install boto3 packaging piprepo setuptools
 
-      # TODO: skip fetching test and dbg artifacts?
       - name: Fetch artifacts
         env:
           IS_PR_FROM_FORK: ${{ github.event.pull_request.head.repo.fork }}
@@ -60,7 +59,7 @@ jobs:
             --run-id=${{ env.ARTIFACT_RUN_ID }} \
             --target=${{ inputs.amdgpu_family }} \
             --output-dir="${{ env.ARTIFACTS_DIR }}" \
-            --all
+            _dev_ _lib_
 
       - name: Build Python packages
         run: |
