@@ -5,7 +5,7 @@ on:
     inputs:
       artifact_run_id:
         type: string
-        default: "17865324892" # TODO: revert back to empty string after testing
+        default: "17865324892" # TODO: default to the most recent successful run (using a script)
       amdgpu_family:
         type: choice
         options:
@@ -51,6 +51,7 @@ jobs:
       - name: Install Python requirements
         run: pip install boto3 packaging piprepo setuptools
 
+      # Note: we could fetch "all" artifacts if we wanted to include more files
       - name: Fetch artifacts
         env:
           IS_PR_FROM_FORK: ${{ github.event.pull_request.head.repo.fork }}
