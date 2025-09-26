@@ -52,7 +52,10 @@ jobs:
       #     python-version: '3.12'
 
       - name: Install Python requirements
-        run: pip install boto3 packaging piprepo setuptools
+        run: |
+          pip install -r requirements.txt
+          pip install boto3 packaging piprepo setuptools
+          pip freeze
 
       # Note: we could fetch "all" artifacts if we wanted to include more files
       - name: Fetch artifacts
