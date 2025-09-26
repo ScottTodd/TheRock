@@ -118,7 +118,8 @@ def retrieve_bucket_info() -> tuple[str, str]:
     # github_repository = os.getenv("GITHUB_REPOSITORY", "ROCm/TheRock")
     # is_pr_from_fork = os.getenv("IS_PR_FROM_FORK", "false") == "true"
     github_repository = "ROCm/TheRock"
-    is_pr_from_fork = "true"
+    # is_pr_from_fork = True
+    is_pr_from_fork = False
 
     owner, repo_name = github_repository.split("/")
     external_repo = (
