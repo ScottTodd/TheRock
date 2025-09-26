@@ -94,7 +94,7 @@ jobs:
       - name: Sanity check Python packages
         run: |
           piprepo build "${{ env.PACKAGES_DIR }}/dist"
-          pip install rocm[devel]==${{ inputs.package_version }} \
+          pip install rocm[libraries,devel]==${{ inputs.package_version }} \
             --extra-index-url "${{ env.PACKAGES_DIR }}/dist/simple/"
           rocm-sdk test
 
