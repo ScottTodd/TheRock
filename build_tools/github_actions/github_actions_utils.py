@@ -79,6 +79,11 @@ def gha_set_output(vars: Mapping[str, str | Path]):
     with open(step_output_file, "a") as f:
         f.writelines(f"{k}={str(v)}" + "\n" for k, v in vars.items())
 
+    with open(step_output_file, "r") as f:
+        _log("\nGITHUB_OUTPUT contents:")
+        for line in f.readlines():
+            _log(line)
+
 
 def gha_append_step_summary(summary: str):
     """Appends a string to the GitHub Actions job summary.
