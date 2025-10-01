@@ -1,0 +1,89 @@
+name: Release - Windows
+
+# Release workflow for a single GPU family.
+
+# TODO: remove plural from all the "amdgpu_families" variables
+
+on:
+  workflow_call:
+    inputs:
+      amdgpu_families:
+        type: string
+      rocm_package_version:
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build_windows_artifacts:
+    name: Build Artifacts
+    if: ${{ inputs.use_prebuilt_artifacts == 'false' }}
+    uses: ./.github/workflows/build_windows_artifacts.yml
+    secrets: inherit
+    with:
+      package_version: ${{ inputs.rocm_package_version }}
+      amdgpu_families: ${{ inputs.amdgpu_families }}
+    permissions:
+      contents: read
+      id-token: write
+
+  # TODO: run tests?
+
+  build_windows_python_packages:
+    needs: [build_windows_artifacts]
+    name: Build Python
+    uses: ./.github/workflows/build_windows_python_packages.yml
+    with:
+      amdgpu_family: ${{ inputs.amdgpu_families }}
+      package_version: ${{ inputs.rocm_package_version }}
+
+  # TODO: move to a standalone workflow?
+  #       or put the code in build_*_artifacts.yml?
+  publish_windows_tarballs:
+    name: Publish tarballs
+    needs: [build_windows_artifacts]
+    runs-on: ${{ github.repository_owner == 'ROCm' && 'azure-windows-scale-rocm' || 'windows-2022' }}
+    permissions:
+      contents: read
+      id-token: write # For AWS S3 upload
+    defaults:
+      run:
+        shell: bash
+    env:
+      DIST_DIR: ${{ github.workspace }}/dist/rocm
+      DIST_ARCHIVE: ${{ github.workspace }}/therock-dist-windows-${{ inputs.amdgpu_families }}-${{ inputs.rocm_package_version }}.tar.gz"
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        with:
+          python-version: '3.12'
+
+      - name: Install Python requirements
+        run: pip install boto3 packaging piprepo setuptools
+
+      - name: Fetch artifacts and flatten into dist folder
+        run: |
+          python ./build_tools/fetch_artifacts.py \
+            --run-id=${{ github.run_id }} \
+            --target=${{ inputs.amdgpu_families }} \
+            --output-dir="${{ env.DIST_DIR }}" \
+            --flatten
+
+      - name: Compress dist folder
+        run: |
+          cd ${{ env.DIST_DIR }}
+          echo "Compressing ${{ env.DIST_ARCHIVE }}"
+          tar cfz "${{ env.DIST_ARCHIVE }}" --force-local .
+
+      - name: Configure AWS Credentials
+        if: ${{ github.repository_owner == 'ROCm' }}
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
+        with:
+          aws-region: us-east-2
+          role-to-assume: arn:aws:iam::692859939525:role/therock-${{ env.RELEASE_TYPE }}-releases
+
+      - name: Upload dist to staging S3
+        if: ${{ github.repository_owner == 'ROCm' }}
+        run: |
+          aws s3 cp ${{ env.DIST_ARCHIVE }} s3://${{ env.S3_BUCKET_TAR }}
