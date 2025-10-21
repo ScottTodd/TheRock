@@ -7,6 +7,7 @@ of bootstrapping, we are including it inline for the moment.
 import importlib.util
 import os
 import subprocess
+from pathlib import Path
 
 
 CACHED_TARGET_FAMILY: str | None = None
