@@ -43,7 +43,7 @@ list(APPEND _blas_subproject_names hipBLAS-common)
 ##############################################################################
 
 if(WIN32)
-  set(_enable_rocRoller "OFF")
+  set(_enable_rocRoller "ON")
 else()
   set(_enable_rocRoller "ON")
 endif()
