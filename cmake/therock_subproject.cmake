@@ -670,8 +670,7 @@ function(therock_cmake_subproject_activate target_name)
     OUTPUT_STRIP_TRAILING_WHITESPACE
   )
   file(TO_CMAKE_PATH "${_pytest_root}" _pytest_root)  # Normalize \ on Windows
-  # string(APPEND _init_contents "set(Pytest_ROOT \"${_pytest_root}\")\n")
-  string(APPEND _init_contents "set(Pytest_ROOT \"D:/projects/TheRock/.venv/share/Pytest/cmake\")\n")
+  string(APPEND _init_contents "set(Pytest_ROOT \"${_pytest_root}\")\n")
 
   # Process dependencies. We process runtime deps first so that they take precedence
   # over build deps (first wins). Both come from the dist directory because if
