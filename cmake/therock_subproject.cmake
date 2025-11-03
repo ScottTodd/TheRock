@@ -15,6 +15,7 @@ set_property(GLOBAL PROPERTY THEROCK_DEFAULT_CMAKE_VARS
   CMAKE_PROGRAM_PATH
   CMAKE_PLATFORM_NO_VERSIONED_SONAME
   Python3_EXECUTABLE
+  PYTEST_EXECUTABLE
   Python3_FIND_VIRTUALENV
   THEROCK_SOURCE_DIR
   THEROCK_BINARY_DIR
@@ -656,6 +657,22 @@ function(therock_cmake_subproject_activate target_name)
   foreach(_var_name ${_mirror_cmake_vars})
     string(APPEND _init_contents "set(${_var_name} \"@${_var_name}@\" CACHE STRING \"\" FORCE)\n")
   endforeach()
+
+  # Some projects use pytest_cmake. When a Python venv is used, this needs
+  #   `-DPytest_ROOT=$(python -m pytest_cmake --cmake-dir)`
+  # https://python-cmake.github.io/pytest-cmake/integration.html#finding-configuration
+  # TODO: also set PYTEST_EXECUTABLE based on Python3_EXECUTABLE somehow?
+  #       Contribute a search hint to https://github.com/python-cmake/pytest-cmake/blob/main/cmake/FindPytest.cmake#L24 ?
+  execute_process(
+    OUTPUT_VARIABLE _pytest_root
+    COMMAND "${Python3_EXECUTABLE}" -m pytest_cmake --cmake-dir
+    COMMAND_ERROR_IS_FATAL ANY
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  file(TO_CMAKE_PATH "${_pytest_root}" _pytest_root)  # Normalize \ on Windows
+  # string(APPEND _init_contents "set(Pytest_ROOT \"${_pytest_root}\")\n")
+  string(APPEND _init_contents "set(Pytest_ROOT \"D:/projects/TheRock/.venv/share/Pytest/cmake\")\n")
+
   # Process dependencies. We process runtime deps first so that they take precedence
   # over build deps (first wins). Both come from the dist directory because if
   # build tools are needed from them, only the dist dir is guaranteed to have
