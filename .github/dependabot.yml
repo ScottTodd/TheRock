@@ -10,3 +10,11 @@ updates:
       github-actions:
         patterns:
           - "*"
+
+  # rocm-systems submodule
+  - package-ecosystem: "gitsubmodule"
+    directory: "/"
+    allow:
+    - dependency-name: "rocm-systems"
+    schedule:
+      interval: "daily"
