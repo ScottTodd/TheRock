@@ -138,7 +138,9 @@ def gha_send_request(url: str) -> object:
                 f"Received unexpected status code: {response.status}. Please verify the URL or check GitHub API status {response.status}."
             )
 
-        return json.loads(response.read().decode("utf-8"))
+        response = response.read().decode("utf-8")
+        print("response:\n\n" + response + "\n\n")
+        return json.loads(response)
 
 
 def gha_query_workflow_run_information(github_repository: str, workflow_run_id: str):
