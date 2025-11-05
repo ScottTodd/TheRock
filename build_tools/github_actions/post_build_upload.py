@@ -2,14 +2,18 @@
 
 """
 Usage:
-post_build_upload.py [-h] [--build-dir BUILD_DIR] --artifact-group ARTIFACT_GROUP [--run-id RUN_ID] [--upload | --no-upload]
+post_build_upload.py [-h]
+  --artifact-group ARTIFACT_GROUP
+  [--build-dir BUILD_DIR]
+  [--run-id RUN_ID]
+  [--upload | --no-upload]
 
 This script runs after building TheRock, where this script does:
-1. Create log archives
-2. Create log index files
-3. (optional) upload artifacts
-4. (optional) upload logs
-5. (optional) add links to GitHub job summary
+  1. Create log archives
+  2. Create log index files
+  3. (optional) upload artifacts
+  4. (optional) upload logs
+  5. (optional) add links to GitHub job summary
 
 In the case that a CI build fails, this step will always upload available logs and artifacts.
 
@@ -25,7 +29,7 @@ import shlex
 import shutil
 import subprocess
 import sys
-from functools import lru_cache  # <-- added
+from functools import lru_cache
 
 THEROCK_DIR = Path(__file__).resolve().parent.parent.parent
 PLATFORM = platform.system().lower()
@@ -44,10 +48,6 @@ def log(*args):
 def exec(cmd: list[str], cwd: Path):
     log(f"++ Exec [{cwd}]$ {shlex.join(cmd)}")
     subprocess.run(cmd, check=True)
-
-
-def is_windows():
-    return platform.system().lower() == "windows"
 
 
 def check_aws_cli_available():
@@ -110,16 +110,16 @@ def index_log_files(build_dir: Path, artifact_group: str):
         log(
             f"[INFO] Found '{log_dir}' directory. Indexing '*.log' and '*.tar.gz' files..."
         )
-        subprocess.run(
+        exec(
             [
-                "python",
+                sys.executable,
                 str(indexer_path),
                 log_dir.as_posix(),  # unnamed path arg in front of -f
                 "-f",
                 "*.log",
                 "*.tar.gz",  # accepts nargs! Take care not to consume path
             ],
-            check=True,
+            cwd=Path.cwd(),
         )
     else:
         log(f"[WARN] Log directory '{log_dir}' not found. Skipping indexing.")
@@ -139,22 +139,20 @@ def index_log_files(build_dir: Path, artifact_group: str):
         log(f"[WARN] '{index_file}' not found. Skipping link rewrite.")
 
 
-def create_index_file(args: argparse.Namespace):
-    build_dir = args.build_dir / "artifacts"
-    log(f"Creating index file at {str(build_dir / 'index.html')}")
+def index_artifact_files(build_dir: Path):
+    artifacts_dir = build_dir / "artifacts"
+    log(f"Creating index file at {str(artifacts_dir / 'index.html')}")
 
     indexer_args = argparse.Namespace()
     indexer_args.filter = ["*.tar.xz*"]
     indexer_args.output_file = "index.html"
     indexer_args.verbose = False
     indexer_args.recursive = False
-    process_dir(build_dir, indexer_args)
+    process_dir(artifacts_dir, indexer_args)
 
 
-def upload_artifacts(args: argparse.Namespace, bucket_uri: str):
+def upload_artifacts(artifact_group: str, build_dir: Path, bucket_uri: str):
     log("Uploading artifacts to S3")
-    build_dir = args.build_dir
-    artifact_group = args.artifact_group
 
     # Uploading artifacts to S3 bucket
     cmd = [
@@ -248,20 +246,17 @@ def upload_manifest_to_s3(run_id: str, artifact_group: str, build_dir: Path):
     run_aws_cp(manifest, dest, content_type="application/json")
 
 
-def upload_build_summary(args):
+def upload_build_summary(run_id: str, artifact_group: str, build_dir: Path):
     external_repo_path, bucket = get_bucket_info_cached()
-    run_id = args.run_id
     bucket_url = (
         f"https://{bucket}.s3.amazonaws.com/{external_repo_path}{run_id}-{PLATFORM}"
     )
     log(f"Adding links to job summary to bucket {bucket}")
-    build_dir = args.build_dir
-    artifact_group = args.artifact_group
 
     log_url = f"{bucket_url}/logs/{artifact_group}/index.html"
     gha_append_step_summary(f"[Build Logs]({log_url})")
 
-    if os.path.exists(build_dir / "artifacts" / "index.html"):
+    if (build_dir / "artifacts" / "index.html").exists():
         artifact_url = f"{bucket_url}/index-{artifact_group}.html"
         gha_append_step_summary(f"[Artifacts]({artifact_url})")
     else:
@@ -289,16 +284,20 @@ def run(args):
     log("------------------")
     index_log_files(args.build_dir, args.artifact_group)
 
+    log(f"Indexing artifact files in {str(args.build_dir)}")
+    log("------------------")
+    index_artifact_files(args.build_dir)
+
     if args.upload:
         check_aws_cli_available()
-        log("Upload build artifacts")
-        log("----------------------")
+
         external_repo_path, bucket = get_bucket_info_cached()
         run_id = args.run_id
         bucket_uri = f"s3://{bucket}/{external_repo_path}{run_id}-{PLATFORM}"
 
-        create_index_file(args)
-        upload_artifacts(args, bucket_uri)
+        log("Upload build artifacts")
+        log("----------------------")
+        upload_artifacts(args.artifact_group, args.build_dir, bucket_uri)
 
         log("Upload log")
         log("----------")
@@ -316,17 +315,17 @@ def run(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Post Build Upload steps")
     parser.add_argument(
-        "--build-dir",
-        type=Path,
-        default=Path(os.getenv("BUILD_DIR", "build")),
-        help="Build directory containing logs (default: 'build' or $BUILD_DIR)",
-    )
-    parser.add_argument(
         "--artifact-group",
         type=str,
         default=os.getenv("ARTIFACT_GROUP"),
         required=True,
         help="Artifact group to upload (default: $ARTIFACT_GROUP)",
+    )
+    parser.add_argument(
+        "--build-dir",
+        type=Path,
+        default=Path(os.getenv("BUILD_DIR", "build")),
+        help="Build directory containing logs (default: 'build' or $BUILD_DIR)",
     )
     parser.add_argument("--run-id", type=str, help="GitHub run ID of this workflow run")
     is_ci = str2bool(os.getenv("CI", "false"))
