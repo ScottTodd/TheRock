@@ -8,6 +8,7 @@ from pathlib import Path
 import tempfile
 from packaging.version import Version
 from pkginfo import Wheel
+import platform
 import subprocess
 import urllib
 
@@ -27,7 +28,7 @@ def checkPromotedFileNames(dir_path: Path, platform: str) -> tuple[bool, str]:
             "torchaudio-2.7.1a0+rocm7.9.0-cp312-cp312-linux_x86_64.whl",
             "torchvision-0.22.1+rocm7.9.0-cp312-cp312-linux_x86_64.whl",
         ]
-    else:
+    elif platform == "windows":
         expected_promoted_pkgs = [
             "rocm-7.9.0.tar.gz",
             "rocm_sdk_core-7.9.0-py3-none-win_amd64.whl",
@@ -36,7 +37,6 @@ def checkPromotedFileNames(dir_path: Path, platform: str) -> tuple[bool, str]:
             "torch-2.9.0+rocm7.9.0-cp312-cp312-win_amd64.whl",
             "torchaudio-2.9.0+rocm7.9.0-cp312-cp312-win_amd64.whl",
             "torchvision-0.24.0+rocm7.9.0-cp312-cp312-win_amd64.whl",
-            "pytorch_triton_rocm-3.3.1+rocm7.9.0-cp312-cp312-linux_x86_64.whl",
         ]
 
     # get files and strip path from them
@@ -81,7 +81,7 @@ def checkAllWheelsSameVersion(
 def checkInstallation(dir_path: Path) -> tuple[bool, str]:
     try:
         packages = list(dir_path.glob("*"))
-        proc = subprocess.run(
+        subprocess.run(
             ["pip", "install"] + packages,
             capture_output=True,
             encoding="utf-8",
@@ -269,15 +269,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--platform",
         help="OS platform: either 'linux' (default) or 'win'",
-        default="linux",
+        default="linux" if platform.system() != "Windows" else "windows",
     )
     p = parser.parse_args(sys.argv[1:])
     platform = p.platform
-    # make tmpdir
     with tempfile.TemporaryDirectory(prefix=f"PromoteRcToFinalTest-{platform}-") as tmp:
         tmp_dir = Path(tmp)
         if platform == "linux":
-            # download some version
             URL = "https://rocm.prereleases.amd.com/whl/gfx94X-dcgpu/"
             version = Version("7.9.0rc1")
             expected_version = Version("7.9.0")
@@ -291,7 +289,7 @@ if __name__ == "__main__":
                 "torchaudio-2.7.1a0+rocm7.9.0rc1-cp312-cp312-linux_x86_64.whl",
                 "torchvision-0.22.1+rocm7.9.0rc1-cp312-cp312-linux_x86_64.whl",
             ]
-        else:  # win
+        elif platform == "windows":
             URL = "https://rocm.prereleases.amd.com/whl/gfx1151/"
             version = Version("7.9.0rc1")
             expected_version = Version("7.9.0")
@@ -303,8 +301,9 @@ if __name__ == "__main__":
                 "torch-2.9.0+rocm7.9.0rc1-cp312-cp312-win_amd64.whl",
                 "torchaudio-2.9.0+rocm7.9.0rc1-cp312-cp312-win_amd64.whl",
                 "torchvision-0.24.0+rocm7.9.0rc1-cp312-cp312-win_amd64.whl",
-                "pytorch_triton_rocm-3.3.1+rocm7.9.0rc1-cp312-cp312-linux_x86_64.whl",
             ]
+        else:
+            raise ValueError(f"Unknown platform '{platform}'")
 
         print(
             f"Testing promotion of {version} to {expected_version} on platform {platform}"
