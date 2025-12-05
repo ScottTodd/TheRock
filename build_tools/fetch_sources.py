@@ -96,7 +96,6 @@ def get_enabled_projects(args) -> List[str]:
 def run(args):
     projects = get_enabled_projects(args)
     submodule_paths = [get_submodule_path(project) for project in projects]
-    # TODO(scotttodd): Check for git lfs?
     update_args = []
     if args.depth:
         update_args += ["--depth", str(args.depth)]
@@ -108,7 +107,7 @@ def run(args):
         update_args += ["--remote"]
     if args.update_submodules:
         exec(
-            ["git", "submodule", "update", "--init"]
+            ["git", "submodule", "update", "--init", "--recursive"]
             + update_args
             + ["--"]
             + submodule_paths,
