@@ -632,8 +632,97 @@ Add features based on user feedback.
 
 - [ ] Persistent storage backend (SQLite or remote DB)
 - [ ] Parallel artifact pre-fetching
-- [ ] CI integration for automated regression detection
 - [ ] Support for Windows artifacts
+- [ ] Centralized artifact database abstraction
+
+## Future Work: CI-Orchestrated Bisection
+
+The initial implementation focuses on local bisection where artifacts are downloaded and tested on a developer's machine. A complementary approach would leverage our existing CI infrastructure to perform bisection workflows entirely in the cloud.
+
+### Concept
+
+Rather than downloading artifacts locally, the bisect orchestrator would launch GitHub workflow runs that build/test each bisected commit. The orchestrator monitors these workflow runs and reports results back to the bisect algorithm.
+
+### Benefits
+
+**Infrastructure Reuse:**
+
+- Logs viewable online in the same format as regular CI runs
+- Optimizations to bootstrapping and project slicing propagate to all workflows
+- Leverage existing build and test machine pools
+
+**Parallelism:**
+
+- Multiple commits tested simultaneously across available runners
+- No local hardware constraints (GPU availability, OS requirements)
+- Natural distribution of workload
+
+**Consistency:**
+
+- Tests run in same environment as CI
+- No "works locally but fails in CI" divergence
+- Artifact caching already optimized
+
+### Challenges
+
+**Orchestration Complexity:**
+
+- Bisect orchestrator must launch workflows and listen for completion events
+- The orchestrator itself could be a workflow (workflow launching workflows)
+- Job status monitoring across many parallel runs
+- Handling workflow failures, timeouts, runner unavailability
+
+**Feedback Loop:**
+
+- Longer iteration time compared to local testing
+- Debugging harder without local access
+- Cost implications of spinning up many CI runs
+
+**Resource Contention:**
+
+- Could starve regular PR/commit CI of runners
+- Need quotas or dedicated runner pools
+- Queue wait times impact bisection speed
+
+### Integration Strategy
+
+The CI-based approach complements rather than replaces local bisection:
+
+1. **Local bisection** (Phase 1-3): Fast iteration, easy debugging, developer-driven
+1. **CI-based bisection** (Future): Automated regression detection, no hardware constraints, production-scale testing
+
+Both modes can share:
+
+- Workflow mapper (commit→run_id mapping)
+- Artifact discovery logic
+- Test script conventions
+
+The orchestrator becomes a strategy pattern:
+
+- `LocalBisectStrategy`: Downloads artifacts, runs tests locally
+- `CIBisectStrategy`: Launches workflows, monitors status, aggregates results
+
+### Open Design Questions
+
+1. How does the CI orchestrator communicate bisect state?
+
+   - GitHub Actions outputs?
+   - Artifacts containing bisect state?
+   - External state service?
+
+1. How to prevent resource exhaustion?
+
+   - Dedicated runner labels for bisection?
+   - Queue depth limits?
+   - Cost budgets?
+
+1. How to surface results to developers?
+
+   - Workflow summary with bisect progress?
+   - Integration with GitHub issue comments?
+   - Separate bisect dashboard?
+
+This approach is valuable for automated regression detection and production-scale testing but requires significant infrastructure work. It's positioned as future work after local bisection is proven.
 
 ## Open Questions
 
