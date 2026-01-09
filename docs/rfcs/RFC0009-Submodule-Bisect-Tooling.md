@@ -34,30 +34,30 @@ These artifacts represent a valuable resource for bisection: they allow testing 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ User provides:                                              │
-│  - Repository (rocm-libraries / rocm-systems)              │
-│  - Commit range (good_commit..bad_commit)                  │
-│  - Test script to run                                      │
-│  - GPU family (e.g., gfx942, gfx110X-dgpu)                │
+│  - Repository (rocm-libraries / rocm-systems)               │
+│  - Commit range (good_commit..bad_commit)                   │
+│  - Test script to run                                       │
+│  - GPU family (e.g., gfx942, gfx110X-dgpu)                  │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ bisect_submodule.py orchestrator                           │
-│  1. Query GitHub API for workflow runs in commit range     │
-│  2. Build commit→run_id mapping                            │
-│  3. Initialize git bisect                                  │
-│  4. For each bisect step:                                  │
-│     a. Checkout commit                                     │
-│     b. Find corresponding workflow run_id                  │
-│     c. Download artifacts (via fetch_artifacts.py)        │
-│     d. Setup test environment                              │
-│     e. Run user test script                                │
-│     f. Report result to git bisect                         │
+│ bisect_submodule.py orchestrator                            │
+│  1. Query GitHub API for workflow runs in commit range      │
+│  2. Build commit→run_id mapping                             │
+│  3. Initialize git bisect                                   │
+│  4. For each bisect step:                                   │
+│     a. Checkout commit                                      │
+│     b. Find corresponding workflow run_id                   │
+│     c. Download artifacts (via fetch_artifacts.py)          │
+│     d. Setup test environment                               │
+│     e. Run user test script                                 │
+│     f. Report result to git bisect                          │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ Output: Identified commit that introduced regression       │
+│ Output: Identified commit that introduced regression        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -161,10 +161,10 @@ Similar to IREE's approach, use `~/.therock/bisect/` for caching:
 
 ```
 ~/.therock/bisect/
-├── cache.db                    # SQLite DB mapping commits to run_ids
+├── cache.db                   # SQLite DB mapping commits to run_ids
 ├── rocm-libraries/
 │   └── <commit_sha>/
-│       ├── artifacts/          # Downloaded .tar.xz files
+│       ├── artifacts/         # Downloaded .tar.xz files
 │       ├── rocm/              # Extracted artifact tree
 │       └── metadata.json      # Run info, download timestamp
 └── rocm-systems/
