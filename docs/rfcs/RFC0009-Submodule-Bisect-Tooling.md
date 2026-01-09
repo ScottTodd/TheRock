@@ -63,19 +63,20 @@ These artifacts represent a valuable resource for bisection: they allow testing 
 
 ## Detailed Design
 
-### 1. Core Components
+### 1. High-Level Components
 
-#### `build_tools/bisect/bisect_submodule.py`
+The system is composed of four main components that work together to enable artifact-based bisection:
 
-Main entry point that orchestrates the bisection process.
+#### Bisect Orchestrator (`bisect_submodule.py`)
 
-**Key Functions:**
+Main entry point that drives the bisection process. Coordinates between git bisect, the workflow mapper, artifact fetcher, and test executor.
 
-- `query_workflow_runs(repo, commit_range)` → List of (commit_sha, run_id, workflow_url) tuples
-- `setup_bisect_workspace(cache_dir)` → Create isolated workspace for artifacts/venvs
-- `run_bisect(repo, good_commit, bad_commit, test_script, **options)` → Execute bisection
-- `fetch_and_setup_artifacts(run_id, artifact_group, cache_dir)` → Download and prepare artifacts
-- `execute_test(test_script, artifact_dir, env_vars)` → Run user test and capture result
+**Responsibilities:**
+
+- Parse CLI arguments and validate inputs
+- Initialize bisect workspace
+- Execute bisect loop (checkout → fetch artifacts → setup env → run test → report)
+- Handle errors and cleanup
 
 **CLI Interface:**
 
@@ -91,77 +92,183 @@ python build_tools/bisect/bisect_submodule.py \
   [--workflow therock-ci-linux.yml]
 ```
 
-#### `build_tools/bisect/setup_test_env.py`
+#### Workflow Mapper (`workflow_mapper.py`)
 
-Creates an isolated environment for testing artifacts.
+Maps git commits to GitHub workflow runs. Provides an abstract interface for querying commit→run_id mappings.
+
+**Key Challenges:**
+
+- Not every commit has a workflow run (CI disabled, rate-limited, failed to start)
+- Need efficient GitHub API querying with pagination
+- Must handle missing mappings gracefully
+
+**Core Interface:**
+
+```python
+class WorkflowMapper:
+    """Maps commits to workflow runs using pluggable storage."""
+
+    def get_run_id(self, commit_sha: str) -> str | None:
+        """Get workflow run_id for a commit, or None if no run exists."""
+
+    def load_commit_range(self, good_commit: str, bad_commit: str) -> None:
+        """Load workflow runs for commits in the given range."""
+
+    def get_run_metadata(self, run_id: str) -> dict[str, Any]:
+        """Get metadata about a workflow run (url, conclusion, timestamp, etc)."""
+```
+
+**Storage Abstraction:**
+
+The mapper uses a pluggable storage backend for caching mappings:
+
+```python
+class RunMappingStore(Protocol):
+    """Storage interface for commit→run_id mappings."""
+
+    def get(self, repo: str, commit_sha: str) -> WorkflowRun | None:
+        """Retrieve mapping for a commit."""
+
+    def set(self, repo: str, commit_sha: str, run: WorkflowRun) -> None:
+        """Store mapping for a commit."""
+
+    def get_all(self, repo: str) -> dict[str, WorkflowRun]:
+        """Get all cached mappings for a repository."""
+```
+
+This abstraction allows us to start simple (in-memory) and evolve to persistent storage (SQLite, remote DB) without changing the orchestrator.
+
+#### Artifact Manager (`artifact_manager.py`)
+
+Downloads and caches artifacts, integrating with existing `fetch_artifacts.py`.
 
 **Responsibilities:**
 
-- Extract downloaded artifact archives to temporary directory
+- Download artifacts for a given run_id
+- Extract archives to cache directory
+- Manage cache lifecycle (check existence, cleanup)
+- Reuse existing `fetch_artifacts.py` infrastructure
+
+**Interface:**
+
+```python
+class ArtifactManager:
+    def get_artifact_dir(self, run_id: str, artifact_group: str) -> Path:
+        """Get artifact directory, downloading if necessary."""
+
+    def is_cached(self, run_id: str) -> bool:
+        """Check if artifacts are already cached."""
+
+    def cleanup_old_artifacts(self, keep_latest_n: int = 10) -> None:
+        """Remove old cached artifacts to save disk space."""
+```
+
+#### Test Environment Setup (`setup_test_env.py`)
+
+Prepares an isolated environment for running tests against downloaded artifacts.
+
+**Responsibilities:**
+
 - Set up environment variables (PATH, LD_LIBRARY_PATH, ROCM_PATH, etc.)
-- Optionally create Python venv with downloaded wheels
-- Prepend artifact bin/ directories to PATH
+- Locate artifact binaries and libraries
+- Create Python venv if needed (for wheel testing)
 
 **Interface:**
 
 ```python
 def setup_test_environment(artifact_dir: Path, amdgpu_family: str) -> dict[str, str]:
     """Returns environment variables to use for test execution."""
-    env = os.environ.copy()
-    env["ROCM_PATH"] = str(artifact_dir / "rocm")
-    env["PATH"] = f"{artifact_dir}/rocm/bin:{env['PATH']}"
-    env["LD_LIBRARY_PATH"] = f"{artifact_dir}/rocm/lib:{env.get('LD_LIBRARY_PATH', '')}"
-    env["THEROCK_BIN_DIR"] = str(artifact_dir / "rocm/bin")
-    env["AMDGPU_FAMILIES"] = amdgpu_family
-    return env
 ```
 
-#### `build_tools/bisect/workflow_mapper.py`
+### 2. Component Interaction
 
-Maps git commits to GitHub workflow runs.
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ bisect_submodule.py (Orchestrator)                               │
+│                                                                   │
+│  ┌────────────────────────────────────────────────────────────┐  │
+│  │ Bisect Loop                                                │  │
+│  │                                                            │  │
+│  │  1. git checkout <commit>                                 │  │
+│  │  2. mapper.get_run_id(commit) → run_id or None            │  │
+│  │  3. artifact_mgr.get_artifact_dir(run_id) → Path          │  │
+│  │  4. setup_test_env(artifact_dir) → env_vars               │  │
+│  │  5. subprocess.run(test_script, env=env_vars) → exit_code │  │
+│  │  6. git bisect good/bad/skip based on exit_code           │  │
+│  └────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────┘
+                    │                    │
+        ┌───────────┘                    └───────────┐
+        ▼                                            ▼
+┌──────────────────────┐                  ┌─────────────────────┐
+│ WorkflowMapper       │                  │ ArtifactManager     │
+│                      │                  │                     │
+│ ┌─────────────────┐  │                  │ ┌─────────────────┐ │
+│ │ RunMappingStore │  │                  │ │ fetch_artifacts │ │
+│ │  (pluggable)    │  │                  │ │     .py         │ │
+│ └─────────────────┘  │                  │ └─────────────────┘ │
+│         │            │                  │         │           │
+│         ▼            │                  │         ▼           │
+│ ┌─────────────────┐  │                  │ ┌─────────────────┐ │
+│ │ GitHub API      │  │                  │ │ Cache Directory │ │
+│ └─────────────────┘  │                  │ └─────────────────┘ │
+└──────────────────────┘                  └─────────────────────┘
+```
 
-**Key Challenges:**
+### 3. Implementation Details
 
-- Not every commit has a workflow run (e.g., CI might be disabled, rate-limited, or failed to start)
-- Need to handle commits that should be skipped in bisection
-- Need to query GitHub API efficiently (pagination, caching)
+#### Initial Storage: In-Memory RunMappingStore
 
-**Interface:**
+Start with a simple in-memory dictionary for the `RunMappingStore`:
 
 ```python
-class WorkflowMapper:
-    def __init__(self, repo: str, workflow_file: str, cache_dir: Path):
-        self.commit_to_run: dict[str, WorkflowRun] = {}
+@dataclass
+class WorkflowRun:
+    run_id: str
+    commit_sha: str
+    workflow_url: str
+    created_at: str
+    conclusion: str  # success, failure, cancelled, skipped
 
-    def load_workflow_runs(self, commit_range: tuple[str, str]) -> None:
-        """Query GitHub API for workflow runs in commit range."""
 
-    def get_run_id(self, commit_sha: str) -> str | None:
-        """Get workflow run_id for a commit, or None if no run exists."""
+class InMemoryRunStore:
+    """Simple in-memory storage for commit→run_id mappings."""
 
-    def find_nearest_run(self, commit_sha: str, direction: str) -> str | None:
-        """Find nearest commit with a run (for skipping commits)."""
+    def __init__(self) -> None:
+        self._store: dict[tuple[str, str], WorkflowRun] = {}
+
+    def get(self, repo: str, commit_sha: str) -> WorkflowRun | None:
+        return self._store.get((repo, commit_sha))
+
+    def set(self, repo: str, commit_sha: str, run: WorkflowRun) -> None:
+        self._store[(repo, commit_sha)] = run
+
+    def get_all(self, repo: str) -> dict[str, WorkflowRun]:
+        return {commit: run for (r, commit), run in self._store.items() if r == repo}
 ```
 
-**GitHub API Usage:**
+**Benefits:**
 
-```python
-# Query workflow runs for a specific workflow file
-url = f"https://api.github.com/repos/{repo}/actions/workflows/{workflow_file}/runs"
-params = {
-    "branch": "develop",
-    "created": f"{start_date}..{end_date}",
-    "per_page": 100,
-}
-```
+- Simple to implement and test
+- No external dependencies (no SQLite)
+- Easy to reason about
+- Fast lookups
+- Perfect for prototyping and single bisect sessions
 
-### 2. Caching Strategy
+**Limitations:**
 
-Similar to IREE's approach, use `~/.therock/bisect/` for caching:
+- No persistence across runs
+- Not suitable for sharing across processes
+- All data must fit in memory
+
+**Future Migration Path:**
+
+When persistence becomes valuable, implement `SQLiteRunStore` or `RemoteRunStore` with the same protocol interface. The orchestrator and WorkflowMapper don't need to change - just swap the storage backend.
+
+#### Cache Directory Structure
 
 ```
 ~/.therock/bisect/
-├── cache.db                   # SQLite DB mapping commits to run_ids
 ├── rocm-libraries/
 │   └── <commit_sha>/
 │       ├── artifacts/         # Downloaded .tar.xz files
@@ -174,27 +281,7 @@ Similar to IREE's approach, use `~/.therock/bisect/` for caching:
         └── metadata.json
 ```
 
-**Benefits:**
-
-- Avoid re-downloading artifacts for the same commit
-- Persist across multiple bisect runs
-- Can be cleaned up manually if disk space is needed
-
-**Cache DB Schema:**
-
-```sql
-CREATE TABLE workflow_runs (
-    repo TEXT NOT NULL,
-    commit_sha TEXT NOT NULL,
-    run_id INTEGER NOT NULL,
-    workflow_url TEXT,
-    created_at TEXT,
-    conclusion TEXT,  -- success, failure, cancelled, skipped
-    PRIMARY KEY (repo, commit_sha)
-);
-
-CREATE INDEX idx_commit ON workflow_runs(repo, commit_sha);
-```
+**Note:** No `cache.db` in the initial implementation - workflow mappings live in memory during the bisect session. This keeps the initial implementation simple while maintaining the option to add persistence later.
 
 ### 3. Integration with Git Bisect
 
@@ -369,21 +456,25 @@ sys.exit(0)  # Good
    runs = query_workflow_runs(repo, workflow_file, start_date, end_date)
    ```
 
-1. **Build commit→run mapping** by querying commit for each run:
+1. **Build commit→run mapping** and store in RunMappingStore:
 
    ```python
+   store = InMemoryRunStore()
    for run in runs:
        # Each run has a head_sha field
-       commit_to_run[run["head_sha"]] = run["id"]
+       workflow_run = WorkflowRun(
+           run_id=run["id"],
+           commit_sha=run["head_sha"],
+           workflow_url=run["html_url"],
+           created_at=run["created_at"],
+           conclusion=run["conclusion"],
+       )
+       store.set(repo, run["head_sha"], workflow_run)
    ```
 
-1. **Cache results** in SQLite DB to avoid re-querying:
+1. **Future enhancement**: Persistent caching with SQLite or remote database
 
-   ```python
-   # On subsequent runs, only query runs newer than cached data
-   last_cached_date = db.get_latest_cached_date(repo)
-   runs = query_workflow_runs(repo, workflow_file, last_cached_date, "now")
-   ```
+   For the initial implementation, we query the GitHub API once per bisect session. Future implementations can add persistent caching to avoid re-querying across sessions.
 
 ### 7. Error Handling
 
@@ -416,34 +507,133 @@ sys.exit(0)  # Good
 - Delta debugging (minimize failing test case)
 - Regression report generation
 
+## Decisions & Trade-offs
+
+### In-Memory vs Persistent Storage (Phase 1)
+
+**Decision:** Use in-memory `InMemoryRunStore` for initial implementation
+
+**Rationale:**
+
+- Simplifies initial development (no SQLite dependency)
+- Faster iteration during prototyping
+- Still provides abstraction for future migration
+- Single bisect session can query GitHub API once and cache in memory
+
+**Alternatives considered:**
+
+- SQLite from the start: More complexity, harder to test, overkill for prototype
+- No abstraction: Would make future migration harder
+
+### Cache Directory Structure
+
+**Decision:** Use `~/.therock/bisect/<repo>/<commit_sha>/` structure
+
+**Rationale:**
+
+- Commit SHA is more intuitive for debugging
+- Easier to manually inspect cached artifacts
+- Aligns with git workflow (users think in commits, not run IDs)
+
+**Alternatives considered:**
+
+- Using `run_<run_id>`: Less intuitive, harder to correlate with git history
+
+### Bisect Modes: Lightweight vs Heavy
+
+**Challenge:** Super-repo CI workflows (e.g., rocm-systems) build only a subset of ROCm components. Pre-built artifacts may not include the component where the regression occurs (e.g., rocprim test failures when only HIP/runtime are pre-built).
+
+**Decision:** Design for two bisect modes to handle partial artifact coverage
+
+**Mode 1: Lightweight (Repackaging)**
+
+- Download pre-built artifacts and use them directly
+- Repackage ROCm with different component versions
+- No compilation required
+- Use case: Test downstream components against different library versions without rebuilding
+- Example: Test rocprim (from one commit) against HIP runtime (from bisected commits)
+
+**Mode 2: Heavy (Bootstrap + Rebuild)**
+
+- Use `buildctl.py` to bootstrap build directory with available artifacts
+- Build missing components from source
+- Compilation required but faster than full rebuild
+- Use case: Regressions in components not included in pre-built artifacts
+- Example: Bisect rocprim changes where HIP API changes require rocprim rebuild
+
+**Rationale:**
+
+- Flexibility: Support both shallow (library-only) and deep (requires rebuild) regressions
+- Scalability: Lightweight mode enables parallelization on low-powered machines
+- Practicality: Acknowledges real-world artifact coverage gaps
+- Incremental: Can implement lightweight first, add heavy mode later
+
+**Implementation Impact:**
+
+- `ArtifactManager`: Needs download-only mode (Phase 1) and bootstrap mode (Phase 2+)
+- Test scripts: May declare mode requirement via metadata or convention
+- Documentation: Must explain when each mode is appropriate
+
+**Alternatives considered:**
+
+- Full rebuild always: Too expensive, defeats the purpose of using artifacts
+- Lightweight only: Would exclude important use cases with partial artifacts
+- Require complete artifacts: Unrealistic given CI resource constraints
+
 ## Implementation Plan
 
-### Milestone 1: Core Infrastructure (Week 1-2)
+### Phase 1: Prototype & Validation
 
-- [ ] `workflow_mapper.py` - GitHub API integration and caching
+Focus on getting a working prototype with minimal complexity to validate the approach.
+
+**Goals:**
+
+- Prove the concept works end-to-end
+- Identify any architectural issues early
+- Build confidence in the design
+
+**Tasks:**
+
+- [ ] `workflow_mapper.py` - GitHub API integration with `InMemoryRunStore`
+- [ ] `artifact_manager.py` - Basic artifact download and caching
 - [ ] `setup_test_env.py` - Environment setup
-- [ ] Cache directory structure and SQLite schema
-- [ ] Unit tests for core components
+- [ ] `bisect_submodule.py` - Basic orchestrator (manual mode, not git-bisect integration yet)
+- [ ] Cache directory structure
+- [ ] Manual end-to-end test with a known regression
 
-### Milestone 2: Bisect Orchestration (Week 3-4)
+### Phase 2: Git Bisect Integration
 
-- [ ] `bisect_submodule.py` - Main entry point
-- [ ] Git bisect integration
-- [ ] Artifact download and extraction
+Integrate with `git bisect run` for automated bisection.
+
+**Tasks:**
+
+- [ ] Update orchestrator for `git bisect run` compatibility
+- [ ] Exit code handling (0/1/125)
+- [ ] Error handling and retry logic
 - [ ] End-to-end testing with real super-repo commits
 
-### Milestone 3: Documentation & Polish (Week 5)
+### Phase 3: Polish & Documentation
+
+Make the tool production-ready.
+
+**Tasks:**
 
 - [ ] User documentation and examples
 - [ ] Error message improvements
 - [ ] Performance optimizations
+- [ ] Unit tests for core components
 - [ ] Integration with existing TheRock docs
 
-### Milestone 4: CI Integration (Week 6)
+### Phase 4: Enhancements (Future)
 
-- [ ] Add bisect tool to TheRock CI for regression detection
-- [ ] Example workflows for common bisect scenarios
-- [ ] Monitoring and alerting
+Add features based on user feedback.
+
+**Potential Tasks:**
+
+- [ ] Persistent storage backend (SQLite or remote DB)
+- [ ] Parallel artifact pre-fetching
+- [ ] CI integration for automated regression detection
+- [ ] Support for Windows artifacts
 
 ## Open Questions
 
