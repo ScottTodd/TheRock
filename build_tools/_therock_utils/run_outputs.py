@@ -321,6 +321,7 @@ class RunOutputRoot:
         """
         external_repo, bucket = retrieve_bucket_info(
             github_repository=github_repository,
+            workflow_run_id=run_id,
             workflow_run=workflow_run,
         )
         return cls(

@@ -344,12 +344,24 @@ class TestRunOutputRootFactoryMethods(unittest.TestCase):
         )
         self.assertEqual(root.bucket, "custom-bucket")
 
-    @mock.patch("_therock_utils.run_outputs.retrieve_bucket_info")
-    def test_from_workflow_run_main_repo(self, mock_retrieve):
+    def test_from_workflow_run_main_repo(self):
         """Test from_workflow_run for main ROCm/TheRock repo."""
-        mock_retrieve.return_value = ("", "therock-ci-artifacts")
+        # Provide workflow_run dict to avoid API call - this is the standard
+        # pattern since from_workflow_run always passes run_id to retrieve_bucket_info
+        workflow_run = {
+            "id": 12345678901,
+            "head_repository": {"full_name": "ROCm/TheRock"},
+            "updated_at": "2025-12-01T12:00:00Z",  # After bucket cutover date
+            "status": "completed",
+            "html_url": "https://github.com/ROCm/TheRock/actions/runs/12345678901",
+        }
 
-        root = RunOutputRoot.from_workflow_run(run_id="12345678901", platform="linux")
+        root = RunOutputRoot.from_workflow_run(
+            run_id="12345678901",
+            platform="linux",
+            github_repository="ROCm/TheRock",
+            workflow_run=workflow_run,
+        )
 
         self.assertEqual(root.bucket, "therock-ci-artifacts")
         self.assertEqual(root.external_repo, "")
@@ -357,43 +369,69 @@ class TestRunOutputRootFactoryMethods(unittest.TestCase):
         self.assertEqual(root.platform, "linux")
         self.assertEqual(root.prefix, "12345678901-linux")
 
-    @mock.patch("_therock_utils.run_outputs.retrieve_bucket_info")
-    def test_from_workflow_run_fork(self, mock_retrieve):
-        """Test from_workflow_run for fork/external repo."""
-        mock_retrieve.return_value = ("MyOrg-TheRock/", "therock-ci-artifacts-external")
+    def test_from_workflow_run_external_repo(self):
+        """Test from_workflow_run for external repo (non-TheRock)."""
+        workflow_run = {
+            "id": 12345678901,
+            "head_repository": {"full_name": "SomeOrg/SomeRepo"},
+            "updated_at": "2025-12-01T12:00:00Z",
+            "status": "completed",
+            "html_url": "https://github.com/SomeOrg/SomeRepo/actions/runs/12345678901",
+        }
 
-        root = RunOutputRoot.from_workflow_run(run_id="12345678901", platform="windows")
+        root = RunOutputRoot.from_workflow_run(
+            run_id="12345678901",
+            platform="windows",
+            github_repository="SomeOrg/SomeRepo",
+            workflow_run=workflow_run,
+        )
 
         self.assertEqual(root.bucket, "therock-ci-artifacts-external")
-        self.assertEqual(root.external_repo, "MyOrg-TheRock/")
-        self.assertEqual(root.prefix, "MyOrg-TheRock/12345678901-windows")
+        self.assertEqual(root.external_repo, "SomeOrg-SomeRepo/")
+        self.assertEqual(root.prefix, "SomeOrg-SomeRepo/12345678901-windows")
 
-    @mock.patch("_therock_utils.run_outputs.retrieve_bucket_info")
-    def test_from_workflow_run_with_github_repository(self, mock_retrieve):
-        """Test from_workflow_run passes github_repository to retrieve_bucket_info."""
-        mock_retrieve.return_value = ("", "therock-ci-artifacts")
+    def test_from_workflow_run_fork(self):
+        """Test from_workflow_run for fork PR (head_repo != base_repo)."""
+        # Workflow from fork - head_repository differs from github_repository
+        workflow_run = {
+            "id": 12345678901,
+            "head_repository": {"full_name": "SomeUser/TheRock"},  # Fork
+            "updated_at": "2025-12-01T12:00:00Z",
+            "status": "completed",
+            "html_url": "https://github.com/ROCm/TheRock/actions/runs/12345678901",
+        }
 
-        RunOutputRoot.from_workflow_run(
-            run_id="123", platform="linux", github_repository="ROCm/TheRock"
+        root = RunOutputRoot.from_workflow_run(
+            run_id="12345678901",
+            platform="linux",
+            github_repository="ROCm/TheRock",
+            workflow_run=workflow_run,
         )
 
-        mock_retrieve.assert_called_once_with(
-            github_repository="ROCm/TheRock", workflow_run=None
+        self.assertEqual(root.bucket, "therock-ci-artifacts-external")
+        self.assertEqual(root.external_repo, "ROCm-TheRock/")
+        self.assertEqual(root.prefix, "ROCm-TheRock/12345678901-linux")
+
+    def test_from_workflow_run_old_bucket(self):
+        """Test from_workflow_run with old workflow date uses legacy bucket."""
+        workflow_run = {
+            "id": 12345678901,
+            "head_repository": {"full_name": "ROCm/TheRock"},
+            "updated_at": "2025-10-01T12:00:00Z",  # Before bucket cutover date
+            "status": "completed",
+            "html_url": "https://github.com/ROCm/TheRock/actions/runs/12345678901",
+        }
+
+        root = RunOutputRoot.from_workflow_run(
+            run_id="12345678901",
+            platform="linux",
+            github_repository="ROCm/TheRock",
+            workflow_run=workflow_run,
         )
 
-    @mock.patch("_therock_utils.run_outputs.retrieve_bucket_info")
-    def test_from_workflow_run_with_workflow_run_dict(self, mock_retrieve):
-        """Test from_workflow_run passes workflow_run dict to retrieve_bucket_info."""
-        mock_retrieve.return_value = ("", "therock-ci-artifacts")
-        workflow_run = {"id": 123, "repository": {"full_name": "ROCm/TheRock"}}
-
-        RunOutputRoot.from_workflow_run(
-            run_id="123", platform="linux", workflow_run=workflow_run
-        )
-
-        mock_retrieve.assert_called_once_with(
-            github_repository=None, workflow_run=workflow_run
-        )
+        # Old runs use legacy bucket
+        self.assertEqual(root.bucket, "therock-artifacts")
+        self.assertEqual(root.external_repo, "")
 
 
 class TestRunOutputRootImmutability(unittest.TestCase):
