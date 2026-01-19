@@ -383,5 +383,151 @@ class TestRunOutputRootImmutability(unittest.TestCase):
             root.run_id = "modified"
 
 
+class TestRunOutputRootReleaseType(unittest.TestCase):
+    """Tests for RELEASE_TYPE environment variable handling."""
+
+    def setUp(self):
+        """Save and clean environment state."""
+        self._saved_env = {}
+        for key in ["RELEASE_TYPE", "GITHUB_REPOSITORY", "IS_PR_FROM_FORK"]:
+            if key in os.environ:
+                self._saved_env[key] = os.environ[key]
+                del os.environ[key]
+
+    def tearDown(self):
+        """Restore environment state."""
+        for key in ["RELEASE_TYPE", "GITHUB_REPOSITORY", "IS_PR_FROM_FORK"]:
+            if key in os.environ:
+                del os.environ[key]
+        for key, value in self._saved_env.items():
+            os.environ[key] = value
+
+    def test_nightly_release_bucket(self):
+        """Test that RELEASE_TYPE=nightly uses nightly bucket."""
+        os.environ["RELEASE_TYPE"] = "nightly"
+        workflow_run = {
+            "id": 12345678901,
+            "head_repository": {"full_name": "ROCm/TheRock"},
+            "updated_at": "2025-12-01T12:00:00Z",
+            "status": "completed",
+            "html_url": "https://github.com/ROCm/TheRock/actions/runs/12345678901",
+        }
+
+        root = RunOutputRoot.from_workflow_run(
+            run_id="12345678901",
+            platform="linux",
+            github_repository="ROCm/TheRock",
+            workflow_run=workflow_run,
+        )
+
+        self.assertEqual(root.bucket, "therock-nightly-artifacts")
+        self.assertEqual(root.external_repo, "")
+
+    def test_release_bucket(self):
+        """Test that RELEASE_TYPE=release uses release bucket."""
+        os.environ["RELEASE_TYPE"] = "release"
+        workflow_run = {
+            "id": 12345678901,
+            "head_repository": {"full_name": "ROCm/TheRock"},
+            "updated_at": "2025-12-01T12:00:00Z",
+            "status": "completed",
+            "html_url": "https://github.com/ROCm/TheRock/actions/runs/12345678901",
+        }
+
+        root = RunOutputRoot.from_workflow_run(
+            run_id="12345678901",
+            platform="linux",
+            github_repository="ROCm/TheRock",
+            workflow_run=workflow_run,
+        )
+
+        self.assertEqual(root.bucket, "therock-release-artifacts")
+        self.assertEqual(root.external_repo, "")
+
+
+class TestRunOutputRootIntegration(unittest.TestCase):
+    """Integration tests that use real GitHub API calls.
+
+    These tests require GITHUB_TOKEN to be set and make network requests.
+    They verify that from_workflow_run() correctly determines bucket info
+    for known historical workflow runs.
+    """
+
+    @unittest.skipUnless(
+        os.getenv("GITHUB_TOKEN"),
+        "GITHUB_TOKEN not set, skipping integration test",
+    )
+    def test_from_workflow_run_older_bucket(self):
+        """Test workflow run from before bucket cutover uses legacy bucket."""
+        # https://github.com/ROCm/TheRock/actions/runs/18022609292?pr=1597
+        root = RunOutputRoot.from_workflow_run(
+            run_id="18022609292",
+            platform="linux",
+            github_repository="ROCm/TheRock",
+        )
+        self.assertEqual(root.external_repo, "")
+        self.assertEqual(root.bucket, "therock-artifacts")
+
+    @unittest.skipUnless(
+        os.getenv("GITHUB_TOKEN"),
+        "GITHUB_TOKEN not set, skipping integration test",
+    )
+    def test_from_workflow_run_newer_bucket(self):
+        """Test workflow run from after bucket cutover uses new bucket."""
+        # https://github.com/ROCm/TheRock/actions/runs/19680190301
+        root = RunOutputRoot.from_workflow_run(
+            run_id="19680190301",
+            platform="linux",
+            github_repository="ROCm/TheRock",
+        )
+        self.assertEqual(root.external_repo, "")
+        self.assertEqual(root.bucket, "therock-ci-artifacts")
+
+    @unittest.skipUnless(
+        os.getenv("GITHUB_TOKEN"),
+        "GITHUB_TOKEN not set, skipping integration test",
+    )
+    def test_from_workflow_run_fork(self):
+        """Test workflow run from fork uses external bucket with repo prefix."""
+        # https://github.com/ROCm/TheRock/actions/runs/18023442478?pr=1596
+        root = RunOutputRoot.from_workflow_run(
+            run_id="18023442478",
+            platform="linux",
+            github_repository="ROCm/TheRock",
+        )
+        self.assertEqual(root.external_repo, "ROCm-TheRock/")
+        self.assertEqual(root.bucket, "therock-artifacts-external")
+
+    @unittest.skipUnless(
+        os.getenv("GITHUB_TOKEN"),
+        "GITHUB_TOKEN not set, skipping integration test",
+    )
+    def test_from_workflow_run_external_repo_older(self):
+        """Test workflow run from external repo (rocm-libraries) older bucket."""
+        # https://github.com/ROCm/rocm-libraries/actions/runs/18020401326?pr=1828
+        root = RunOutputRoot.from_workflow_run(
+            run_id="18020401326",
+            platform="linux",
+            github_repository="ROCm/rocm-libraries",
+        )
+        self.assertEqual(root.external_repo, "ROCm-rocm-libraries/")
+        self.assertEqual(root.bucket, "therock-artifacts-external")
+
+    @unittest.skipUnless(
+        os.getenv("GITHUB_TOKEN"),
+        "GITHUB_TOKEN not set, skipping integration test",
+    )
+    def test_from_workflow_run_external_repo_newer(self):
+        """Test workflow run from external repo (rocm-libraries) newer bucket."""
+        # https://github.com/ROCm/rocm-libraries/actions/runs/19784318631
+        root = RunOutputRoot.from_workflow_run(
+            run_id="19784318631",
+            platform="linux",
+            github_repository="ROCm/rocm-libraries",
+        )
+        self.assertEqual(root.external_repo, "ROCm-rocm-libraries/")
+        self.assertEqual(root.bucket, "therock-ci-artifacts-external")
+
+
 if __name__ == "__main__":
     unittest.main()

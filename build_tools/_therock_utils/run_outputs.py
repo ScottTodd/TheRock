@@ -82,13 +82,116 @@ Usage
 import os
 import sys
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 import platform as platform_module
 
 # Add build_tools to path for sibling package imports
 sys.path.insert(0, os.fspath(Path(__file__).parent.parent))
 
-from github_actions.github_actions_utils import retrieve_bucket_info
+from github_actions.github_actions_utils import gha_query_workflow_run_by_id
+
+
+def _log(*args, **kwargs):
+    """Log to stdout with flush for CI visibility."""
+    print(*args, **kwargs)
+    sys.stdout.flush()
+
+
+# Cutover date for bucket naming change (TheRock #2046).
+# Workflows before this date used therock-artifacts, after use therock-ci-artifacts.
+_BUCKET_CUTOVER_DATE = datetime.fromisoformat("2025-11-11T16:18:48+00:00")
+
+
+def _retrieve_bucket_info(
+    github_repository: str | None = None,
+    workflow_run_id: str | None = None,
+    workflow_run: dict | None = None,
+) -> tuple[str, str]:
+    """Determine S3 bucket and external_repo prefix for a workflow run.
+
+    This is an internal implementation detail - use RunOutputRoot.from_workflow_run()
+    instead of calling this directly.
+
+    Bucket selection is based on:
+    - Repository (ROCm/TheRock vs external)
+    - Whether the PR is from a fork
+    - RELEASE_TYPE environment variable (nightly, release)
+    - Workflow run date (for legacy bucket compatibility)
+
+    Args:
+        github_repository: Repository in 'owner/repo' format. If None,
+            uses GITHUB_REPOSITORY env var or defaults to 'ROCm/TheRock'.
+        workflow_run_id: Workflow run ID. If provided without workflow_run,
+            fetches workflow data from GitHub API.
+        workflow_run: Workflow run dict from GitHub API. If provided,
+            avoids an API call.
+
+    Returns:
+        Tuple of (external_repo, bucket) where:
+        - external_repo: '' for ROCm/TheRock, or '{owner}-{repo}/' for forks/external
+        - bucket: S3 bucket name
+    """
+    _log("Retrieving bucket info...")
+
+    if github_repository:
+        _log(f"  (explicit) github_repository: {github_repository}")
+    else:
+        github_repository = os.getenv("GITHUB_REPOSITORY", "ROCm/TheRock")
+        _log(f"  (implicit) github_repository: {github_repository}")
+
+    # Fetch workflow_run from API if not provided but workflow_run_id is set
+    if workflow_run is None and workflow_run_id is not None:
+        workflow_run = gha_query_workflow_run_by_id(github_repository, workflow_run_id)
+
+    # Extract metadata from workflow_run if available
+    curr_commit_dt = None
+    if workflow_run is not None:
+        _log(f"  workflow_run_id             : {workflow_run['id']}")
+        head_github_repository = workflow_run["head_repository"]["full_name"]
+        is_pr_from_fork = head_github_repository != github_repository
+        _log(f"  head_github_repository      : {head_github_repository}")
+        _log(f"  is_pr_from_fork             : {is_pr_from_fork}")
+
+        curr_commit_dt = datetime.strptime(
+            workflow_run["updated_at"], "%Y-%m-%dT%H:%M:%SZ"
+        )
+        curr_commit_dt = curr_commit_dt.replace(tzinfo=timezone.utc)
+    else:
+        is_pr_from_fork = os.getenv("IS_PR_FROM_FORK", "false") == "true"
+        _log(f"  (implicit) is_pr_from_fork  : {is_pr_from_fork}")
+
+    owner, repo_name = github_repository.split("/")
+    external_repo = (
+        ""
+        if repo_name == "TheRock" and owner == "ROCm" and not is_pr_from_fork
+        else f"{owner}-{repo_name}/"
+    )
+
+    release_type = os.getenv("RELEASE_TYPE")
+    if release_type:
+        _log(f"  (implicit) RELEASE_TYPE: {release_type}")
+        bucket = f"therock-{release_type}-artifacts"
+    else:
+        if external_repo == "":
+            bucket = "therock-ci-artifacts"
+            if curr_commit_dt and curr_commit_dt <= _BUCKET_CUTOVER_DATE:
+                bucket = "therock-artifacts"
+        elif (
+            repo_name == "therock-releases-internal"
+            and owner == "ROCm"
+            and not is_pr_from_fork
+        ):
+            bucket = "therock-artifacts-internal"
+        else:
+            bucket = "therock-ci-artifacts-external"
+            if curr_commit_dt and curr_commit_dt <= _BUCKET_CUTOVER_DATE:
+                bucket = "therock-artifacts-external"
+
+    _log("Retrieved bucket info:")
+    _log(f"  external_repo: {external_repo}")
+    _log(f"  bucket       : {bucket}")
+    return (external_repo, bucket)
 
 
 @dataclass(frozen=True)
@@ -245,8 +348,8 @@ class RunOutputRoot:
     ) -> "RunOutputRoot":
         """Create from workflow context.
 
-        Uses retrieve_bucket_info() to determine the appropriate S3 bucket
-        and external_repo prefix based on the repository and workflow run.
+        Determines the appropriate S3 bucket and external_repo prefix based
+        on the repository and workflow run metadata.
 
         Args:
             run_id: GitHub Actions workflow run ID.
@@ -254,12 +357,12 @@ class RunOutputRoot:
             github_repository: Repository in 'owner/repo' format. If None,
                 uses GITHUB_REPOSITORY env var or defaults to 'ROCm/TheRock'.
             workflow_run: Optional workflow run dict from GitHub API. If
-                provided, avoids an API call in retrieve_bucket_info().
+                provided, avoids a GitHub API call.
 
         Returns:
             RunOutputRoot configured for the workflow run.
         """
-        external_repo, bucket = retrieve_bucket_info(
+        external_repo, bucket = _retrieve_bucket_info(
             github_repository=github_repository,
             workflow_run_id=run_id,
             workflow_run=workflow_run,
