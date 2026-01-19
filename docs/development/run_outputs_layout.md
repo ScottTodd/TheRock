@@ -200,4 +200,4 @@ To add a new output type (e.g., Python packages, native packages, reports):
 | [`build_tools/_therock_utils/run_outputs.py`](/build_tools/_therock_utils/run_outputs.py)                   | `RunOutputRoot` class for path computation    |
 | [`build_tools/_therock_utils/artifact_backend.py`](/build_tools/_therock_utils/artifact_backend.py)         | Storage backend abstraction (S3 or local)     |
 | [`build_tools/github_actions/post_build_upload.py`](/build_tools/github_actions/post_build_upload.py)       | Uploads artifacts, logs, manifests to S3      |
-| [`build_tools/github_actions/github_actions_utils.py`](/build_tools/github_actions/github_actions_utils.py) | `retrieve_bucket_info()` for bucket selection |
+| [`build_tools/github_actions/github_actions_utils.py`](/build_tools/github_actions/github_actions_utils.py) | GitHub API utilities (workflow queries, etc.) |
