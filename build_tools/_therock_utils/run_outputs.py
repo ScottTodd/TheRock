@@ -9,8 +9,6 @@ A "run output" is anything produced by a CI workflow run:
 - Logs (.log files, ninja_logs.tar.gz)
 - Manifests (therock_manifest.json)
 - Reports (build_time_analysis.html, test reports)
-- Python packages (.whl, .tar.gz sdists) [future]
-- Native packages (.deb, .rpm) [future]
 
 Layout Structure
 ----------------
@@ -26,14 +24,8 @@ outputs directory. The structure is:
     │   ├── ninja_logs.tar.gz                     # Ninja timing logs
     │   ├── index.html                            # Log index
     │   └── build_time_analysis.html              # Build timing (Linux)
-    ├── manifests/{artifact_group}/
-    │   └── therock_manifest.json                 # Build manifest
-    ├── python/{artifact_group}/                  # Python packages [future]
-    │   ├── *.whl
-    │   └── *.tar.gz
-    └── packages/{artifact_group}/                # Native packages [future]
-        ├── *.deb
-        └── *.rpm
+    └── manifests/{artifact_group}/
+        └── therock_manifest.json                 # Build manifest
 
 Where:
 - {root} = {external_repo}{run_id}-{platform}
@@ -238,58 +230,6 @@ class RunOutputRoot:
     def manifest_url(self, artifact_group: str) -> str:
         """Public URL for therock_manifest.json."""
         return f"{self.https_url}/manifests/{artifact_group}/therock_manifest.json"
-
-    # -------------------------------------------------------------------------
-    # Python packages (.whl, .tar.gz) [future]
-    # -------------------------------------------------------------------------
-
-    def python_prefix(self, artifact_group: str) -> str:
-        """S3 key prefix for Python packages directory."""
-        return f"{self.prefix}/python/{artifact_group}"
-
-    def python_s3_uri(self, artifact_group: str) -> str:
-        """S3 URI for Python packages directory."""
-        return f"s3://{self.bucket}/{self.python_prefix(artifact_group)}"
-
-    def python_package_s3_key(self, artifact_group: str, filename: str) -> str:
-        """S3 key for a Python package file (.whl or .tar.gz)."""
-        return f"{self.python_prefix(artifact_group)}/{filename}"
-
-    # -------------------------------------------------------------------------
-    # Native packages (.deb, .rpm) [future]
-    # -------------------------------------------------------------------------
-
-    def packages_prefix(self, artifact_group: str) -> str:
-        """S3 key prefix for native packages directory."""
-        return f"{self.prefix}/packages/{artifact_group}"
-
-    def packages_s3_uri(self, artifact_group: str) -> str:
-        """S3 URI for native packages directory."""
-        return f"s3://{self.bucket}/{self.packages_prefix(artifact_group)}"
-
-    def native_package_s3_key(self, artifact_group: str, filename: str) -> str:
-        """S3 key for a native package file (.deb, .rpm)."""
-        return f"{self.packages_prefix(artifact_group)}/{filename}"
-
-    # -------------------------------------------------------------------------
-    # Reports (.html) [future]
-    # -------------------------------------------------------------------------
-
-    def reports_prefix(self, artifact_group: str) -> str:
-        """S3 key prefix for reports directory."""
-        return f"{self.prefix}/reports/{artifact_group}"
-
-    def reports_s3_uri(self, artifact_group: str) -> str:
-        """S3 URI for reports directory."""
-        return f"s3://{self.bucket}/{self.reports_prefix(artifact_group)}"
-
-    def report_s3_key(self, artifact_group: str, filename: str) -> str:
-        """S3 key for a report file (.html)."""
-        return f"{self.reports_prefix(artifact_group)}/{filename}"
-
-    def report_url(self, artifact_group: str, filename: str) -> str:
-        """Public URL for a report file."""
-        return f"{self.https_url}/reports/{artifact_group}/{filename}"
 
     # -------------------------------------------------------------------------
     # Factory methods

@@ -10,8 +10,6 @@ A "run output" is anything produced by a CI workflow run:
 - **Logs** - Build logs, ninja timing logs, log indexes
 - **Manifests** - `therock_manifest.json` describing the build
 - **Reports** - Build time analysis, test reports
-- **Python packages** - `.whl` files (future)
-- **Native packages** - `.deb`, `.rpm` files (future)
 
 There is a 1:1 mapping between a GitHub Actions workflow run ID and a run outputs directory.
 
@@ -46,16 +44,8 @@ Where:
 │   ├── ninja_logs.tar.gz                     # Ninja timing logs
 │   ├── index.html                            # Log index
 │   └── build_time_analysis.html              # Build timing (Linux only)
-├── manifests/{artifact_group}/
-│   └── therock_manifest.json                 # Build manifest
-├── python/{artifact_group}/                  # [future]
-│   ├── *.whl
-│   └── *.tar.gz
-├── packages/{artifact_group}/                # [future]
-│   ├── *.deb
-│   └── *.rpm
-└── reports/{artifact_group}/                 # [future]
-    └── *.html
+└── manifests/{artifact_group}/
+    └── therock_manifest.json                 # Build manifest
 ```
 
 ### Naming Conventions
@@ -158,15 +148,27 @@ local_dir = root.local_path(Path("/tmp/staging"))
 
 ### Available Methods
 
-| Category          | Methods                                                                                               |
-| ----------------- | ----------------------------------------------------------------------------------------------------- |
-| Root paths        | `prefix`, `s3_uri`, `https_url`, `local_path()`                                                       |
-| Artifacts         | `artifact_s3_key()`, `artifact_s3_uri()`, `artifact_https_url()`, `artifact_index_*()`                |
-| Logs              | `logs_prefix()`, `logs_s3_uri()`, `log_file_s3_key()`, `log_index_url()`, `build_time_analysis_url()` |
-| Manifests         | `manifests_prefix()`, `manifest_s3_key()`, `manifest_s3_uri()`, `manifest_url()`                      |
-| Python (future)   | `python_prefix()`, `python_s3_uri()`, `python_package_s3_key()`                                       |
-| Packages (future) | `packages_prefix()`, `packages_s3_uri()`, `native_package_s3_key()`                                   |
-| Reports (future)  | `reports_prefix()`, `reports_s3_uri()`, `report_s3_key()`, `report_url()`                             |
+| Category  | Methods                                                                                               |
+| --------- | ----------------------------------------------------------------------------------------------------- |
+| Root      | `prefix`, `s3_uri`, `https_url`, `local_path()`                                                       |
+| Artifacts | `artifact_s3_key()`, `artifact_s3_uri()`, `artifact_https_url()`, `artifact_index_*()`                |
+| Logs      | `logs_prefix()`, `logs_s3_uri()`, `log_file_s3_key()`, `log_index_url()`, `build_time_analysis_url()` |
+| Manifests | `manifests_prefix()`, `manifest_s3_key()`, `manifest_s3_uri()`, `manifest_url()`                      |
+
+### Adding New Output Types
+
+To add a new output type (e.g., Python packages, native packages, reports):
+
+1. Add methods to `RunOutputRoot` following the existing pattern:
+
+   - `{type}_prefix(artifact_group)` - S3 key prefix
+   - `{type}_s3_uri(artifact_group)` - Full S3 URI
+   - `{type}_s3_key(artifact_group, filename)` - S3 key for specific file
+   - `{type}_url(artifact_group, filename)` - Public HTTPS URL (if applicable)
+
+1. Update the upload script to use the new methods
+
+1. Update this documentation
 
 ## Related Files
 
