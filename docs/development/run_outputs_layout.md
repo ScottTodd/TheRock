@@ -1,6 +1,7 @@
 # CI Run Outputs Layout
 
-This document describes the directory structure for workflow run outputs stored in S3. For information about how build artifacts are created locally, see [artifacts.md](artifacts.md).
+This document describes the directory structure for workflow run outputs stored in S3.
+For information about how build artifacts are created locally, see [artifacts.md](artifacts.md).
 
 ## Overview
 
@@ -8,10 +9,17 @@ A "run output" is anything produced by a CI workflow run:
 
 - **Build artifacts** - `.tar.xz` or `.tar.zst` archives of compiled components
 - **Logs** - Build logs, ninja timing logs, log indexes
-- **Manifests** - `therock_manifest.json` describing the build
+- **Manifests** - `therock_manifest.json` containing source control metadata
 - **Reports** - Build time analysis, test reports
+- *(and other files which may be added later)*
 
-There is a 1:1 mapping between a GitHub Actions workflow run ID and a run outputs directory.
+Each job for a given workflow run uploads its outputs to a central directory and
+there is a 1:1 mapping between a workflow run ID and a run outputs directory.
+
+> [!NOTE]
+> As our current CI/CD system is built on GitHub Actions, we use the "workflow run"
+> and "workflow run id" terminology from GitHub Actions, but this system could also
+> work using a different CI/CD system.
 
 ## S3 Structure
 
@@ -25,12 +33,12 @@ s3://{bucket}/{external_repo}{run_id}-{platform}/
 
 Where:
 
-| Field           | Description                                         | Example                |
-| --------------- | --------------------------------------------------- | ---------------------- |
-| `bucket`        | S3 bucket name                                      | `therock-ci-artifacts` |
-| `external_repo` | Empty for ROCm/TheRock, `{owner}-{repo}/` for forks | \`\`, `MyOrg-TheRock/` |
-| `run_id`        | GitHub Actions workflow run ID                      | `12345678901`          |
-| `platform`      | Build platform                                      | `linux`, `windows`     |
+| Field           | Description                                         | Example                   |
+| --------------- | --------------------------------------------------- | ------------------------- |
+| `bucket`        | S3 bucket name                                      | `therock-ci-artifacts`    |
+| `external_repo` | Empty for ROCm/TheRock, `{owner}-{repo}/` for forks | (empty), `MyOrg-TheRock/` |
+| `run_id`        | GitHub Actions workflow run ID                      | `12345678901`             |
+| `platform`      | Build platform                                      | `linux`, `windows`        |
 
 ### Directory Layout
 
@@ -59,7 +67,8 @@ Where:
 
 ## Multi-Platform / Multi-Group Organization
 
-A single workflow run may produce outputs for multiple platforms and artifact groups. Each platform gets its own root directory:
+A single workflow run may produce outputs for multiple platforms and artifact groups.
+Each platform gets its own root directory:
 
 ```
 s3://therock-ci-artifacts/
@@ -76,11 +85,14 @@ s3://therock-ci-artifacts/
     └── ...
 ```
 
-Multiple CI jobs (different GPU families, build variants) upload to the same run directory, differentiated by `artifact_group` in subdirectory names and index filenames.
+Multiple CI jobs (different GPU families, build variants) upload to the same run
+directory, differentiated by `artifact_group` in subdirectory names and index
+filenames.
 
 ## Fork/External Repository Handling
 
-Builds from forks or external repositories use a different S3 bucket and include a prefix to namespace their outputs:
+Builds from forks or external repositories use a different S3 bucket and include
+a prefix to namespace their outputs:
 
 | Source        | Bucket                          | External Repo Prefix |
 | ------------- | ------------------------------- | -------------------- |
@@ -113,15 +125,17 @@ Example URLs:
 
 ## Using RunOutputRoot
 
-All path computation should go through the `RunOutputRoot` class in `build_tools/_therock_utils/run_outputs.py`. This ensures consistent paths across all tools.
+All path computation should go through the `RunOutputRoot` class in
+`build_tools/_therock_utils/run_outputs.py`. This ensures consistent paths
+across all tools.
 
 ### Basic Usage
 
 ```python
 from _therock_utils.run_outputs import RunOutputRoot
 
-# From CI environment (uses GITHUB_REPOSITORY to determine bucket)
 root = RunOutputRoot.from_workflow_run(
+    github_repository="ROCm/TheRock",  # Or omit to infer from GITHUB_REPOSITORY
     run_id="12345678901",
     platform="linux",
 )
@@ -146,20 +160,11 @@ local_dir = root.local_path(Path("/tmp/staging"))
 # Returns: /tmp/staging/local-test-linux/
 ```
 
-### Available Methods
-
-| Category  | Methods                                                                                               |
-| --------- | ----------------------------------------------------------------------------------------------------- |
-| Root      | `prefix`, `s3_uri`, `https_url`, `local_path()`                                                       |
-| Artifacts | `artifact_s3_key()`, `artifact_s3_uri()`, `artifact_https_url()`, `artifact_index_*()`                |
-| Logs      | `logs_prefix()`, `logs_s3_uri()`, `log_file_s3_key()`, `log_index_url()`, `build_time_analysis_url()` |
-| Manifests | `manifests_prefix()`, `manifest_s3_key()`, `manifest_s3_uri()`, `manifest_url()`                      |
-
 ### Adding New Output Types
 
 To add a new output type (e.g., Python packages, native packages, reports):
 
-1. Add methods to `RunOutputRoot` following the existing pattern:
+1. Add methods to `RunOutputRoot` following the existing patterns:
 
    - `{type}_prefix(artifact_group)` - S3 key prefix
    - `{type}_s3_uri(artifact_group)` - Full S3 URI
@@ -172,9 +177,9 @@ To add a new output type (e.g., Python packages, native packages, reports):
 
 ## Related Files
 
-| File                                                 | Purpose                                       |
-| ---------------------------------------------------- | --------------------------------------------- |
-| `build_tools/_therock_utils/run_outputs.py`          | `RunOutputRoot` class for path computation    |
-| `build_tools/_therock_utils/artifact_backend.py`     | Storage backend abstraction (S3 or local)     |
-| `build_tools/github_actions/post_build_upload.py`    | Uploads artifacts, logs, manifests to S3      |
-| `build_tools/github_actions/github_actions_utils.py` | `retrieve_bucket_info()` for bucket selection |
+| File                                                                                                        | Purpose                                       |
+| ----------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| [`build_tools/_therock_utils/run_outputs.py`](/build_tools/_therock_utils/run_outputs.py)                   | `RunOutputRoot` class for path computation    |
+| [`build_tools/_therock_utils/artifact_backend.py`](/build_tools/_therock_utils/artifact_backend.py)         | Storage backend abstraction (S3 or local)     |
+| [`build_tools/github_actions/post_build_upload.py`](/build_tools/github_actions/post_build_upload.py)       | Uploads artifacts, logs, manifests to S3      |
+| [`build_tools/github_actions/github_actions_utils.py`](/build_tools/github_actions/github_actions_utils.py) | `retrieve_bucket_info()` for bucket selection |
