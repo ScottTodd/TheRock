@@ -166,6 +166,10 @@ class S3Backend(ArtifactBackend):
         self._s3_client = None
 
     @property
+    def base_uri(self) -> str:
+        return self.run_root.s3_uri
+
+    @property
     def bucket(self) -> str:
         return self.run_root.bucket
 
@@ -200,10 +204,6 @@ class S3Backend(ArtifactBackend):
                     config=Config(max_pool_connections=100, signature_version=UNSIGNED),
                 )
         return self._s3_client
-
-    @property
-    def base_uri(self) -> str:
-        return self.run_root.s3_uri
 
     def list_artifacts(self, name_filter: Optional[str] = None) -> List[str]:
         """List S3 artifacts."""
