@@ -176,6 +176,10 @@ class RunOutputRoot:
         """S3 key for the artifact index HTML file."""
         return f"{self.prefix}/index-{artifact_group}.html"
 
+    def artifact_index_s3_uri(self, artifact_group: str) -> str:
+        """S3 URI for the artifact index HTML file (for uploads)."""
+        return f"s3://{self.bucket}/{self.artifact_index_s3_key(artifact_group)}"
+
     def artifact_index_url(self, artifact_group: str) -> str:
         """Public URL for the artifact index HTML file."""
         return f"{self.https_url}/index-{artifact_group}.html"
