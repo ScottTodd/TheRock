@@ -87,9 +87,16 @@ Usage
     local_dir = root.local_path(Path("/tmp/staging"))
 """
 
+import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 import platform as platform_module
+
+# Add build_tools to path for sibling package imports
+sys.path.insert(0, os.fspath(Path(__file__).parent.parent))
+
+from github_actions.github_actions_utils import retrieve_bucket_info
 
 
 @dataclass(frozen=True)
@@ -312,8 +319,6 @@ class RunOutputRoot:
         Returns:
             RunOutputRoot configured for the workflow run.
         """
-        from ..github_actions.github_actions_utils import retrieve_bucket_info
-
         external_repo, bucket = retrieve_bucket_info(
             github_repository=github_repository,
             workflow_run=workflow_run,

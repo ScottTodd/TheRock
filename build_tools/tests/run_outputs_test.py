@@ -344,30 +344,56 @@ class TestRunOutputRootFactoryMethods(unittest.TestCase):
         )
         self.assertEqual(root.bucket, "custom-bucket")
 
-    # Note: from_workflow_run tests are skipped because the method uses a relative
-    # import (from ..github_actions.github_actions_utils) which doesn't work when
-    # running tests outside the package context. The method is tested indirectly
-    # via integration tests in artifact_backend_test.py and post_build_upload usage.
-
-    @unittest.skip("Requires package context for relative import")
-    def test_from_workflow_run_main_repo(self):
+    @mock.patch("_therock_utils.run_outputs.retrieve_bucket_info")
+    def test_from_workflow_run_main_repo(self, mock_retrieve):
         """Test from_workflow_run for main ROCm/TheRock repo."""
-        pass
+        mock_retrieve.return_value = ("", "therock-ci-artifacts")
 
-    @unittest.skip("Requires package context for relative import")
-    def test_from_workflow_run_fork(self):
+        root = RunOutputRoot.from_workflow_run(run_id="12345678901", platform="linux")
+
+        self.assertEqual(root.bucket, "therock-ci-artifacts")
+        self.assertEqual(root.external_repo, "")
+        self.assertEqual(root.run_id, "12345678901")
+        self.assertEqual(root.platform, "linux")
+        self.assertEqual(root.prefix, "12345678901-linux")
+
+    @mock.patch("_therock_utils.run_outputs.retrieve_bucket_info")
+    def test_from_workflow_run_fork(self, mock_retrieve):
         """Test from_workflow_run for fork/external repo."""
-        pass
+        mock_retrieve.return_value = ("MyOrg-TheRock/", "therock-ci-artifacts-external")
 
-    @unittest.skip("Requires package context for relative import")
-    def test_from_workflow_run_with_github_repository(self):
+        root = RunOutputRoot.from_workflow_run(run_id="12345678901", platform="windows")
+
+        self.assertEqual(root.bucket, "therock-ci-artifacts-external")
+        self.assertEqual(root.external_repo, "MyOrg-TheRock/")
+        self.assertEqual(root.prefix, "MyOrg-TheRock/12345678901-windows")
+
+    @mock.patch("_therock_utils.run_outputs.retrieve_bucket_info")
+    def test_from_workflow_run_with_github_repository(self, mock_retrieve):
         """Test from_workflow_run passes github_repository to retrieve_bucket_info."""
-        pass
+        mock_retrieve.return_value = ("", "therock-ci-artifacts")
 
-    @unittest.skip("Requires package context for relative import")
-    def test_from_workflow_run_with_workflow_run_dict(self):
+        RunOutputRoot.from_workflow_run(
+            run_id="123", platform="linux", github_repository="ROCm/TheRock"
+        )
+
+        mock_retrieve.assert_called_once_with(
+            github_repository="ROCm/TheRock", workflow_run=None
+        )
+
+    @mock.patch("_therock_utils.run_outputs.retrieve_bucket_info")
+    def test_from_workflow_run_with_workflow_run_dict(self, mock_retrieve):
         """Test from_workflow_run passes workflow_run dict to retrieve_bucket_info."""
-        pass
+        mock_retrieve.return_value = ("", "therock-ci-artifacts")
+        workflow_run = {"id": 123, "repository": {"full_name": "ROCm/TheRock"}}
+
+        RunOutputRoot.from_workflow_run(
+            run_id="123", platform="linux", workflow_run=workflow_run
+        )
+
+        mock_retrieve.assert_called_once_with(
+            github_repository=None, workflow_run=workflow_run
+        )
 
 
 class TestRunOutputRootImmutability(unittest.TestCase):
