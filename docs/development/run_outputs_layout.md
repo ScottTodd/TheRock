@@ -23,6 +23,24 @@ there is a 1:1 mapping between a workflow run ID and a run outputs directory.
 
 ## S3 Structure
 
+### S3 Buckets
+
+Run outputs are stored in public S3 buckets. The bucket used depends on the source repository and release type:
+
+| Bucket                          | Purpose                                    | Browse                                                            |
+| ------------------------------- | ------------------------------------------ | ----------------------------------------------------------------- |
+| `therock-ci-artifacts`          | Main CI artifacts from ROCm/TheRock        | [Browse](https://therock-ci-artifacts.s3.amazonaws.com/)          |
+| `therock-ci-artifacts-external` | CI artifacts from forks and external repos | [Browse](https://therock-ci-artifacts-external.s3.amazonaws.com/) |
+| `therock-nightly-artifacts`     | Nightly release builds                     | [Browse](https://therock-nightly-artifacts.s3.amazonaws.com/)     |
+| `therock-release-artifacts`     | Official release builds                    | [Browse](https://therock-release-artifacts.s3.amazonaws.com/)     |
+
+Legacy buckets (for older workflow runs):
+
+| Bucket                       | Purpose                        | Browse                                                         |
+| ---------------------------- | ------------------------------ | -------------------------------------------------------------- |
+| `therock-artifacts`          | Legacy main CI artifacts       | [Browse](https://therock-artifacts.s3.amazonaws.com/)          |
+| `therock-artifacts-external` | Legacy external repo artifacts | [Browse](https://therock-artifacts-external.s3.amazonaws.com/) |
+
 ### Root Path
 
 Each workflow run has a root directory in S3:
