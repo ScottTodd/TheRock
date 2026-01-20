@@ -4,6 +4,8 @@ This module defines the canonical directory structure for all outputs from a
 GitHub Actions workflow run. All tools that read or write run outputs should
 use this module to compute paths.
 
+See the documentation at /docs/development/run_outputs_layout.md.
+
 A "run output" is anything produced by a CI workflow run:
 - Build artifacts (.tar.xz, .tar.zst archives)
 - Logs (.log files, ninja_logs.tar.gz)
@@ -35,7 +37,7 @@ Where:
 - {name} = artifact name (e.g., "blas", "core-hip", "amd-llvm")
 - {component} = dev|lib|run|test|dbg|doc
 - {family} = "generic" or GPU family (gfx94X, gfx1100, etc.)
-- {artifact_group} = build variant (e.g., "gfx94X-dcgpu", "gfx110X-all")
+- {artifact_group} = build variant (e.g., "gfx94X-dcgpu", "gfx950-dcgpu-asan")
 
 Multi-Platform / Multi-Group Organization
 -----------------------------------------

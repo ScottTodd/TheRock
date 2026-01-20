@@ -81,7 +81,7 @@ Where:
 | `name`           | Artifact name                  | `blas`, `core-hip`, `amd-llvm`            |
 | `component`      | Role of files contained        | `dev`, `lib`, `run`, `test`, `dbg`, `doc` |
 | `family`         | Target GPU family or `generic` | `generic`, `gfx94X`, `gfx1100`            |
-| `artifact_group` | Build variant identifier       | `gfx94X-dcgpu`, `gfx110X-all`             |
+| `artifact_group` | Build variant identifier       | `gfx94X-dcgpu`, `gfx950-dcgpu-asan`       |
 
 ## Multi-Platform / Multi-Group Organization
 
@@ -137,9 +137,9 @@ https://{bucket}.s3.amazonaws.com/{prefix}/...
 
 Example URLs:
 
-- Artifact index: `https://therock-ci-artifacts.s3.amazonaws.com/12345678901-linux/index-gfx94X-dcgpu.html`
-- Build logs: `https://therock-ci-artifacts.s3.amazonaws.com/12345678901-linux/logs/gfx94X-dcgpu/index.html`
-- Manifest: `https://therock-ci-artifacts.s3.amazonaws.com/12345678901-linux/manifests/gfx94X-dcgpu/therock_manifest.json`
+- Artifact index: https://therock-ci-artifacts-external.s3.amazonaws.com/ROCm-TheRock/21155514542-linux/index-gfx110X-all.html
+- Build logs: https://therock-ci-artifacts-external.s3.amazonaws.com/ROCm-TheRock/21155514542-linux/logs/gfx110X-all/index.html
+- Manifest: https://therock-ci-artifacts-external.s3.amazonaws.com/ROCm-TheRock/21155514542-linux/manifests/gfx110X-all/therock_manifest.json
 
 ## Using RunOutputRoot
 
