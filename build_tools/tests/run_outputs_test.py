@@ -10,6 +10,18 @@ from unittest import mock
 sys.path.insert(0, os.fspath(Path(__file__).parent.parent))
 
 from _therock_utils.run_outputs import RunOutputRoot
+from github_actions.github_actions_utils import is_authenticated_github_api_available
+
+
+def _skip_unless_authenticated_github_api_is_available(test_func):
+    """Decorator to skip tests unless GitHub API is available.
+
+    Checks for GITHUB_TOKEN env var or authenticated gh CLI.
+    """
+    return unittest.skipUnless(
+        is_authenticated_github_api_available(),
+        "No authenticated GitHub API auth available (need GITHUB_TOKEN or authenticated gh CLI)",
+    )(test_func)
 
 
 class TestRunOutputRootProperties(unittest.TestCase):
@@ -448,15 +460,12 @@ class TestRunOutputRootReleaseType(unittest.TestCase):
 class TestRunOutputRootIntegration(unittest.TestCase):
     """Integration tests that use real GitHub API calls.
 
-    These tests require GITHUB_TOKEN to be set and make network requests.
-    They verify that from_workflow_run() correctly determines bucket info
-    for known historical workflow runs.
+    These tests require authenticated GitHub API access (GITHUB_TOKEN or gh CLI)
+    and make network requests. They verify that from_workflow_run() correctly
+    determines bucket info for known historical workflow runs.
     """
 
-    @unittest.skipUnless(
-        os.getenv("GITHUB_TOKEN"),
-        "GITHUB_TOKEN not set, skipping integration test",
-    )
+    @_skip_unless_authenticated_github_api_is_available
     def test_from_workflow_run_older_bucket(self):
         """Test workflow run from before bucket cutover uses legacy bucket."""
         # https://github.com/ROCm/TheRock/actions/runs/18022609292?pr=1597
@@ -468,10 +477,7 @@ class TestRunOutputRootIntegration(unittest.TestCase):
         self.assertEqual(root.external_repo, "")
         self.assertEqual(root.bucket, "therock-artifacts")
 
-    @unittest.skipUnless(
-        os.getenv("GITHUB_TOKEN"),
-        "GITHUB_TOKEN not set, skipping integration test",
-    )
+    @_skip_unless_authenticated_github_api_is_available
     def test_from_workflow_run_newer_bucket(self):
         """Test workflow run from after bucket cutover uses new bucket."""
         # https://github.com/ROCm/TheRock/actions/runs/19680190301
@@ -483,10 +489,7 @@ class TestRunOutputRootIntegration(unittest.TestCase):
         self.assertEqual(root.external_repo, "")
         self.assertEqual(root.bucket, "therock-ci-artifacts")
 
-    @unittest.skipUnless(
-        os.getenv("GITHUB_TOKEN"),
-        "GITHUB_TOKEN not set, skipping integration test",
-    )
+    @_skip_unless_authenticated_github_api_is_available
     def test_from_workflow_run_fork(self):
         """Test workflow run from fork uses external bucket with repo prefix."""
         # https://github.com/ROCm/TheRock/actions/runs/18023442478?pr=1596
@@ -498,10 +501,7 @@ class TestRunOutputRootIntegration(unittest.TestCase):
         self.assertEqual(root.external_repo, "ROCm-TheRock/")
         self.assertEqual(root.bucket, "therock-artifacts-external")
 
-    @unittest.skipUnless(
-        os.getenv("GITHUB_TOKEN"),
-        "GITHUB_TOKEN not set, skipping integration test",
-    )
+    @_skip_unless_authenticated_github_api_is_available
     def test_from_workflow_run_external_repo_older(self):
         """Test workflow run from external repo (rocm-libraries) older bucket."""
         # https://github.com/ROCm/rocm-libraries/actions/runs/18020401326?pr=1828
@@ -513,10 +513,7 @@ class TestRunOutputRootIntegration(unittest.TestCase):
         self.assertEqual(root.external_repo, "ROCm-rocm-libraries/")
         self.assertEqual(root.bucket, "therock-artifacts-external")
 
-    @unittest.skipUnless(
-        os.getenv("GITHUB_TOKEN"),
-        "GITHUB_TOKEN not set, skipping integration test",
-    )
+    @_skip_unless_authenticated_github_api_is_available
     def test_from_workflow_run_external_repo_newer(self):
         """Test workflow run from external repo (rocm-libraries) newer bucket."""
         # https://github.com/ROCm/rocm-libraries/actions/runs/19784318631
