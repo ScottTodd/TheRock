@@ -1,0 +1,37 @@
+name: Test Build Tools
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  unit_tests:
+    name: "build_tools Unit Tests :: ${{ matrix.runs-on}}"
+    strategy:
+      fail-fast: false
+      matrix:
+        runs-on: [ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.runs-on }}
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+    - uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+      with:
+        python-version: 3.12
+
+    # Note: build_tools/github_actions/ contains complicated tests in some
+    # subdirectories that do not support pytest:
+    #   build_tools/github_actions/benchmarks/scripts/
+    #   build_tools/github_actions/test_executable_scripts/
+    # We could move them if we want a simple `pytest build_tools/` to work.
+    - name: Test build_tools
+      run: |
+        python -m pytest \
+          build_tools/tests \
+          build_tools/github_actions/tests
