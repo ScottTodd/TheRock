@@ -1,15 +1,19 @@
-name: Test Build Tools
+name: Unit Tests
 
 on:
+  push:
+    branches:
+      - main
+      - release/therock-*
+  pull_request:
   workflow_dispatch:
-  workflow_call:
 
 permissions:
   contents: read
 
 jobs:
   unit_tests:
-    name: "build_tools tests :: ${{ matrix.runs-on}}"
+    name: "Unit Tests :: ${{ matrix.runs-on}}"
     strategy:
       fail-fast: false
       matrix:
@@ -38,3 +42,28 @@ jobs:
         python -m pytest \
           build_tools/tests \
           build_tools/github_actions/tests
+
+  # TODO: share code with ci_summary in ci.yml
+  #   Could reuse this from prior projects:
+  #   https://github.com/iree-org/iree/blob/main/.github/workflows/workflow_summary.yml
+  #   (including support for sending alerts on failures)
+  unit_tests_summary:
+    name: Unit Tests Summary
+    if: always()
+    needs:
+      - unit_tests
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Output failed jobs
+        run: |
+          echo '${{ toJson(needs) }}'
+          FAILED_JOBS="$(echo '${{ toJson(needs) }}' \
+            | jq --raw-output \
+            'map_values(select(.result!="success" and .result!="skipped")) | keys | join(",")' \
+          )"
+          if [[ "${FAILED_JOBS}" != "" ]]; then
+            echo "The following jobs failed: ${FAILED_JOBS}"
+            exit 1
+          else
+            echo "All required jobs succeeded."
+          fi
