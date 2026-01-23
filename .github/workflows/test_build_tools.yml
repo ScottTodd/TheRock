@@ -25,6 +25,9 @@ jobs:
       with:
         python-version: 3.12
 
+    - name: Install python deps
+      run: pip install -r requirements-test.txt
+
     # Note: build_tools/github_actions/ contains complicated tests in some
     # subdirectories that do not support pytest:
     #   build_tools/github_actions/benchmarks/scripts/
