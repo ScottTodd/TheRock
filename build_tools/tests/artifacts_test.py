@@ -53,7 +53,7 @@ class ArtifactNameTest(TmpDirTestCase):
         self.assertEqual(an1.component, "component")
         self.assertEqual(an2.target_family, "generic")
         self.assertEqual(an1, an2)
-        self.assertNotEqual(hash(an1), hash(an2))
+        self.assertEqual(hash(an1), hash(an2))
 
     def testFromFilename(self):
         f1 = "name_component_generic.tar.xz"
