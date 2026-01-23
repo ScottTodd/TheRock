@@ -70,6 +70,10 @@ jobs:
     with:
       build_variant: "release"
 
+  # Unconditionally run cheap unit tests.
+  test_build_tools:
+    uses: ./.github/workflows/test_build_tools.yml
+
   linux_build_and_test:
     name: Linux::${{ matrix.variant.family }}::${{ matrix.variant.build_variant_label }}
     needs: setup
@@ -142,6 +146,7 @@ jobs:
     if: always()
     needs:
       - setup
+      - test_build_tools
       - linux_build_and_test
       - windows_build_and_test
     runs-on: ubuntu-24.04

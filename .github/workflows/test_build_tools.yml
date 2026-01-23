@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   unit_tests:
-    name: "build_tools Unit Tests :: ${{ matrix.runs-on}}"
+    name: "build_tools tests :: ${{ matrix.runs-on}}"
     strategy:
       fail-fast: false
       matrix:
