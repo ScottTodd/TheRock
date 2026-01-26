@@ -37,13 +37,14 @@ jobs:
     #   build_tools/github_actions/benchmarks/scripts/
     #   build_tools/github_actions/test_executable_scripts/
     # We could move them if we want a simple `pytest build_tools/` to work.
+    # TODO(scotttodd): enable code coverage collection/reporting here
     - name: Test build_tools
       run: |
-        python -m pytest \
+        python -m pytest -v \
           build_tools/tests \
           build_tools/github_actions/tests
 
-  # TODO: share code with ci_summary in ci.yml
+  # TODO(scotttodd): share code with ci_summary in ci.yml
   #   Could reuse this from prior projects:
   #   https://github.com/iree-org/iree/blob/main/.github/workflows/workflow_summary.yml
   #   (including support for sending alerts on failures)
