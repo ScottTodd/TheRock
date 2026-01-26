@@ -40,7 +40,7 @@ jobs:
     # TODO(scotttodd): enable code coverage collection/reporting here
     - name: Test build_tools
       run: |
-        python -m pytest -v \
+        python -m pytest -vv \
           build_tools/tests \
           build_tools/github_actions/tests
 
