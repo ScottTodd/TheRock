@@ -27,6 +27,10 @@ on:
         type: string
       package_version:
         type: string
+    outputs:
+      package_find_links_url:
+        description: URL for pip --find-links to install built packages
+        value: ${{ jobs.build_rocm_wheels.outputs.package_find_links_url }}
 
 permissions:
   contents: read
@@ -101,34 +105,3 @@ jobs:
             --input-packages-dir="${{ env.PACKAGES_DIR }}" \
             --artifact-group="${{ inputs.artifact_group }}" \
             --run-id="${{ github.run_id }}"
-
-  generate_target_to_run:
-    name: Generate target_to_run
-    runs-on: ubuntu-24.04
-    outputs:
-      test_runs_on: ${{ steps.configure.outputs.test-runs-on }}
-    steps:
-      - name: Checking out repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Generating target to run
-        id: configure
-        env:
-          TARGET: ${{ inputs.artifact_group }}
-          PLATFORM: "windows"
-          # Variable comes from ROCm organization variable 'ROCM_THEROCK_TEST_RUNNERS'
-          ROCM_THEROCK_TEST_RUNNERS: ${{ vars.ROCM_THEROCK_TEST_RUNNERS }}
-          LOAD_TEST_RUNNERS_FROM_VAR: false
-        run: python ./build_tools/github_actions/configure_target_run.py
-
-  test_rocm_wheels:
-    name: Test Python | ${{ inputs.artifact_group }} | ${{ needs.generate_target_to_run.outputs.test_runs_on }}
-    if: ${{ needs.generate_target_to_run.outputs.test_runs_on != '' }}
-    needs: [build_rocm_wheels, generate_target_to_run]
-    uses: ./.github/workflows/test_rocm_wheels.yml
-    with:
-      amdgpu_family: ${{ inputs.artifact_group }}
-      test_runs_on: ${{ needs.generate_target_to_run.outputs.test_runs_on }}
-      package_find_links_url: ${{ needs.build_rocm_wheels.outputs.package_find_links_url }}
-      python_version: "3.12"
-      rocm_version: ${{ inputs.package_version }}
