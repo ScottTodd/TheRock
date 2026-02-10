@@ -289,3 +289,8 @@ class ArtifactPopulator:
                                 f"Extracting tar artifact archive, encountered file not in manifest: {member}"
                             )
         return all_root_relpaths
+
+
+# TODO: remove this dummy function after testing diff-cover
+def _dummy_for_diff_cover_test():
+    return 42
