@@ -27,6 +27,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      with:
+        fetch-depth: 0
     - uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
       with:
         python-version: 3.12
@@ -43,7 +45,15 @@ jobs:
       working-directory: build_tools
       run: |
         python -m pytest -vv \
-          --cov --cov-report=term-missing --cov-report=html
+          --cov --cov-report=term-missing --cov-report=html \
+          --cov-report=xml:../build/coverage.xml
+
+    - name: Coverage of changed lines
+      if: github.event_name == 'pull_request'
+      run: |
+        diff-cover build/coverage.xml \
+          --compare-branch=${{ github.event.pull_request.base.sha }} \
+          --markdown-report=- >> $GITHUB_STEP_SUMMARY
 
     - name: Upload coverage report
       if: always()
