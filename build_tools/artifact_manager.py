@@ -58,6 +58,7 @@ from typing import List, Optional, Set
 from _therock_utils.build_topology import BuildTopology
 from _therock_utils.artifact_backend import (
     ArtifactBackend,
+    S3Backend,
     create_backend_from_env,
 )
 from _therock_utils.artifacts import ArtifactName, ArtifactPopulator
@@ -680,6 +681,203 @@ def do_push(args: argparse.Namespace):
 
 
 # =============================================================================
+# Copy (Server-side S3 copy between run IDs)
+# =============================================================================
+
+
+@dataclass
+class CopyRequest:
+    """Request to copy a single artifact between backends."""
+
+    artifact_key: str
+    source_backend: ArtifactBackend
+    dest_backend: ArtifactBackend
+
+
+def copy_single_artifact(request: CopyRequest) -> bool:
+    """Copy a single artifact with retry logic."""
+    MAX_RETRIES = 3
+    BASE_DELAY_SECONDS = 2
+
+    for attempt in range(MAX_RETRIES):
+        try:
+            log(f"  ++ Copying {request.artifact_key}")
+            request.dest_backend.copy_artifact(
+                request.artifact_key, request.source_backend
+            )
+            return True
+        except Exception as e:
+            if attempt < MAX_RETRIES - 1:
+                delay = BASE_DELAY_SECONDS * (2**attempt)
+                log(
+                    f"  ++ Retry {attempt + 1}/{MAX_RETRIES} for {request.artifact_key}: {e}"
+                )
+                _delay_for_retry(delay)
+            else:
+                log(f"  !! Failed to copy {request.artifact_key}: {e}")
+                return False
+    return False
+
+
+def _create_source_backend(
+    source_run_id: str, platform: str, local_staging_dir: Optional[Path] = None
+) -> ArtifactBackend:
+    """Create a backend for the source run ID.
+
+    For S3, uses retrieve_bucket_info(workflow_run_id=source_run_id) to resolve
+    the correct bucket (which may differ from the current run's bucket).
+
+    For local backends, creates a LocalDirectoryBackend in the same staging dir.
+    """
+    if local_staging_dir or os.getenv("THEROCK_LOCAL_STAGING_DIR"):
+        from _therock_utils.artifact_backend import LocalDirectoryBackend
+
+        staging = local_staging_dir or Path(os.environ["THEROCK_LOCAL_STAGING_DIR"])
+        return LocalDirectoryBackend(
+            staging_dir=staging,
+            run_id=source_run_id,
+            platform=platform,
+        )
+
+    try:
+        from _therock_utils.github_actions_utils import retrieve_bucket_info
+
+        external_repo, bucket = retrieve_bucket_info(workflow_run_id=source_run_id)
+    except (ImportError, ModuleNotFoundError):
+        bucket = os.getenv("THEROCK_S3_BUCKET", "therock-ci-artifacts")
+        external_repo = ""
+
+    return S3Backend(
+        bucket=bucket,
+        run_id=source_run_id,
+        platform=platform,
+        external_repo=external_repo,
+    )
+
+
+def do_copy(args: argparse.Namespace):
+    """Copy produced artifacts for a stage from one run to another."""
+    topology = get_topology(args.topology)
+
+    # Validate stage
+    if args.stage not in topology.build_stages:
+        log(f"ERROR: Stage '{args.stage}' not found")
+        log(f"Available stages: {', '.join(topology.build_stages.keys())}")
+        sys.exit(1)
+
+    # Get produced artifacts for this stage
+    produced = topology.get_produced_artifacts(args.stage)
+    if not produced:
+        log(f"Stage '{args.stage}' produces no artifacts")
+        return
+
+    log(
+        f"Stage '{args.stage}' produces {len(produced)} artifacts: {', '.join(sorted(produced))}"
+    )
+
+    # Determine target families
+    target_families = ["generic"]
+    if args.generic_only:
+        log("Copying generic (host) artifacts only")
+    else:
+        if args.amdgpu_families:
+            target_families.extend(args.amdgpu_families.split(","))
+        if args.amdgpu_targets:
+            target_families.extend(
+                t.strip() for t in args.amdgpu_targets.split(",") if t.strip()
+            )
+
+    # Create source and dest backends
+    source_backend = _create_source_backend(
+        source_run_id=args.source_run_id,
+        platform=args.platform,
+        local_staging_dir=getattr(args, "local_staging_dir", None),
+    )
+    dest_backend = create_backend_from_env(
+        run_id=args.run_id,
+        platform=args.platform,
+    )
+
+    log(f"Source: {source_backend.base_uri}")
+    log(f"Dest:   {dest_backend.base_uri}")
+
+    # List available artifacts in source
+    available = set(source_backend.list_artifacts())
+    log(f"Found {len(available)} artifacts in source")
+
+    # Build copy requests: match produced artifacts × families × components
+    components = ["lib", "run", "dev", "dbg", "doc", "test"]
+    copy_requests = []
+
+    sha256sum_requests = []
+
+    for artifact_name in sorted(produced):
+        for tf in target_families:
+            for comp in components:
+                for ext in [".tar.zst", ".tar.xz"]:
+                    filename = f"{artifact_name}_{comp}_{tf}{ext}"
+                    if filename in available:
+                        copy_requests.append(
+                            CopyRequest(
+                                artifact_key=filename,
+                                source_backend=source_backend,
+                                dest_backend=dest_backend,
+                            )
+                        )
+                        # Best-effort copy of sha256sum (not in list_artifacts
+                        # since it filters to archive extensions only)
+                        sha256sum_requests.append(
+                            CopyRequest(
+                                artifact_key=f"{filename}.sha256sum",
+                                source_backend=source_backend,
+                                dest_backend=dest_backend,
+                            )
+                        )
+                        break  # Found this artifact, don't check other extensions
+
+    if not copy_requests:
+        log("No matching artifacts found to copy")
+        return
+
+    if args.dry_run:
+        log(f"\nDry run: would copy {len(copy_requests)} artifacts:")
+        for req in copy_requests:
+            log(f"  {req.artifact_key}")
+        return
+
+    log(f"\nCopying {len(copy_requests)} artifacts...")
+
+    copied_count = 0
+    with concurrent.futures.ThreadPoolExecutor(
+        max_workers=args.concurrency
+    ) as executor:
+        futures = [executor.submit(copy_single_artifact, req) for req in copy_requests]
+        for future in concurrent.futures.as_completed(futures):
+            if future.result():
+                copied_count += 1
+
+    log(f"\nCopied {copied_count}/{len(copy_requests)} artifacts")
+
+    if copied_count < len(copy_requests):
+        log(f"ERROR: {len(copy_requests) - copied_count} artifacts failed to copy")
+        sys.exit(1)
+
+    # Best-effort copy of sha256sum files (don't fail if missing)
+    if sha256sum_requests:
+        sha_copied = 0
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=args.concurrency
+        ) as executor:
+            futures = [
+                executor.submit(copy_single_artifact, req) for req in sha256sum_requests
+            ]
+            for future in concurrent.futures.as_completed(futures):
+                if future.result():
+                    sha_copied += 1
+        log(f"Copied {sha_copied}/{len(sha256sum_requests)} sha256sum files")
+
+
+# =============================================================================
 # Info Commands
 # =============================================================================
 
@@ -891,6 +1089,51 @@ def main(argv: Optional[List[str]] = None):
         help="Number of concurrent uploads (default: 10)",
     )
     push_parser.set_defaults(func=do_push)
+
+    # copy command
+    copy_parser = subparsers.add_parser(
+        "copy",
+        help="Copy produced artifacts for a stage from one run to another",
+    )
+    _add_backend_args(copy_parser)
+    copy_parser.add_argument(
+        "--source-run-id",
+        type=str,
+        required=True,
+        help="Run ID to copy artifacts from (bucket resolved via GitHub API)",
+    )
+    copy_parser.add_argument(
+        "--stage", type=str, required=True, help="Build stage name"
+    )
+    copy_target_group = copy_parser.add_mutually_exclusive_group()
+    copy_target_group.add_argument(
+        "--amdgpu-families",
+        type=str,
+        help="Comma-separated GPU families to copy (e.g., gfx94X-dcgpu,gfx1100)",
+    )
+    copy_target_group.add_argument(
+        "--generic-only",
+        action="store_true",
+        help="Only copy generic (host) artifacts, skip device-specific artifacts",
+    )
+    copy_parser.add_argument(
+        "--amdgpu-targets",
+        type=str,
+        default="",
+        help="Comma-separated individual GPU targets for copying split artifacts",
+    )
+    copy_parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=10,
+        help="Number of concurrent copy operations (default: 10)",
+    )
+    copy_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="List what would be copied without actually copying",
+    )
+    copy_parser.set_defaults(func=do_copy)
 
     # info command
     info_parser = subparsers.add_parser(
