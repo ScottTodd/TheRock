@@ -862,19 +862,30 @@ def do_copy(args: argparse.Namespace):
         log(f"ERROR: {len(copy_requests) - copied_count} artifacts failed to copy")
         sys.exit(1)
 
-    # Best-effort copy of sha256sum files (don't fail if missing)
+    # Best-effort copy of sha256sum files (don't fail if missing).
+    # Filter to only sha256sum files that actually exist in the source,
+    # since some artifact sources might not have them.
     if sha256sum_requests:
-        sha_copied = 0
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=args.concurrency
-        ) as executor:
-            futures = [
-                executor.submit(copy_single_artifact, req) for req in sha256sum_requests
-            ]
-            for future in concurrent.futures.as_completed(futures):
-                if future.result():
-                    sha_copied += 1
-        log(f"Copied {sha_copied}/{len(sha256sum_requests)} sha256sum files")
+        existing_sha_requests = [
+            req
+            for req in sha256sum_requests
+            if source_backend.artifact_exists(req.artifact_key)
+        ]
+        if existing_sha_requests:
+            sha_copied = 0
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=args.concurrency
+            ) as executor:
+                futures = [
+                    executor.submit(copy_single_artifact, req)
+                    for req in existing_sha_requests
+                ]
+                for future in concurrent.futures.as_completed(futures):
+                    if future.result():
+                        sha_copied += 1
+            log(f"Copied {sha_copied}/{len(existing_sha_requests)} sha256sum files")
+        else:
+            log("No sha256sum files found in source, skipping")
 
 
 # =============================================================================
