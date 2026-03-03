@@ -58,10 +58,14 @@ from typing import List, Optional, Set
 from _therock_utils.build_topology import BuildTopology
 from _therock_utils.artifact_backend import (
     ArtifactBackend,
+    ARTIFACT_EXTENSIONS,
     S3Backend,
     create_backend_from_env,
 )
 from _therock_utils.artifacts import ArtifactName, ArtifactPopulator
+
+# Component types that artifacts are split into
+ARTIFACT_COMPONENTS = ["lib", "run", "dev", "dbg", "doc", "test"]
 
 
 def log(msg: str):
@@ -117,6 +121,53 @@ def get_topology(topology_path: Optional[Path] = None) -> BuildTopology:
     if not topology_path.exists():
         raise FileNotFoundError(f"BUILD_TOPOLOGY.toml not found at {topology_path}")
     return BuildTopology(str(topology_path))
+
+
+# =============================================================================
+# Shared Helpers
+# =============================================================================
+
+
+def parse_target_families(args: argparse.Namespace) -> List[str]:
+    """Parse target families from argparse args.
+
+    Returns a list starting with "generic", extended with any families and
+    individual targets from the args.
+    """
+    target_families = ["generic"]
+    if args.generic_only:
+        log("Using generic (host) artifacts only")
+    else:
+        if args.amdgpu_families:
+            target_families.extend(args.amdgpu_families.split(","))
+        if args.amdgpu_targets:
+            target_families.extend(
+                t.strip() for t in args.amdgpu_targets.split(",") if t.strip()
+            )
+    return target_families
+
+
+def find_available_artifacts(
+    artifact_names: Set[str],
+    target_families: List[str],
+    available: Set[str],
+) -> List[str]:
+    """Find which artifacts exist in the available set.
+
+    Iterates artifact_names × target_families × components × extensions,
+    returning filenames that are present in `available`. Prefers .tar.zst
+    over .tar.xz when both exist.
+    """
+    matched = []
+    for artifact_name in sorted(artifact_names):
+        for tf in target_families:
+            for comp in ARTIFACT_COMPONENTS:
+                for ext in ARTIFACT_EXTENSIONS:
+                    filename = f"{artifact_name}_{comp}_{tf}{ext}"
+                    if filename in available:
+                        matched.append(filename)
+                        break  # Found this artifact, don't check other extensions
+    return matched
 
 
 # =============================================================================
@@ -284,18 +335,7 @@ def do_fetch(args: argparse.Namespace):
             f"Stage '{args.stage}' needs {len(inbound)} artifacts: {', '.join(sorted(inbound))}"
         )
 
-    # Determine target families to fetch (inclusive: both family names and
-    # individual targets are tried, whichever is in the bucket gets fetched).
-    target_families = ["generic"]
-    if args.generic_only:
-        log("Fetching generic (host) artifacts only")
-    else:
-        if args.amdgpu_families:
-            target_families.extend(args.amdgpu_families.split(","))
-        if args.amdgpu_targets:
-            target_families.extend(
-                t.strip() for t in args.amdgpu_targets.split(",") if t.strip()
-            )
+    target_families = parse_target_families(args)
 
     # Create backend
     backend = create_backend_from_env(
@@ -313,24 +353,15 @@ def do_fetch(args: argparse.Namespace):
     download_dir = output_dir / ".download_cache"
     download_dir.mkdir(parents=True, exist_ok=True)
 
-    components = ["lib", "run", "dev", "dbg", "doc", "test"]
-    download_requests = []
-
-    for artifact_name in sorted(inbound):
-        for tf in target_families:
-            for comp in components:
-                # Try zstd first (new format), then xz (legacy format)
-                for ext in [".tar.zst", ".tar.xz"]:
-                    filename = f"{artifact_name}_{comp}_{tf}{ext}"
-                    if filename in available:
-                        download_requests.append(
-                            DownloadRequest(
-                                artifact_key=filename,
-                                dest_path=download_dir / filename,
-                                backend=backend,
-                            )
-                        )
-                        break  # Found this artifact, don't check other extensions
+    matched_filenames = find_available_artifacts(inbound, target_families, available)
+    download_requests = [
+        DownloadRequest(
+            artifact_key=filename,
+            dest_path=download_dir / filename,
+            backend=backend,
+        )
+        for filename in matched_filenames
+    ]
 
     if not download_requests:
         log("No matching artifacts found to download")
@@ -775,17 +806,7 @@ def do_copy(args: argparse.Namespace):
         f"Stage '{args.stage}' produces {len(produced)} artifacts: {', '.join(sorted(produced))}"
     )
 
-    # Determine target families
-    target_families = ["generic"]
-    if args.generic_only:
-        log("Copying generic (host) artifacts only")
-    else:
-        if args.amdgpu_families:
-            target_families.extend(args.amdgpu_families.split(","))
-        if args.amdgpu_targets:
-            target_families.extend(
-                t.strip() for t in args.amdgpu_targets.split(",") if t.strip()
-            )
+    target_families = parse_target_families(args)
 
     # Create source and dest backends
     source_backend = _create_source_backend(
@@ -805,35 +826,26 @@ def do_copy(args: argparse.Namespace):
     available = set(source_backend.list_artifacts())
     log(f"Found {len(available)} artifacts in source")
 
-    # Build copy requests: match produced artifacts × families × components
-    components = ["lib", "run", "dev", "dbg", "doc", "test"]
-    copy_requests = []
-
-    sha256sum_requests = []
-
-    for artifact_name in sorted(produced):
-        for tf in target_families:
-            for comp in components:
-                for ext in [".tar.zst", ".tar.xz"]:
-                    filename = f"{artifact_name}_{comp}_{tf}{ext}"
-                    if filename in available:
-                        copy_requests.append(
-                            CopyRequest(
-                                artifact_key=filename,
-                                source_backend=source_backend,
-                                dest_backend=dest_backend,
-                            )
-                        )
-                        # Best-effort copy of sha256sum (not in list_artifacts
-                        # since it filters to archive extensions only)
-                        sha256sum_requests.append(
-                            CopyRequest(
-                                artifact_key=f"{filename}.sha256sum",
-                                source_backend=source_backend,
-                                dest_backend=dest_backend,
-                            )
-                        )
-                        break  # Found this artifact, don't check other extensions
+    # Build copy requests from matched artifacts
+    matched_filenames = find_available_artifacts(produced, target_families, available)
+    copy_requests = [
+        CopyRequest(
+            artifact_key=filename,
+            source_backend=source_backend,
+            dest_backend=dest_backend,
+        )
+        for filename in matched_filenames
+    ]
+    # Best-effort sha256sum copy (not in list_artifacts since it filters
+    # to archive extensions only)
+    sha256sum_requests = [
+        CopyRequest(
+            artifact_key=f"{filename}.sha256sum",
+            source_backend=source_backend,
+            dest_backend=dest_backend,
+        )
+        for filename in matched_filenames
+    ]
 
     if not copy_requests:
         log("No matching artifacts found to copy")
@@ -965,6 +977,27 @@ def _add_common_args(parser: argparse.ArgumentParser):
     )
 
 
+def _add_target_args(parser: argparse.ArgumentParser):
+    """Add target family/GPU arguments to a subparser."""
+    target_group = parser.add_mutually_exclusive_group()
+    target_group.add_argument(
+        "--amdgpu-families",
+        type=str,
+        help="Comma-separated GPU families (e.g., gfx94X-dcgpu,gfx1100)",
+    )
+    target_group.add_argument(
+        "--generic-only",
+        action="store_true",
+        help="Only use generic (host) artifacts, skip device-specific artifacts",
+    )
+    parser.add_argument(
+        "--amdgpu-targets",
+        type=str,
+        default="",
+        help="Comma-separated individual GPU targets for split artifacts (e.g. 'gfx942')",
+    )
+
+
 def _add_backend_args(parser: argparse.ArgumentParser):
     """Add common backend-related arguments to a subparser."""
     _add_common_args(parser)
@@ -1007,23 +1040,7 @@ def main(argv: Optional[List[str]] = None):
         default="all",
         help="Build stage name (default: 'all' fetches all artifacts)",
     )
-    fetch_target_group = fetch_parser.add_mutually_exclusive_group()
-    fetch_target_group.add_argument(
-        "--amdgpu-families",
-        type=str,
-        help="Comma-separated GPU families to fetch (e.g., gfx94X-dcgpu,gfx1100)",
-    )
-    fetch_target_group.add_argument(
-        "--generic-only",
-        action="store_true",
-        help="Only fetch generic (host) artifacts, skip device-specific artifacts",
-    )
-    fetch_parser.add_argument(
-        "--amdgpu-targets",
-        type=str,
-        default="",
-        help="Comma-separated individual GPU targets for fetching split artifacts (e.g. 'gfx942')",
-    )
+    _add_target_args(fetch_parser)
     fetch_parser.add_argument(
         "--output-dir",
         type=Path,
@@ -1116,23 +1133,7 @@ def main(argv: Optional[List[str]] = None):
     copy_parser.add_argument(
         "--stage", type=str, required=True, help="Build stage name"
     )
-    copy_target_group = copy_parser.add_mutually_exclusive_group()
-    copy_target_group.add_argument(
-        "--amdgpu-families",
-        type=str,
-        help="Comma-separated GPU families to copy (e.g., gfx94X-dcgpu,gfx1100)",
-    )
-    copy_target_group.add_argument(
-        "--generic-only",
-        action="store_true",
-        help="Only copy generic (host) artifacts, skip device-specific artifacts",
-    )
-    copy_parser.add_argument(
-        "--amdgpu-targets",
-        type=str,
-        default="",
-        help="Comma-separated individual GPU targets for copying split artifacts",
-    )
+    _add_target_args(copy_parser)
     copy_parser.add_argument(
         "--concurrency",
         type=int,
