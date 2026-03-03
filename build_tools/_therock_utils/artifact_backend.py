@@ -159,6 +159,10 @@ class LocalDirectoryBackend(ArtifactBackend):
         self, artifact_key: str, source_backend: "LocalDirectoryBackend"
     ) -> None:
         """Copy artifact from another local backend."""
+        if not isinstance(source_backend, LocalDirectoryBackend):
+            raise TypeError(
+                f"Cannot copy from {type(source_backend).__name__} to LocalDirectoryBackend"
+            )
         src = source_backend.base_path / artifact_key
         if not src.exists():
             raise FileNotFoundError(f"Artifact not found in source backend: {src}")
@@ -267,6 +271,10 @@ class S3Backend(ArtifactBackend):
 
     def copy_artifact(self, artifact_key: str, source_backend: "S3Backend") -> None:
         """Server-side copy from another S3 backend (cross-bucket supported)."""
+        if not isinstance(source_backend, S3Backend):
+            raise TypeError(
+                f"Cannot copy from {type(source_backend).__name__} to S3Backend"
+            )
         copy_source = {
             "Bucket": source_backend.bucket,
             "Key": f"{source_backend.s3_prefix}/{artifact_key}",

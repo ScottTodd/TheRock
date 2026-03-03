@@ -226,6 +226,17 @@ class TestLocalDirectoryBackend(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             dest.copy_artifact("nonexistent.tar.zst", source)
 
+    def test_copy_artifact_wrong_backend_type_raises(self):
+        """Test copy_artifact raises TypeError when source is a different backend type."""
+        s3_source = S3Backend(
+            bucket="test-bucket",
+            run_id="source-run",
+            platform="linux",
+        )
+
+        with self.assertRaises(TypeError):
+            self.backend.copy_artifact("test.tar.zst", s3_source)
+
 
 class TestS3Backend(unittest.TestCase):
     """Tests for S3Backend with mocked boto3 client."""
@@ -489,6 +500,19 @@ class TestS3Backend(unittest.TestCase):
             "therock-ci-artifacts-external",
             "ROCm-rocm-libraries/dest-run-linux/artifact_lib_generic.tar.zst",
         )
+
+    def test_copy_artifact_wrong_backend_type_raises(self):
+        """Test copy_artifact raises TypeError when source is a different backend type."""
+        import tempfile
+
+        local_source = LocalDirectoryBackend(
+            staging_dir=Path(tempfile.mkdtemp()),
+            run_id="source-run",
+            platform="linux",
+        )
+
+        with self.assertRaises(TypeError):
+            self.backend.copy_artifact("test.tar.zst", local_source)
 
 
 class TestCreateBackendFromEnv(unittest.TestCase):
