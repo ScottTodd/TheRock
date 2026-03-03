@@ -32,6 +32,10 @@ description = "Test topology for artifact_manager tests"
 description = "Upstream stage that produces artifacts"
 artifact_groups = ["upstream-group"]
 
+[build_stages.second-upstream-stage]
+description = "Second upstream stage that produces different artifacts"
+artifact_groups = ["second-upstream-group"]
+
 [build_stages.downstream-stage]
 description = "Downstream stage that consumes artifacts"
 artifact_groups = ["downstream-group"]
@@ -40,19 +44,27 @@ artifact_groups = ["downstream-group"]
 description = "Upstream artifact group"
 type = "generic"
 
+[artifact_groups.second-upstream-group]
+description = "Second upstream artifact group"
+type = "generic"
+
 [artifact_groups.downstream-group]
 description = "Downstream artifact group"
 type = "generic"
-artifact_group_deps = ["upstream-group"]
+artifact_group_deps = ["upstream-group", "second-upstream-group"]
 
 [artifacts.test-artifact]
 artifact_group = "upstream-group"
 type = "target-neutral"
 
+[artifacts.second-artifact]
+artifact_group = "second-upstream-group"
+type = "target-neutral"
+
 [artifacts.downstream-artifact]
 artifact_group = "downstream-group"
 type = "target-neutral"
-artifact_deps = ["test-artifact"]
+artifact_deps = ["test-artifact", "second-artifact"]
 """
 
 # Platform used consistently across all tests
@@ -946,6 +958,46 @@ class TestCopy(ArtifactManagerTestBase):
             artifact_manager.main(argv)
 
         self.assertEqual(ctx.exception.code, 2)
+
+    @mock.patch("artifact_manager._delay_for_retry")
+    def test_copy_multiple_stages(self, mock_delay):
+        """Test that copy with comma-separated stages copies artifacts from all stages."""
+        import artifact_manager
+
+        self._create_source_artifact("test-artifact", "lib", "generic")
+        self._create_staged_artifact(
+            "second-artifact", "lib", "generic", run_id="source-run"
+        )
+
+        artifact_manager.main(
+            [
+                "copy",
+                "--source-run-id",
+                "source-run",
+                "--stage",
+                "upstream-stage,second-upstream-stage",
+                "--topology",
+                str(self.topology_path),
+                "--local-staging-dir",
+                str(self.staging_dir),
+                "--platform",
+                TEST_PLATFORM,
+                "--run-id",
+                "dest-run",
+            ]
+        )
+
+        dest_backend = LocalDirectoryBackend(
+            staging_dir=self.staging_dir,
+            run_id="dest-run",
+            platform=TEST_PLATFORM,
+        )
+        self.assertTrue(
+            dest_backend.artifact_exists("test-artifact_lib_generic.tar.zst")
+        )
+        self.assertTrue(
+            dest_backend.artifact_exists("second-artifact_lib_generic.tar.zst")
+        )
 
 
 if __name__ == "__main__":

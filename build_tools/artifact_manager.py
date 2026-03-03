@@ -787,24 +787,30 @@ def _create_source_backend(
 
 
 def do_copy(args: argparse.Namespace):
-    """Copy produced artifacts for a stage from one run to another."""
+    """Copy produced artifacts for one or more stages from one run to another."""
     topology = get_topology(args.topology)
 
-    # Validate stage
-    if args.stage not in topology.build_stages:
-        log(f"ERROR: Stage '{args.stage}' not found")
-        log(f"Available stages: {', '.join(topology.build_stages.keys())}")
-        sys.exit(1)
+    # Parse and validate stages (comma-separated)
+    stage_names = [s.strip() for s in args.stage.split(",") if s.strip()]
+    available_stages = topology.build_stages.keys()
+    for stage_name in stage_names:
+        if stage_name not in available_stages:
+            log(f"ERROR: Stage '{stage_name}' not found")
+            log(f"Available stages: {', '.join(available_stages)}")
+            sys.exit(1)
 
-    # Get produced artifacts for this stage
-    produced = topology.get_produced_artifacts(args.stage)
+    # Union produced artifacts across all specified stages
+    produced: Set[str] = set()
+    for stage_name in stage_names:
+        stage_produced = topology.get_produced_artifacts(stage_name)
+        log(
+            f"Stage '{stage_name}' produces {len(stage_produced)} artifacts: {', '.join(sorted(stage_produced))}"
+        )
+        produced.update(stage_produced)
+
     if not produced:
-        log(f"Stage '{args.stage}' produces no artifacts")
+        log("Specified stages produce no artifacts")
         return
-
-    log(
-        f"Stage '{args.stage}' produces {len(produced)} artifacts: {', '.join(sorted(produced))}"
-    )
 
     target_families = parse_target_families(args)
 
@@ -1131,7 +1137,10 @@ def main(argv: Optional[List[str]] = None):
         help="Run ID to copy artifacts from (bucket resolved via GitHub API)",
     )
     copy_parser.add_argument(
-        "--stage", type=str, required=True, help="Build stage name"
+        "--stage",
+        type=str,
+        required=True,
+        help="Build stage name(s), comma-separated (e.g., 'foundation,compiler-runtime')",
     )
     _add_target_args(copy_parser)
     copy_parser.add_argument(
