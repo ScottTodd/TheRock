@@ -38,8 +38,6 @@ on:
         type: string
       expect_failure:
         type: boolean
-      use_prebuilt_artifacts:
-        type: string
       rocm_package_version:
         type: string
       test_type:

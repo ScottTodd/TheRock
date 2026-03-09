@@ -25,9 +25,6 @@ on:
         type: string
         description: "If enabled, reduce test set on Linux to the list of labels prefixed with 'test:'. ex: test:rocprim, test:hipcub"
         default: ""
-      linux_use_prebuilt_artifacts:
-        type: boolean
-        description: "If enabled, the CI will pull Linux artifacts using artifact_run_id and only run tests"
       windows_amdgpu_families:
         type: string
         description: "Insert comma-separated list of Windows GPU families to build and test. ex: gfx94X, gfx120X"
@@ -36,9 +33,6 @@ on:
         type: string
         description: "If enabled, reduce test set on Windows to the list of labels prefixed with 'test:' ex: test:rocprim, test:hipcub"
         default: ""
-      windows_use_prebuilt_artifacts:
-        type: boolean
-        description: "If enabled, the CI will pull Windows artifacts using artifact_run_id and only run tests"
       artifact_run_id:
         type: string
         description: "If provided, the tests will run on this artifact ID"
@@ -50,6 +44,14 @@ on:
       linux_baseline_run_id:
         type: string
         description: "Run ID to copy prebuilt artifacts from. Required when linux_prebuilt_stages is set."
+        default: ""
+      windows_prebuilt_stages:
+        type: string
+        description: "Comma-separated stages to use prebuilt (e.g. foundation,compiler-runtime). Leave empty to build all."
+        default: ""
+      windows_baseline_run_id:
+        type: string
+        description: "Run ID to copy prebuilt artifacts from. Required when windows_prebuilt_stages is set."
         default: ""
   # pull_request:
   #   types:
@@ -100,7 +102,6 @@ jobs:
       test_labels: ${{ needs.setup.outputs.linux_test_labels }}
       artifact_run_id: ${{ inputs.artifact_run_id }}
       expect_failure: ${{ matrix.variant.expect_failure == true }}
-      use_prebuilt_artifacts: ${{ inputs.linux_use_prebuilt_artifacts == true && 'true' || 'false' }}
       prebuilt_stages: ${{ inputs.linux_prebuilt_stages }}
       baseline_run_id: ${{ inputs.linux_baseline_run_id }}
       rocm_package_version: ${{ needs.setup.outputs.rocm_package_version }}
@@ -133,7 +134,8 @@ jobs:
       test_labels: ${{ needs.setup.outputs.windows_test_labels }}
       artifact_run_id: ${{ inputs.artifact_run_id }}
       expect_failure: ${{ matrix.variant.expect_failure == true }}
-      use_prebuilt_artifacts: ${{ inputs.windows_use_prebuilt_artifacts == true && 'true' || 'false' }}
+      prebuilt_stages: ${{ inputs.windows_prebuilt_stages }}
+      baseline_run_id: ${{ inputs.windows_baseline_run_id }}
       rocm_package_version: ${{ needs.setup.outputs.rocm_package_version }}
       test_type: ${{ needs.setup.outputs.test_type }}
     permissions:
