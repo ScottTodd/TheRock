@@ -37,21 +37,13 @@ on:
         type: string
         description: "If provided, the tests will run on this artifact ID"
         default: ""
-      linux_prebuilt_stages:
+      prebuilt_stages:
         type: string
-        description: "Comma-separated stages to use prebuilt (e.g. foundation,compiler-runtime). Leave empty to build all."
+        description: "Comma-separated stages to use prebuilt (e.g. foundation,compiler-runtime). Leave empty to build all. Applied to both platforms; stages not present on a platform are skipped."
         default: ""
-      linux_baseline_run_id:
+      baseline_run_id:
         type: string
-        description: "Run ID to copy prebuilt artifacts from. Required when linux_prebuilt_stages is set."
-        default: ""
-      windows_prebuilt_stages:
-        type: string
-        description: "Comma-separated stages to use prebuilt (e.g. foundation,compiler-runtime). Leave empty to build all."
-        default: ""
-      windows_baseline_run_id:
-        type: string
-        description: "Run ID to copy prebuilt artifacts from. Required when windows_prebuilt_stages is set."
+        description: "Run ID to copy prebuilt artifacts from. Required when prebuilt_stages is set."
         default: ""
   # pull_request:
   #   types:
@@ -76,7 +68,7 @@ jobs:
     with:
       build_variant: "release"
       multi_arch: true
-      prebuilt_stages: ${{ inputs.linux_prebuilt_stages }}
+      prebuilt_stages: ${{ inputs.prebuilt_stages }}
 
   linux_build_and_test:
     name: Linux::${{ matrix.variant.build_variant_label }}
@@ -102,8 +94,8 @@ jobs:
       test_labels: ${{ needs.setup.outputs.linux_test_labels }}
       artifact_run_id: ${{ inputs.artifact_run_id }}
       expect_failure: ${{ matrix.variant.expect_failure == true }}
-      prebuilt_stages: ${{ inputs.linux_prebuilt_stages }}
-      baseline_run_id: ${{ inputs.linux_baseline_run_id }}
+      prebuilt_stages: ${{ inputs.prebuilt_stages }}
+      baseline_run_id: ${{ inputs.baseline_run_id }}
       rocm_package_version: ${{ needs.setup.outputs.rocm_package_version }}
       test_type: ${{ needs.setup.outputs.test_type }}
     permissions:
@@ -134,8 +126,8 @@ jobs:
       test_labels: ${{ needs.setup.outputs.windows_test_labels }}
       artifact_run_id: ${{ inputs.artifact_run_id }}
       expect_failure: ${{ matrix.variant.expect_failure == true }}
-      prebuilt_stages: ${{ inputs.windows_prebuilt_stages }}
-      baseline_run_id: ${{ inputs.windows_baseline_run_id }}
+      prebuilt_stages: ${{ inputs.prebuilt_stages }}
+      baseline_run_id: ${{ inputs.baseline_run_id }}
       rocm_package_version: ${{ needs.setup.outputs.rocm_package_version }}
       test_type: ${{ needs.setup.outputs.test_type }}
     permissions:
