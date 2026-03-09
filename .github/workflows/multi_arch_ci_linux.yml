@@ -29,9 +29,11 @@ on:
       prebuilt_stages:
         type: string
         default: ""
+        description: "Comma-separated build stages to skip; artifacts are copied from baseline_run_id instead"
       baseline_run_id:
         type: string
         default: ""
+        description: "Workflow run ID to copy prebuilt stage artifacts from"
       rocm_package_version:
         type: string
       test_type:

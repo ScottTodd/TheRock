@@ -39,12 +39,12 @@ on:
         default: ""
       prebuilt_stages:
         type: string
-        description: "Comma-separated stages to use prebuilt (e.g. foundation,compiler-runtime). Leave empty to build all. Applied to both platforms; stages not present on a platform are skipped."
         default: ""
+        description: "Comma-separated build stages to skip; artifacts are copied from baseline_run_id instead"
       baseline_run_id:
         type: string
-        description: "Run ID to copy prebuilt artifacts from. Required when prebuilt_stages is set."
         default: ""
+        description: "Workflow run ID to copy prebuilt stage artifacts from; required when prebuilt_stages is set"
   # pull_request:
   #   types:
   #     - labeled

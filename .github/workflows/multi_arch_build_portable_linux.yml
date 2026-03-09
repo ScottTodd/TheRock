@@ -45,7 +45,7 @@ on:
       prebuilt_stages:
         type: string
         default: ""
-        description: "Comma-separated stages that are prebuilt (skip these)"
+        description: "Comma-separated build stages to skip (artifacts already copied by the orchestrator)"
 
 permissions:
   contents: read

@@ -16,7 +16,7 @@ on:
       prebuilt_stages:
         type: string
         default: ""
-        description: "Override for which stages to use prebuilt. Empty means determine automatically (not yet implemented)."
+        description: "Comma-separated build stages to skip; passed through for future automatic stage selection"
     outputs:
       enable_build_jobs:
         description: Whether to enable build jobs.
