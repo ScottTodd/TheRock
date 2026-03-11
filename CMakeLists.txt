@@ -496,3 +496,4 @@ endif()
 # Finalization
 ################################################################################
 therock_subproject_merge_compile_commands()
+therock_subproject_write_dependency_manifest()

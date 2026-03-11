@@ -46,6 +46,12 @@ set_property(GLOBAL PROPERTY THEROCK_ALL_PROVIDED_PACKAGES)
 
 set_property(GLOBAL PROPERTY THEROCK_SUBPROJECT_COMPILE_COMMANDS_FILES)
 
+# Dependency manifest: written incrementally by therock_cmake_subproject_declare()
+# and closed by therock_subproject_write_dependency_manifest().
+set(_dep_manifest "${CMAKE_BINARY_DIR}/therock_subproject_deps.json")
+file(WRITE "${_dep_manifest}" "{\n  \"subprojects\": {")
+set_property(GLOBAL PROPERTY THEROCK_DEP_MANIFEST_NEEDS_COMMA FALSE)
+
 if(CMAKE_C_VISIBILITY_PRESET)
   list(APPEND THEROCK_DEFAULT_CMAKE_VARS ${CMAKE_C_VISIBILITY_PRESET})
 endif()
@@ -543,6 +549,40 @@ function(therock_cmake_subproject_declare target_name)
     THEROCK_FPRINT_SOURCE_DIR "${ARG_FPRINT_SOURCE_DIR}"
     THEROCK_FPRINT_FILE_GLOBS "${ARG_FPRINT_FILE_GLOBS}"
     THEROCK_FPRINT_SOURCE_HASH "${ARG_FPRINT_SOURCE_HASH}"
+  )
+
+  # Write this subproject's dependency metadata directly to the manifest file.
+  # We write incrementally to avoid CMake list-encoding issues with global properties.
+  get_property(_needs_comma GLOBAL PROPERTY THEROCK_DEP_MANIFEST_NEEDS_COMMA)
+  set(_dep_manifest "${CMAKE_BINARY_DIR}/therock_subproject_deps.json")
+  if(_needs_comma)
+    file(APPEND "${_dep_manifest}" ",")
+  endif()
+  set_property(GLOBAL PROPERTY THEROCK_DEP_MANIFEST_NEEDS_COMMA TRUE)
+
+  # Format build_deps array.
+  set(_bd_json "")
+  foreach(_dep IN LISTS ARG_BUILD_DEPS)
+    if(_bd_json)
+      string(APPEND _bd_json ", ")
+    endif()
+    string(APPEND _bd_json "\"${_dep}\"")
+  endforeach()
+
+  # Format runtime_deps array (already transitively resolved).
+  set(_rd_json "")
+  foreach(_dep IN LISTS _transitive_runtime_deps)
+    if(_rd_json)
+      string(APPEND _rd_json ", ")
+    endif()
+    string(APPEND _rd_json "\"${_dep}\"")
+  endforeach()
+
+  file(APPEND "${_dep_manifest}"
+    "\n    \"${target_name}\": {"
+    "\n      \"build_deps\": [${_bd_json}],"
+    "\n      \"runtime_deps\": [${_rd_json}]"
+    "\n    }"
   )
 
   if(ARG_ACTIVATE)
@@ -1177,6 +1217,14 @@ function(therock_subproject_merge_compile_commands)
       "${_merge_script}"
       ${_fragment_files}
   )
+endfunction()
+
+# Closes the JSON dependency manifest opened at module-include time.
+# Each subproject's entry was already written by therock_cmake_subproject_declare().
+function(therock_subproject_write_dependency_manifest)
+  set(_dep_manifest "${CMAKE_BINARY_DIR}/therock_subproject_deps.json")
+  file(APPEND "${_dep_manifest}" "\n  }\n}\n")
+  message(STATUS "Wrote subproject dependency manifest: ${_dep_manifest}")
 endfunction()
 
 function(_therock_assert_is_cmake_subproject target_name)
