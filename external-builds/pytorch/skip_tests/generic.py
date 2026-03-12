@@ -190,6 +190,11 @@ skip_tests = {
             "test_div_and_floordiv_script_vs_python_cuda",
             "test_idiv_and_ifloordiv_vs_python_cuda",
         ],
+        "unary_ufuncs": [
+            # Windows fatal exception: int divide by zero
+            "test_mvlgamma_inplace_integer_error_cuda_int64",
+            "test_nonzero_static_cuda",
+        ],
         "cuda": [
             # RuntimeError: miopenStatusUnknownError
             "test_autocast_rnn",
@@ -225,10 +230,20 @@ skip_tests = {
             #   Mismatched elements: 4 / 4 (100.0%)
             #   Mismatched elements: 96 / 96 (100.0%)
             # TODO: try re-enabling these tests after that commit is included in releases
-            "test_Conv",  # Broad pattern - this matches 10s of test cases.
+            # Update: tests pass but report errors: https://github.com/ROCm/TheRock/issues/3942
+            #   MIOpen(HIP): Error [miopen/src/include\miopen/conv/heuristics/ai_heuristics.hpp:62] Unable to load file: gfx908_metadata.tn.model
+            # "test_Conv",  # Broad pattern - this matches 10s of test cases.
             # AssertionError: False is not true
             # self.assertTrue(torch.allclose(x.grad.cpu(), xx.grad, rtol=rtol, atol=1e-3))
             "test_warp_softmax_64bit_indexing_cuda_float16",
+            # Windows fatal exception: int divide by zero
+            "test_pixel_shuffle_unshuffle",
+            "test_unfold_invalid_arg",
+            # Hanging tests?
+            "test_cross_entropy_loss_2d_out_of_bounds",
+            # Windows fatal exception: access violation
+            # https://github.com/ROCm/TheRock/issues/3173
+            "test_upsamplingNearest3d_launch_config_cuda",
         ],
         "torch": [
             # Large test that isn't very CI-friendly (takes 1-180 seconds depending on runner and torch version)

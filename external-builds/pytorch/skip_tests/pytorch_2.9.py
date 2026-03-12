@@ -107,6 +107,14 @@ skip_tests = {
             "test_cublas_allow_bf16_reduced_precision_reduction_get_set",
             # AttributeError: Unknown attribute allow_fp16_reduced_precision_reduction_split_k
             "test_cublas_allow_fp16_reduced_precision_reduction_get_set",
+            # Two errors:
+            # 1:
+            #   AssertionError: Scalars are not equal!
+            #   Expected 872415232 but got 872415231.
+            # 2:
+            #   UnboundLocalError: cannot access local variable 'orig' where it is not associated with a value
+            # Both fixed by https://github.com/pytorch/pytorch/commit/66abba8f49f05b0998040443813380efc32844f6
+            "test_max_split_expandable",
         ],
         "nn": [
             # Is now skipped.. on pytorch side
