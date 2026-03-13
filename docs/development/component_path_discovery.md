@@ -157,12 +157,14 @@ need to locate the ROCm install tree. The supported mechanisms are:
 
 ### Tool commands (preferred)
 
-| Command                | Returns             | Notes                          |
-| ---------------------- | ------------------- | ------------------------------ |
-| `hipconfig --path`     | HIP install prefix  | Computes from own location     |
-| `hipconfig --rocmpath` | ROCm install prefix | Computes from own location     |
-| `hipconfig --platform` | `amd` or `nvidia`   | Platform detection             |
-| `rocm-sdk path --root` | SDK root            | For Python `rocm-sdk` packages |
+| Command                 | Returns             | Notes                          |
+| ----------------------- | ------------------- | ------------------------------ |
+| `hipconfig --path`      | HIP install prefix  | Computes from own location     |
+| `hipconfig --rocmpath`  | ROCm install prefix | Computes from own location     |
+| `hipconfig --platform`  | `amd` or `nvidia`   | Platform detection             |
+| `rocm-sdk path --root`  | SDK root            | For Python `rocm-sdk` packages |
+| `rocm-sdk path --cmake` | CMake prefix path   | Use with `-DCMAKE_PREFIX_PATH` |
+| `rocm-sdk path --bin`   | Bin directory       | Use with `PATH`                |
 
 These commands derive paths from their own installed location, so they work
 correctly for any install prefix without environment variables.
@@ -204,6 +206,32 @@ target_link_libraries(myapp hip::host)  # or hip::device
 The consumer points CMake at the install tree via `-DCMAKE_PREFIX_PATH=<prefix>`
 or by adding the prefix to `CMAKE_PREFIX_PATH` in their CMake configuration.
 No environment variables are needed.
+
+### Building frameworks against ROCm Python packages
+
+When building Python-based frameworks (e.g., PyTorch) against installed ROCm
+Python development packages, use `rocm-sdk` to discover paths:
+
+```bash
+pip install rocm[libraries,devel]
+
+# CMake configuration:
+cmake ... \
+  -DCMAKE_PREFIX_PATH=$(rocm-sdk path --cmake) \
+  -DROCM_HOME=$(rocm-sdk path --root)
+
+# Add ROCm tools to PATH for the build:
+export PATH="$(rocm-sdk path --bin):$PATH"
+```
+
+For dynamic library resolution at runtime, Python code can use
+`rocm_sdk.find_libraries()` to get absolute paths to named libraries within
+the installed distribution, avoiding `dlopen` on bare library names that would
+depend on `LD_LIBRARY_PATH`.
+
+See [`docs/packaging/python_packaging.md`](/docs/packaging/python_packaging.md)
+for full details on Python package structure, initialization, and framework
+integration.
 
 ### Environment variables (last resort)
 
