@@ -129,6 +129,43 @@ endif()
 
 This avoids repeating the default in every subdirectory's `CMakeLists.txt`.
 
+### `CMAKE_INSTALL_PREFIX` and TheRock: how precedence works
+
+TheRock passes `-DCMAKE_INSTALL_PREFIX=<stage_dir>` on the cmake command line
+when configuring each sub-project. Command-line `-D` args set cache variables
+before the sub-project's `CMakeLists.txt` runs, so:
+
+- `set(CMAKE_INSTALL_PREFIX "/opt/rocm" CACHE PATH ...)` (without `FORCE`)
+  is a no-op — the cache variable is already set. **Safe.**
+- `set(CMAKE_INSTALL_PREFIX "C:/hipSDK" CACHE PATH ... FORCE)` **overrides
+  TheRock's value**, causing the sub-project to install to the wrong
+  directory. Files end up in `C:/hipSDK` instead of the stage dir, and
+  downstream sub-projects fail to find them. **This is a real bug.**
+
+The fix is to always guard `FORCE` with
+[`CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT`](https://cmake.org/cmake/help/latest/variable/CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT.html):
+
+```cmake
+# GOOD: respects TheRock's -D flag, only applies default in standalone builds
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  set(CMAKE_INSTALL_PREFIX "C:/hipSDK" CACHE PATH "Install path" FORCE)
+endif()
+
+# BAD: unconditionally overrides, breaks TheRock stage installs
+set(CMAKE_INSTALL_PREFIX "C:/hipSDK" CACHE PATH "Install path" FORCE)
+```
+
+This bug was hit on Windows where multiple sub-projects unconditionally forced
+`CMAKE_INSTALL_PREFIX` to `C:/hipSDK`, causing `find_package` failures in
+downstream sub-projects. The fix was applied across rocFFT, hipFFT, hipSOLVER,
+and hipSPARSE in [#340](https://github.com/ROCm/TheRock/pull/340) and has
+since been upstreamed — but there is no automated enforcement, so adding
+`FORCE` without the guard would silently reintroduce the bug.
+
+> **Rule:** Never use `FORCE` on `CMAKE_INSTALL_PREFIX` without guarding it
+> with `CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT`. This applies to all
+> sub-projects, in both the root `CMakeLists.txt` and any subdirectories.
+
 ## Install-Time Patterns (Generated CMake Config Files)
 
 When a sub-project generates a `foo-config.cmake` (or `foo-config.cmake.in`
