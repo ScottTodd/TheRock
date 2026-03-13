@@ -30,6 +30,15 @@ patterns in TheRock and its sub-projects.
    that the "active" one is determined solely by which tree's tools or
    libraries are being invoked.
 
+1. **Fail loudly on misconfiguration; never silently fall back to a different
+   install.** If a component cannot locate a required file or dependency
+   through its intended discovery mechanism, it must report an error — not
+   silently try a hardcoded system path. Loading files from a different ROCm
+   installation (potentially a different version) produces wrong results that
+   are far harder to diagnose than a clear "file not found" error. A fallback
+   that silently crosses install boundaries violates every other principle
+   in this list.
+
 1. **User-facing discovery uses tool commands, not env vars.** External
    consumers (build scripts, CI pipelines, Python packages) should discover
    paths via tool commands like `hipconfig --path`, `hipconfig --rocmpath`, or
