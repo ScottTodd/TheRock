@@ -80,13 +80,54 @@ These anti-patterns have caused real build failures. See
 each on Windows, where an existing HIP SDK install at
 `C:\Program Files\AMD\ROCm\6.2\` caused sandbox escapes during TheRock builds.
 
-| Anti-pattern                                          | Why it's wrong                                                                               | Correct approach                                                   |
-| ----------------------------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `set(FOO_DIR "/opt/rocm/...")`                        | Hardcoded path; breaks on any non-default install                                            | Use `find_package()` — the dependency provider resolves it         |
-| `set(HIP_PATH $ENV{HIP_PATH})`                        | Reads env var from host; picks up wrong install and may introduce backslash paths on Windows | Use `find_package(hip)` or paths from super-project                |
-| `find_program(FOO foo)` without hints                 | Searches `PATH`; may find the wrong version                                                  | Compute relative to `CMAKE_CURRENT_LIST_DIR` or use a known prefix |
-| `execute_process(COMMAND hipconfig ...)` during build | Runs host tool, not the one being built                                                      | Pass the value as a CMake variable from the super-project          |
-| Probing `C:\Program Files\AMD\ROCm` or similar        | Finds stale/partial system installs; fails with empty directories                            | Use only paths provided by the super-project                       |
+| Anti-pattern                                                                     | Why it's wrong                                                                               | Correct approach                                                   |
+| -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `set(FOO_DIR "/opt/rocm/...")`                                                   | Hardcoded path; breaks on any non-default install                                            | Use `find_package()` — the dependency provider resolves it         |
+| `set(HIP_PATH $ENV{HIP_PATH})`                                                   | Reads env var from host; picks up wrong install and may introduce backslash paths on Windows | Use `find_package(hip)` or paths from super-project                |
+| `find_program(FOO foo)` without hints                                            | Searches `PATH`; may find the wrong version                                                  | Compute relative to `CMAKE_CURRENT_LIST_DIR` or use a known prefix |
+| `execute_process(COMMAND hipconfig ...)` during build                            | Runs host tool, not the one being built                                                      | Pass the value as a CMake variable from the super-project          |
+| Probing `C:\Program Files\AMD\ROCm` or similar                                   | Finds stale/partial system installs; fails with empty directories                            | Use only paths provided by the super-project                       |
+| Scattering `PATHS /opt/rocm/...` across many `find_package`/`find_program` calls | Normalizes a single platform-specific path; hard to override consistently                    | Derive from `CMAKE_PREFIX_PATH` or a single top-level setting      |
+
+### Standalone builds (outside TheRock)
+
+Many sub-projects can also be built standalone, without the TheRock
+super-project. In this mode, there is no dependency provider or generated
+`_init.cmake` — the project must find its dependencies through standard CMake
+mechanisms.
+
+The current convention in most sub-projects is to hardcode
+`PATHS /opt/rocm/...` in every `find_package()` and `find_program()` call.
+This is problematic because it scatters a platform-specific default across
+dozens of call sites, making it difficult to override consistently and
+normalizing the assumption that ROCm lives at a single fixed path.
+
+The preferred approach is to derive search paths from a single top-level
+setting. When a user configures a standalone build, they provide the ROCm
+prefix once:
+
+```bash
+cmake -B build -DCMAKE_PREFIX_PATH=/opt/rocm
+```
+
+Standard CMake discovery (`find_package`, `find_program`, `find_path`, etc.)
+already searches `CMAKE_PREFIX_PATH` and its standard subdirectory structure
+(`lib/cmake/`, `bin/`, `include/`, etc.). Individual call sites should not
+need explicit `PATHS` hints if the prefix is set correctly.
+
+For the `CMAKE_INSTALL_PREFIX` default, a single top-level default is
+acceptable:
+
+```cmake
+# ONE place at the top of the root CMakeLists.txt:
+if(NOT CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  # User explicitly set it — respect their choice
+elseif(ROCM_PATH)
+  set(CMAKE_INSTALL_PREFIX "${ROCM_PATH}" CACHE PATH "" FORCE)
+endif()
+```
+
+This avoids repeating the default in every subdirectory's `CMakeLists.txt`.
 
 ## Install-Time Patterns (Generated CMake Config Files)
 
@@ -116,10 +157,9 @@ CMake's
 generates this kind of relative-path logic automatically. Prefer using that
 helper over hand-rolling templates when writing new configs.
 
-> **TODO:** Validate this pattern against a real sub-project in the tree. We
-> need to identify a sub-project that already does this correctly and use it
-> as the reference example — or fix one up as a model. See the
-> [compliance audit](#compliance-audit) section below.
+Both `rocr-runtime` and `rocfft` already follow this pattern in their config
+templates (`hsa-runtime64-config.cmake.in`, `rocfft-config.cmake.in`). These
+can serve as reference examples.
 
 ### Executable paths in config files
 
@@ -307,23 +347,31 @@ When adding or modifying a sub-project's CMake config:
 
 ## Compliance Audit
 
-This section tracks which sub-projects comply with these requirements and which
-need to be fixed.
+This section tracks compliance across sub-projects. Detailed per-project
+audit reports are maintained separately; this section summarizes findings and
+tracks known user-facing issues.
 
-> **TODO:** Run a project-wide audit to classify each sub-project's CMake
-> config generation and path discovery patterns. The goal is to identify:
->
-> 1. **Compliant sub-projects** — already use relative path computation, no
->    hardcoded paths, no env var reads. Use these as the reference model for
->    fixing non-compliant projects.
-> 1. **Non-compliant sub-projects** — use hardcoded `/opt/rocm` defaults,
->    read `HIP_PATH`/`ROCM_PATH` env vars, probe system directories, or
->    search PATH for sibling tools. These must be fixed.
-> 1. **Severity** — which violations cause active build failures or
->    user-facing bugs in distributed packages vs. which are latent but still
->    non-compliant.
+> **TODO:** Extend audit to all sub-projects. Only rocr-runtime and rocfft
+> have been audited so far.
 
-### Open violations
+### Audit findings
+
+Both audited projects show the same pattern:
+
+- **Config templates: compliant.** `hsa-runtime64-config.cmake.in` and
+  `rocfft-config.cmake.in` both use `@PACKAGE_INIT@` and relative paths.
+  RPATH uses `$ORIGIN`. These are reference examples of the correct pattern.
+- **Build-time discovery: non-compliant.** `/opt/rocm` is scattered across
+  `find_package` PATHS hints, `CMAKE_INSTALL_PREFIX` defaults, toolchain
+  files, install scripts, and Python helper scripts. This pattern is likely
+  universal across ROCm sub-projects.
+
+The fix is not to chase each individual `PATHS /opt/rocm/...` hint, but to
+establish a convention where standalone builds derive all search paths from
+`CMAKE_PREFIX_PATH` (set once at configure time). See
+[Standalone builds](#standalone-builds-outside-therock) above.
+
+### Open violations (user-facing)
 
 - `hip-config.cmake.in` (`rocm-systems/projects/clr/hipamd/`):
   `HIPCC_BIN_DIR` defaults to `/opt/rocm/bin`; PATH fallback added in
