@@ -104,6 +104,11 @@ class CIInputs:
     prebuilt_stages: str = ""
     baseline_run_id: str = ""
 
+    # Release configuration (from workflow_call)
+    release_type: str = ""  # "", "dev", "nightly", or "prerelease"
+    github_repository: str = ""  # e.g. "ROCm/TheRock"
+    is_pr_from_fork: bool = False
+
     def log(self) -> None:
         """Log parsed inputs for CI diagnostics."""
         print("CIInputs:")
@@ -143,8 +148,11 @@ class CIInputs:
         # "inputs" are set for workflow_dispatch, empty otherwise.
         inputs = event.get("inputs") or {}
 
-        # BUILD_VARIANT comes from workflow_call inputs, not the event payload.
+        # BUILD_VARIANT and RELEASE_TYPE come from workflow_call inputs,
+        # not the event payload.
         build_variant = os.environ.get("BUILD_VARIANT", "release")
+        release_type = os.environ.get("RELEASE_TYPE", "")
+        github_repository = os.environ.get("GITHUB_REPOSITORY", "ROCm/TheRock")
 
         pr_labels: list[str] = []
         base_ref = "HEAD^1"
@@ -159,6 +167,12 @@ class CIInputs:
             base_ref = "HEAD^"
         elif event_name == "push":
             base_ref = event.get("before", "HEAD^1")
+
+        is_pr_from_fork = False
+        if event_name == "pull_request":
+            pr_obj = event.get("pull_request", {})
+            head_repo = pr_obj.get("head", {}).get("repo", {}).get("full_name", "")
+            is_pr_from_fork = head_repo != "" and head_repo != github_repository
 
         return CIInputs(
             run_id=run_id,
@@ -177,6 +191,9 @@ class CIInputs:
             windows_test_labels=inputs.get("windows_test_labels", ""),
             prebuilt_stages=inputs.get("prebuilt_stages", ""),
             baseline_run_id=inputs.get("baseline_run_id", ""),
+            release_type=release_type,
+            github_repository=github_repository,
+            is_pr_from_fork=is_pr_from_fork,
         )
 
 
@@ -427,6 +444,72 @@ class CIOutputs:
     def skipped() -> "CIOutputs":
         """Produce empty outputs when CI is skipped."""
         return CIOutputs(is_ci_enabled=False)
+
+
+# AWS account ID for TheRock IAM roles.
+_AWS_ACCOUNT_ID = "692859939525"
+
+
+@dataclass(frozen=True)
+class InfraConfig:
+    """Infrastructure configuration for artifact storage.
+
+    Computed once during setup and passed explicitly to all downstream
+    workflows and scripts. This replaces implicit environment-variable-based
+    bucket/role inference in individual build jobs.
+
+    Scope: artifacts bucket only (build outputs, logs, packages produced
+    during the workflow run). Release buckets (python, tarball, native
+    packages) may be in different AWS accounts/regions and are handled
+    separately by publish jobs.
+    """
+
+    artifacts_bucket: str
+    """S3 bucket for build artifacts (e.g., 'therock-ci-artifacts')."""
+
+    artifacts_bucket_iam_role: str
+    """Full IAM role ARN for writing to the artifacts bucket.
+    Empty string means use runner base credentials (for forks/external repos).
+    """
+
+    def log(self) -> None:
+        print("InfraConfig:")
+        print(f"  artifacts_bucket: {self.artifacts_bucket}")
+        print(
+            f"  artifacts_bucket_iam_role: {self.artifacts_bucket_iam_role or '(runner base credentials)'}"
+        )
+
+
+def compute_infra_config(
+    release_type: str,
+    github_repository: str,
+    is_pr_from_fork: bool,
+) -> InfraConfig:
+    """Determine S3 bucket and IAM role for artifact storage.
+
+    This is the single source of truth for artifact bucket selection,
+    replacing the implicit logic in workflow_outputs._retrieve_bucket_info()
+    for the "current run's own bucket" case.
+
+    Args:
+        release_type: "", "dev", "nightly", or "prerelease".
+            Empty string means CI (no release).
+        github_repository: Repository in "owner/repo" format.
+        is_pr_from_fork: Whether this is a PR from a fork.
+    """
+    _VALID_RELEASE_TYPES = {"dev", "nightly", "prerelease"}
+
+    if release_type in _VALID_RELEASE_TYPES:
+        bucket = f"therock-{release_type}-artifacts"
+        role = f"arn:aws:iam::{_AWS_ACCOUNT_ID}:role/therock-{release_type}"
+    elif is_pr_from_fork or github_repository != "ROCm/TheRock":
+        bucket = "therock-ci-artifacts-external"
+        role = ""  # Use runner base credentials
+    else:
+        bucket = "therock-ci-artifacts"
+        role = f"arn:aws:iam::{_AWS_ACCOUNT_ID}:role/therock-ci"
+
+    return InfraConfig(artifacts_bucket=bucket, artifacts_bucket_iam_role=role)
 
 
 # ---------------------------------------------------------------------------
@@ -869,6 +952,7 @@ def expand_build_configs(
 def write_outputs(
     ci_inputs: CIInputs,
     outputs: CIOutputs,
+    infra_config: InfraConfig,
 ) -> None:
     """Write results to GITHUB_OUTPUT and GITHUB_STEP_SUMMARY.
 
@@ -885,6 +969,8 @@ def write_outputs(
         "test_type": test_type,
         "linux_test_labels": outputs.linux_test_labels,
         "windows_test_labels": outputs.windows_test_labels,
+        "artifacts_bucket": infra_config.artifacts_bucket,
+        "artifacts_bucket_iam_role": infra_config.artifacts_bucket_iam_role,
     }
     gha_set_output(output_vars)
 
@@ -965,7 +1051,16 @@ def main():
         git_context = GitContext.empty()
 
     outputs = configure(ci_inputs, git_context)
-    write_outputs(ci_inputs=ci_inputs, outputs=outputs)
+
+    print("\n=== Computing infrastructure config ===")
+    infra_config = compute_infra_config(
+        release_type=ci_inputs.release_type,
+        github_repository=ci_inputs.github_repository,
+        is_pr_from_fork=ci_inputs.is_pr_from_fork,
+    )
+    infra_config.log()
+
+    write_outputs(ci_inputs=ci_inputs, outputs=outputs, infra_config=infra_config)
 
 
 if __name__ == "__main__":

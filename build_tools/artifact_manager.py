@@ -343,6 +343,7 @@ def do_fetch(args: argparse.Namespace):
     backend = create_backend_from_env(
         run_id=args.run_id,
         platform=args.platform,
+        bucket=args.bucket,
     )
     log(f"Using backend: {backend.base_uri}")
 
@@ -589,6 +590,7 @@ def do_push(args: argparse.Namespace):
     backend = create_backend_from_env(
         run_id=args.run_id,
         platform=args.platform,
+        bucket=args.bucket,
     )
     log(f"Using backend: {backend.base_uri}")
 
@@ -983,6 +985,14 @@ def _add_backend_args(parser: argparse.ArgumentParser):
         type=str,
         default=os.getenv("THEROCK_PLATFORM", platform_module.system().lower()),
         help="Platform name (default: current platform)",
+    )
+    parser.add_argument(
+        "--bucket",
+        type=str,
+        default=None,
+        help="Explicit S3 bucket name. If provided, skips env-var-based "
+        "bucket inference. Prefer this when the bucket is computed upfront "
+        "(e.g., by configure_multi_arch_ci.py).",
     )
     parser.add_argument(
         "--local-staging-dir",

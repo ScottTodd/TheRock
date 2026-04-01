@@ -351,6 +351,37 @@ class TestWorkflowOutputRootFromWorkflowRun(unittest.TestCase):
             workflow_run=fake_run,
         )
 
+    @mock.patch("_therock_utils.workflow_outputs._retrieve_bucket_info")
+    @mock.patch.dict(os.environ, {"GITHUB_REPOSITORY": "ROCm/TheRock"}, clear=False)
+    def test_explicit_bucket_skips_inference(self, mock_retrieve):
+        """When bucket is provided, _retrieve_bucket_info is not called."""
+        root = WorkflowOutputRoot.from_workflow_run(
+            run_id="12345",
+            platform="linux",
+            bucket="therock-dev-artifacts",
+        )
+        mock_retrieve.assert_not_called()
+        self.assertEqual(root.bucket, "therock-dev-artifacts")
+        self.assertEqual(root.run_id, "12345")
+        self.assertEqual(root.platform, "linux")
+
+    @mock.patch("_therock_utils.workflow_outputs._retrieve_bucket_info")
+    @mock.patch.dict(
+        os.environ,
+        {"GITHUB_REPOSITORY": "ROCm/TheRock", "IS_PR_FROM_FORK": "false"},
+        clear=False,
+    )
+    def test_explicit_bucket_computes_external_repo(self, mock_retrieve):
+        """Explicit bucket still computes external_repo from env."""
+        root = WorkflowOutputRoot.from_workflow_run(
+            run_id="12345",
+            platform="linux",
+            bucket="therock-nightly-artifacts",
+        )
+        mock_retrieve.assert_not_called()
+        self.assertEqual(root.external_repo, "")
+        self.assertEqual(root.prefix, "12345-linux")
+
 
 # ---------------------------------------------------------------------------
 # _retrieve_bucket_info

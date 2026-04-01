@@ -46,6 +46,14 @@ on:
         type: string
         required: true
         description: "ROCm package version string"
+      artifacts_bucket:
+        description: "S3 bucket for build artifacts (from setup_multi_arch.yml)."
+        type: string
+        default: ""
+      artifacts_bucket_iam_role:
+        description: "IAM role ARN for writing to the artifacts bucket. Empty = runner base credentials."
+        type: string
+        default: ""
 
 jobs:
   build_stage:
@@ -165,14 +173,12 @@ jobs:
           echo "Artifacts:"
           ls -lh "${BUILD_DIR}"/artifacts/*.tar.xz 2>/dev/null || echo "No artifacts found"
 
-      # Assume the therock-ci OIDC role in ROCm/TheRock. Other repos
-      # fall back to runner base credentials (therock-ci-artifacts-external).
       - name: Configure AWS Credentials
-        if: ${{ always() && github.repository == 'ROCm/TheRock' && !github.event.pull_request.head.repo.fork }}
+        if: ${{ always() && inputs.artifacts_bucket_iam_role != '' }}
         uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6.0.0
         with:
           aws-region: us-east-2
-          role-to-assume: arn:aws:iam::692859939525:role/therock-ci
+          role-to-assume: ${{ inputs.artifacts_bucket_iam_role }}
           special-characters-workaround: true
 
       # TODO(#3336): Attempt upload `always()`?
@@ -184,7 +190,8 @@ jobs:
         run: |
           python build_tools/artifact_manager.py push --run-id ${{ github.run_id }} \
             --stage="${STAGE_NAME}" \
-            --build-dir="${BUILD_DIR}"
+            --build-dir="${BUILD_DIR}" \
+            --bucket="${{ inputs.artifacts_bucket }}"
 
       - name: Upload stage logs
         if: ${{ always() }}
@@ -193,4 +200,5 @@ jobs:
             --run-id=${{ github.run_id }} \
             --stage="${STAGE_NAME}" \
             --build-dir="${BUILD_DIR}" \
-            --amdgpu-family="${AMDGPU_FAMILIES}"
+            --amdgpu-family="${AMDGPU_FAMILIES}" \
+            --bucket="${{ inputs.artifacts_bucket }}"

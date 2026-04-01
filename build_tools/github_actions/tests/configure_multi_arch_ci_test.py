@@ -799,7 +799,68 @@ class TestFormatSummary(unittest.TestCase):
 
     def test_skipped_ci_write_outputs_summary(self):
         outputs = cm.CIOutputs(is_ci_enabled=False)
-        cm.write_outputs(self._inputs(), outputs)
+        infra_config = cm.InfraConfig(
+            artifacts_bucket="therock-ci-artifacts",
+            artifacts_bucket_iam_role="arn:aws:iam::692859939525:role/therock-ci",
+        )
+        cm.write_outputs(self._inputs(), outputs, infra_config)
+
+
+# ---------------------------------------------------------------------------
+# Infrastructure config
+# ---------------------------------------------------------------------------
+
+
+class TestComputeInfraConfig(unittest.TestCase):
+    """Tests for compute_infra_config()."""
+
+    def test_ci_default(self):
+        config = cm.compute_infra_config(
+            release_type="", github_repository="ROCm/TheRock", is_pr_from_fork=False
+        )
+        self.assertEqual(config.artifacts_bucket, "therock-ci-artifacts")
+        self.assertIn("therock-ci", config.artifacts_bucket_iam_role)
+
+    def test_dev_release(self):
+        config = cm.compute_infra_config(
+            release_type="dev", github_repository="ROCm/TheRock", is_pr_from_fork=False
+        )
+        self.assertEqual(config.artifacts_bucket, "therock-dev-artifacts")
+        self.assertIn("therock-dev", config.artifacts_bucket_iam_role)
+
+    def test_nightly_release(self):
+        config = cm.compute_infra_config(
+            release_type="nightly",
+            github_repository="ROCm/TheRock",
+            is_pr_from_fork=False,
+        )
+        self.assertEqual(config.artifacts_bucket, "therock-nightly-artifacts")
+        self.assertIn("therock-nightly", config.artifacts_bucket_iam_role)
+
+    def test_prerelease(self):
+        config = cm.compute_infra_config(
+            release_type="prerelease",
+            github_repository="ROCm/TheRock",
+            is_pr_from_fork=False,
+        )
+        self.assertEqual(config.artifacts_bucket, "therock-prerelease-artifacts")
+        self.assertIn("therock-prerelease", config.artifacts_bucket_iam_role)
+
+    def test_fork_pr(self):
+        config = cm.compute_infra_config(
+            release_type="", github_repository="ROCm/TheRock", is_pr_from_fork=True
+        )
+        self.assertEqual(config.artifacts_bucket, "therock-ci-artifacts-external")
+        self.assertEqual(config.artifacts_bucket_iam_role, "")
+
+    def test_external_repo(self):
+        config = cm.compute_infra_config(
+            release_type="",
+            github_repository="user/rocm-libraries",
+            is_pr_from_fork=False,
+        )
+        self.assertEqual(config.artifacts_bucket, "therock-ci-artifacts-external")
+        self.assertEqual(config.artifacts_bucket_iam_role, "")
 
 
 # ---------------------------------------------------------------------------

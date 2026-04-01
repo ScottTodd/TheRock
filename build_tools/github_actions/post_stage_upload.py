@@ -149,6 +149,7 @@ def run(args: argparse.Namespace):
     output_root = WorkflowOutputRoot.from_workflow_run(
         run_id=args.run_id,
         platform=platform.system().lower(),
+        bucket=args.bucket,
     )
     backend = create_storage_backend(staging_dir=args.output_dir, dry_run=args.dry_run)
 
@@ -199,6 +200,13 @@ def main(argv: list[str] | None = None):
         type=Path,
         default=None,
         help="Write to local directory instead of S3 (for testing)",
+    )
+    parser.add_argument(
+        "--bucket",
+        type=str,
+        default=None,
+        help="Explicit S3 bucket name. If provided, skips env-var-based "
+        "bucket inference.",
     )
     parser.add_argument(
         "--dry-run",

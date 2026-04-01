@@ -333,8 +333,17 @@ class S3Backend(ArtifactBackend):
 def create_backend_from_env(
     run_id: Optional[str] = None,
     platform: Optional[str] = None,
+    bucket: Optional[str] = None,
 ) -> ArtifactBackend:
     """Create the appropriate backend based on environment variables.
+
+    Args:
+        run_id: Override run ID (default: from THEROCK_RUN_ID or GITHUB_RUN_ID).
+        platform: Override platform (default: from THEROCK_PLATFORM or current).
+        bucket: Explicit S3 bucket name. If provided, skips env-var-based
+            bucket inference in WorkflowOutputRoot. Prefer passing this when
+            the bucket is known (e.g., from a workflow input computed by
+            configure_multi_arch_ci.py).
 
     Environment variables:
     - THEROCK_LOCAL_STAGING_DIR: If set, use local backend
@@ -362,6 +371,6 @@ def create_backend_from_env(
         )
 
     output_root = WorkflowOutputRoot.from_workflow_run(
-        run_id=run_id, platform=platform_name
+        run_id=run_id, platform=platform_name, bucket=bucket
     )
     return S3Backend(output_root=output_root)

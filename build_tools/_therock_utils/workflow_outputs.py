@@ -233,6 +233,7 @@ class WorkflowOutputRoot:
         cls,
         run_id: str,
         platform: str,
+        bucket: str | None = None,
         github_repository: str | None = None,
         workflow_run: dict | None = None,
         lookup_workflow_run: bool = False,
@@ -245,6 +246,10 @@ class WorkflowOutputRoot:
         Args:
             run_id: GitHub Actions workflow run ID.
             platform: Platform name ('linux' or 'windows').
+            bucket: Explicit S3 bucket name. If provided, skips
+                environment-variable-based bucket inference. Prefer this
+                when the bucket is known upfront (e.g., computed by
+                configure_multi_arch_ci.py and passed as a workflow input).
             github_repository: Repository in 'owner/repo' format. If None,
                 reads GITHUB_REPOSITORY env var (default: 'ROCm/TheRock').
             workflow_run: Optional workflow run dict from GitHub API. If
@@ -256,16 +261,36 @@ class WorkflowOutputRoot:
                 this — environment variables suffice. Set this when looking up
                 another repository's workflow run (e.g. fetching artifacts).
         """
+        if bucket:
+            # Explicit bucket — skip env-var-based bucket inference.
+            #
+            # TODO: external_repo is still inferred from GITHUB_REPOSITORY
+            # and IS_PR_FROM_FORK env vars. Ideally the full S3 prefix
+            # (external_repo + run_id + platform) would be computed upfront
+            # in the setup job and passed explicitly, making WorkflowOutputRoot
+            # a simple (bucket, prefix) pair. That requires refactoring the
+            # class to store prefix as a first-class field instead of
+            # (external_repo, run_id, platform). See #3334 for context.
+            external_repo = _compute_external_repo(github_repository)
+            _log(f"Using explicit bucket: {bucket}")
+            _log(f"  external_repo: {external_repo}")
+            return cls(
+                bucket=bucket,
+                external_repo=external_repo,
+                run_id=run_id,
+                platform=platform,
+            )
+
         workflow_run_id = (
             run_id if lookup_workflow_run and workflow_run is None else None
         )
-        external_repo, bucket = _retrieve_bucket_info(
+        external_repo, inferred_bucket = _retrieve_bucket_info(
             github_repository=github_repository,
             workflow_run_id=workflow_run_id,
             workflow_run=workflow_run,
         )
         return cls(
-            bucket=bucket,
+            bucket=inferred_bucket,
             external_repo=external_repo,
             run_id=run_id,
             platform=platform,
@@ -302,6 +327,25 @@ class WorkflowOutputRoot:
 # Cutover date for bucket naming change (TheRock #2046).
 # Workflows before this date used therock-artifacts; after, therock-ci-artifacts.
 _BUCKET_CUTOVER_DATE = datetime.fromisoformat("2025-11-11T16:18:48+00:00")
+
+
+def _compute_external_repo(github_repository: str | None = None) -> str:
+    """Compute the external_repo prefix from repository identity.
+
+    Returns ``''`` for ROCm/TheRock non-fork runs, or ``'{owner}-{repo}/'``
+    for forks and other repositories.
+
+    TODO(#3334): This still reads IS_PR_FROM_FORK from the environment.
+    Ideally the full S3 prefix would be computed upfront in the setup job
+    and passed explicitly, eliminating this env-var dependency.
+    """
+    if github_repository is None:
+        github_repository = os.environ.get("GITHUB_REPOSITORY", "ROCm/TheRock")
+    is_pr_from_fork = os.environ.get("IS_PR_FROM_FORK", "false") == "true"
+    owner, repo_name = github_repository.split("/")
+    if repo_name == "TheRock" and owner == "ROCm" and not is_pr_from_fork:
+        return ""
+    return f"{owner}-{repo_name}/"
 
 
 def _retrieve_bucket_info(

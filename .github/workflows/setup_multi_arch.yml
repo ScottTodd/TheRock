@@ -9,6 +9,13 @@ on:
       build_variant:
         type: string
         default: "release"
+      release_type:
+        description: >-
+          Release type: "" for CI builds, or "dev", "nightly", "prerelease"
+          for release builds. Controls artifact bucket selection, IAM role,
+          and package versioning.
+        type: string
+        default: ""
     outputs:
       enable_build_jobs:
         description: Whether to enable build jobs.
@@ -31,6 +38,14 @@ on:
       rocm_package_version:
         description: ROCm package version (primarily for Python packages).
         value: ${{ jobs.setup.outputs.rocm_package_version }}
+      artifacts_bucket:
+        description: S3 bucket for build artifacts (e.g., therock-ci-artifacts).
+        value: ${{ jobs.setup.outputs.artifacts_bucket }}
+      artifacts_bucket_iam_role:
+        description: >-
+          IAM role ARN for writing to the artifacts bucket.
+          Empty string means use runner base credentials (forks/external).
+        value: ${{ jobs.setup.outputs.artifacts_bucket_iam_role }}
 
 permissions:
   contents: read
@@ -46,6 +61,8 @@ jobs:
       linux_test_labels: ${{ steps.configure.outputs.linux_test_labels }}
       windows_test_labels: ${{ steps.configure.outputs.windows_test_labels }}
       rocm_package_version: ${{ steps.rocm_package_version.outputs.rocm_package_version }}
+      artifacts_bucket: ${{ steps.configure.outputs.artifacts_bucket }}
+      artifacts_bucket_iam_role: ${{ steps.configure.outputs.artifacts_bucket_iam_role }}
     steps:
       - name: Checking out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -59,8 +76,11 @@ jobs:
         id: configure
         env:
           BUILD_VARIANT: ${{ inputs.build_variant }}
+          RELEASE_TYPE: ${{ inputs.release_type }}
         run: python ./build_tools/github_actions/configure_multi_arch_ci.py
 
       - name: Compute package version
         id: rocm_package_version
-        run: python ./build_tools/compute_rocm_package_version.py --release-type=dev
+        run: |
+          python ./build_tools/compute_rocm_package_version.py \
+            --release-type=${{ inputs.release_type || 'dev' }}

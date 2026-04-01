@@ -80,6 +80,8 @@ jobs:
       test_labels: ${{ needs.setup.outputs.linux_test_labels }}
       rocm_package_version: ${{ needs.setup.outputs.rocm_package_version }}
       test_type: ${{ needs.setup.outputs.test_type }}
+      artifacts_bucket: ${{ needs.setup.outputs.artifacts_bucket }}
+      artifacts_bucket_iam_role: ${{ needs.setup.outputs.artifacts_bucket_iam_role }}
     permissions:
       contents: read
       id-token: write
@@ -99,6 +101,8 @@ jobs:
       test_labels: ${{ needs.setup.outputs.windows_test_labels }}
       rocm_package_version: ${{ needs.setup.outputs.rocm_package_version }}
       test_type: ${{ needs.setup.outputs.test_type }}
+      artifacts_bucket: ${{ needs.setup.outputs.artifacts_bucket }}
+      artifacts_bucket_iam_role: ${{ needs.setup.outputs.artifacts_bucket_iam_role }}
     permissions:
       contents: read
       id-token: write

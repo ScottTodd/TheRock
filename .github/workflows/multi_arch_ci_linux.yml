@@ -20,6 +20,14 @@ on:
         type: string
       test_type:
         type: string
+      artifacts_bucket:
+        description: "S3 bucket for build artifacts (from setup_multi_arch.yml)."
+        type: string
+        default: ""
+      artifacts_bucket_iam_role:
+        description: "IAM role ARN for writing to the artifacts bucket. Empty = runner base credentials."
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -44,17 +52,14 @@ jobs:
       - name: Install artifact manager dependencies
         run: pip install boto3
 
-      # Assume the therock-ci OIDC role in ROCm/TheRock. Other repos
-      # fall back to runner base credentials (therock-ci-artifacts-external).
-      #
-      # This is just needed for write access to the current run's bucket,
-      # all possible source run buckets have public read access.
+      # Write access to the current run's artifacts bucket.
+      # All source run buckets have public read access (no credentials needed).
       - name: Configure AWS Credentials
-        if: ${{ github.repository == 'ROCm/TheRock' && !github.event.pull_request.head.repo.fork }}
+        if: ${{ inputs.artifacts_bucket_iam_role != '' }}
         uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6.0.0
         with:
           aws-region: us-east-2
-          role-to-assume: arn:aws:iam::692859939525:role/therock-ci
+          role-to-assume: ${{ inputs.artifacts_bucket_iam_role }}
 
       - name: Copy prebuilt stage artifacts
         env:
@@ -63,7 +68,8 @@ jobs:
           python build_tools/artifact_manager.py copy \
             --source-run-id=${{ fromJSON(inputs.build_config).baseline_run_id }} \
             --stage="${{ fromJSON(inputs.build_config).prebuilt_stages }}" \
-            --amdgpu-families="${{ fromJSON(inputs.build_config).dist_amdgpu_families }}"
+            --amdgpu-families="${{ fromJSON(inputs.build_config).dist_amdgpu_families }}" \
+            --bucket="${{ inputs.artifacts_bucket }}"
 
   build_multi_arch_stages:
     name: Build Multi-Arch Stages
@@ -82,6 +88,8 @@ jobs:
       prebuilt_stages: ${{ fromJSON(inputs.build_config).prebuilt_stages }}
       rocm_package_version: ${{ inputs.rocm_package_version }}
       test_type: ${{ inputs.test_type }}
+      artifacts_bucket: ${{ inputs.artifacts_bucket }}
+      artifacts_bucket_iam_role: ${{ inputs.artifacts_bucket_iam_role }}
     permissions:
       contents: read
       id-token: write

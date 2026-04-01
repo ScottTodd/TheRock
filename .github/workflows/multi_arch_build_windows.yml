@@ -42,6 +42,14 @@ on:
         type: string
       test_type:
         type: string
+      artifacts_bucket:
+        description: "S3 bucket for build artifacts (from setup_multi_arch.yml)."
+        type: string
+        default: ""
+      artifacts_bucket_iam_role:
+        description: "IAM role ARN for writing to the artifacts bucket. Empty = runner base credentials."
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -61,6 +69,8 @@ jobs:
       dist_amdgpu_families: ${{ inputs.dist_amdgpu_families }}
       build_variant_cmake_preset: ${{ inputs.build_variant_cmake_preset }}
       rocm_package_version: ${{ inputs.rocm_package_version }}
+      artifacts_bucket: ${{ inputs.artifacts_bucket }}
+      artifacts_bucket_iam_role: ${{ inputs.artifacts_bucket_iam_role }}
     permissions:
       contents: read
       id-token: write
@@ -80,6 +90,8 @@ jobs:
       dist_amdgpu_families: ${{ inputs.dist_amdgpu_families }}
       build_variant_cmake_preset: ${{ inputs.build_variant_cmake_preset }}
       rocm_package_version: ${{ inputs.rocm_package_version }}
+      artifacts_bucket: ${{ inputs.artifacts_bucket }}
+      artifacts_bucket_iam_role: ${{ inputs.artifacts_bucket_iam_role }}
     permissions:
       contents: read
       id-token: write
@@ -104,6 +116,8 @@ jobs:
       dist_amdgpu_families: ${{ inputs.dist_amdgpu_families }}
       build_variant_cmake_preset: ${{ inputs.build_variant_cmake_preset }}
       rocm_package_version: ${{ inputs.rocm_package_version }}
+      artifacts_bucket: ${{ inputs.artifacts_bucket }}
+      artifacts_bucket_iam_role: ${{ inputs.artifacts_bucket_iam_role }}
     permissions:
       contents: read
       id-token: write
