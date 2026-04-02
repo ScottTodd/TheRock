@@ -80,7 +80,18 @@ class WorkflowOutputRoot:
     """S3 bucket name (e.g., 'therock-ci-artifacts')."""
 
     external_repo: str
-    """Repository prefix (e.g., '' for ROCm/TheRock, 'owner-repo/' for forks)."""
+    """Run path prefix within the bucket (e.g., 'owner-repo/').
+
+    Non-empty only when ``bucket`` is ``therock-ci-artifacts-external``
+    (i.e., CI builds from a fork or a repository other than ROCm/TheRock).
+    Empty for all other buckets, including release buckets
+    (``therock-{dev,nightly,prerelease}-artifacts``) regardless of which
+    repository triggered the workflow.
+
+    This is an implementation detail of path construction - callers should
+    prefer the :attr:`prefix` property or the location methods over reading
+    this field directly.
+    """
 
     run_id: str
     """GitHub Actions workflow run ID (e.g., '12345678901')."""
@@ -368,6 +379,9 @@ def _retrieve_bucket_info(
                 f"expected one of {sorted(_VALID_RELEASE_TYPES)}"
             )
         _log(f"  (implicit) RELEASE_TYPE: {release_type}")
+        # Release builds always use a clean path - the external_repo prefix is
+        # only meaningful for CI builds going into therock-ci-artifacts-external.
+        external_repo = ""
         bucket = f"therock-{release_type}-artifacts"
     else:
         if external_repo == "":

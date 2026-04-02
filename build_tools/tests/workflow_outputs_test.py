@@ -437,6 +437,28 @@ class TestRetrieveBucketInfo(unittest.TestCase):
 
     @mock.patch.dict(
         os.environ,
+        {"GITHUB_REPOSITORY": "ROCm/rockrel", "RELEASE_TYPE": "nightly"},
+        clear=False,
+    )
+    def test_release_type_nightly_other_rocm_repo(self):
+        """Nightly builds from another ROCm repo should not get an external_repo prefix."""
+        external_repo, bucket = self._call()
+        self.assertEqual(external_repo, "")
+        self.assertEqual(bucket, "therock-nightly-artifacts")
+
+    @mock.patch.dict(
+        os.environ,
+        {"GITHUB_REPOSITORY": "ROCm/rockrel", "RELEASE_TYPE": "dev"},
+        clear=False,
+    )
+    def test_release_type_dev_other_rocm_repo(self):
+        """Dev builds from another ROCm repo should not get an external_repo prefix."""
+        external_repo, bucket = self._call()
+        self.assertEqual(external_repo, "")
+        self.assertEqual(bucket, "therock-dev-artifacts")
+
+    @mock.patch.dict(
+        os.environ,
         {"GITHUB_REPOSITORY": "ROCm/TheRock", "RELEASE_TYPE": "bogus"},
         clear=False,
     )
