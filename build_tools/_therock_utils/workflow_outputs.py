@@ -82,14 +82,14 @@ class WorkflowOutputRoot:
     external_repo: str
     """Run path prefix within the bucket (e.g., 'owner-repo/').
 
-    Non-empty only when ``bucket`` is ``therock-ci-artifacts-external``
+    Non-empty only when 'bucket' is 'therock-ci-artifacts-external'
     (i.e., CI builds from a fork or a repository other than ROCm/TheRock).
     Empty for all other buckets, including release buckets
-    (``therock-{dev,nightly,prerelease}-artifacts``) regardless of which
+    ('therock-{dev,nightly,prerelease}-artifacts') regardless of which
     repository triggered the workflow.
 
     This is an implementation detail of path construction - callers should
-    prefer the :attr:`prefix` property or the location methods over reading
+    prefer the 'prefix' property or the location methods over reading
     this field directly.
     """
 
