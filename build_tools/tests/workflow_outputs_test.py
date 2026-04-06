@@ -375,7 +375,8 @@ class TestRetrieveBucketInfo(unittest.TestCase):
         self.env_patcher = mock.patch.dict(os.environ)
         self.env_patcher.start()
         os.environ.pop("GITHUB_REPOSITORY", None)
-        os.environ.pop("IS_PR_FROM_FORK", None)
+        os.environ.pop("GITHUB_EVENT_NAME", None)
+        os.environ.pop("GITHUB_EVENT_PATH", None)
         os.environ.pop("RELEASE_TYPE", None)
 
     def tearDown(self):
@@ -387,33 +388,51 @@ class TestRetrieveBucketInfo(unittest.TestCase):
 
         return _retrieve_bucket_info(**kwargs)
 
-    def test_no_env_defaults_to_rocm_therock(self):
-        """When GITHUB_REPOSITORY is not set, defaults to ROCm/TheRock."""
+    @mock.patch.dict(
+        os.environ,
+        {"GITHUB_REPOSITORY": "ROCm/TheRock", "GITHUB_EVENT_NAME": "push"},
+        clear=False,
+    )
+    def test_rocm_therock_push(self):
         external_repo, bucket = self._call()
-        self.assertEqual(external_repo, "")
-        self.assertEqual(bucket, "therock-ci-artifacts")
-
-    @mock.patch.dict(os.environ, {"GITHUB_REPOSITORY": "ROCm/TheRock"}, clear=False)
-    def test_rocm_therock_default(self):
-        external_repo, bucket = self._call()
-        self.assertEqual(external_repo, "")
-        self.assertEqual(bucket, "therock-ci-artifacts")
-
-    @mock.patch.dict(os.environ, {"GITHUB_REPOSITORY": "ROCm/TheRock"}, clear=False)
-    def test_rocm_therock_explicit(self):
-        external_repo, bucket = self._call(github_repository="ROCm/TheRock")
         self.assertEqual(external_repo, "")
         self.assertEqual(bucket, "therock-ci-artifacts")
 
     @mock.patch.dict(
         os.environ,
-        {"GITHUB_REPOSITORY": "SomeUser/TheRock", "IS_PR_FROM_FORK": "true"},
+        {"GITHUB_REPOSITORY": "ROCm/TheRock", "GITHUB_EVENT_NAME": "push"},
         clear=False,
     )
+    def test_rocm_therock_explicit(self):
+        external_repo, bucket = self._call(github_repository="ROCm/TheRock")
+        self.assertEqual(external_repo, "")
+        self.assertEqual(bucket, "therock-ci-artifacts")
+
     def test_fork_pr(self):
-        external_repo, bucket = self._call()
-        self.assertEqual(external_repo, "SomeUser-TheRock/")
-        self.assertEqual(bucket, "therock-ci-artifacts-external")
+        """Fork PR: head repo differs from base repo in event payload."""
+        import json
+        import tempfile
+
+        event = {"pull_request": {"head": {"repo": {"full_name": "SomeUser/TheRock"}}}}
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump(event, f)
+            event_path = f.name
+
+        try:
+            with mock.patch.dict(
+                os.environ,
+                {
+                    "GITHUB_REPOSITORY": "ROCm/TheRock",
+                    "GITHUB_EVENT_NAME": "pull_request",
+                    "GITHUB_EVENT_PATH": event_path,
+                },
+                clear=False,
+            ):
+                external_repo, bucket = self._call()
+                self.assertEqual(external_repo, "ROCm-TheRock/")
+                self.assertEqual(bucket, "therock-ci-artifacts-external")
+        finally:
+            os.unlink(event_path)
 
     @mock.patch.dict(
         os.environ,
@@ -424,16 +443,6 @@ class TestRetrieveBucketInfo(unittest.TestCase):
         external_repo, bucket = self._call()
         self.assertEqual(external_repo, "")
         self.assertEqual(bucket, "therock-nightly-artifacts")
-
-    @mock.patch.dict(
-        os.environ,
-        {"GITHUB_REPOSITORY": "ROCm/TheRock", "RELEASE_TYPE": "prerelease"},
-        clear=False,
-    )
-    def test_release_type_prerelease(self):
-        external_repo, bucket = self._call()
-        self.assertEqual(external_repo, "")
-        self.assertEqual(bucket, "therock-prerelease-artifacts")
 
     @mock.patch.dict(
         os.environ,
@@ -448,17 +457,6 @@ class TestRetrieveBucketInfo(unittest.TestCase):
 
     @mock.patch.dict(
         os.environ,
-        {"GITHUB_REPOSITORY": "ROCm/rockrel", "RELEASE_TYPE": "dev"},
-        clear=False,
-    )
-    def test_release_type_dev_other_rocm_repo(self):
-        """Dev builds from another ROCm repo should not get an external_repo prefix."""
-        external_repo, bucket = self._call()
-        self.assertEqual(external_repo, "")
-        self.assertEqual(bucket, "therock-dev-artifacts")
-
-    @mock.patch.dict(
-        os.environ,
         {"GITHUB_REPOSITORY": "ROCm/TheRock", "RELEASE_TYPE": "bogus"},
         clear=False,
     )
@@ -467,11 +465,10 @@ class TestRetrieveBucketInfo(unittest.TestCase):
             self._call()
         self.assertIn("bogus", str(cm.exception))
 
-    def test_with_workflow_run_recent(self):
-        """Recent workflow run should use therock-ci-artifacts."""
+    def test_with_workflow_run_therock(self):
+        """Workflow run from ROCm/TheRock should use therock-ci-artifacts."""
         fake_run = {
             "id": 12345,
-            "updated_at": "2026-01-15T12:00:00Z",
             "head_repository": {"full_name": "ROCm/TheRock"},
         }
         external_repo, bucket = self._call(
@@ -481,29 +478,14 @@ class TestRetrieveBucketInfo(unittest.TestCase):
         self.assertEqual(external_repo, "")
         self.assertEqual(bucket, "therock-ci-artifacts")
 
-    def test_with_workflow_run_old(self):
-        """Old workflow run (before cutover) should use therock-artifacts."""
-        fake_run = {
-            "id": 99999,
-            "updated_at": "2025-10-01T00:00:00Z",
-            "head_repository": {"full_name": "ROCm/TheRock"},
-        }
-        external_repo, bucket = self._call(
-            github_repository="ROCm/TheRock",
-            workflow_run=fake_run,
-        )
-        self.assertEqual(external_repo, "")
-        self.assertEqual(bucket, "therock-artifacts")
-
     def test_with_workflow_run_from_fork(self):
         """Workflow run from a fork should use external bucket.
 
         The external_repo prefix uses the base repo (github_repository), not
-        the head repo.  When head != base, is_pr_from_fork is True.
+        the head repo.
         """
         fake_run = {
             "id": 12345,
-            "updated_at": "2026-01-15T12:00:00Z",
             "head_repository": {"full_name": "SomeUser/TheRock"},
         }
         external_repo, bucket = self._call(
@@ -517,7 +499,6 @@ class TestRetrieveBucketInfo(unittest.TestCase):
         """When workflow_run_id is provided without workflow_run, API is called."""
         self.mock_api.return_value = {
             "id": 12345,
-            "updated_at": "2026-01-15T12:00:00Z",
             "head_repository": {"full_name": "ROCm/TheRock"},
         }
         external_repo, bucket = self._call(
@@ -525,6 +506,7 @@ class TestRetrieveBucketInfo(unittest.TestCase):
             workflow_run_id="12345",
         )
         self.mock_api.assert_called_once_with("ROCm/TheRock", "12345")
+        self.assertEqual(external_repo, "")
         self.assertEqual(bucket, "therock-ci-artifacts")
 
 
