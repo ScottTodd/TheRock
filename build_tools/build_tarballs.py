@@ -1,0 +1,161 @@
+#!/usr/bin/env python
+# Copyright Advanced Micro Devices, Inc.
+# SPDX-License-Identifier: MIT
+
+"""Fetch multi-arch build artifacts and package them into per-family tarballs.
+
+For each GPU family in --dist-amdgpu-families, this script:
+1. Fetches artifacts (generic + family-specific) using artifact_manager.py
+2. Flattens them into a single install-prefix-like layout
+3. Compresses the result into a tarball
+
+A shared download cache avoids re-downloading generic (host) artifacts
+when processing multiple families.
+
+Tarball naming follows the existing release convention:
+    therock-dist-{platform}-{family}-{version}.tar.gz
+
+Example
+-------
+
+::
+
+    python build_tools/build_tarballs.py \\
+        --run-id=24104028483 \\
+        --dist-amdgpu-families="gfx94X-dcgpu;gfx110X-all" \\
+        --platform=linux \\
+        --package-version="7.13.0.dev0+abc123" \\
+        --output-dir=/tmp/tarballs
+"""
+
+import argparse
+import shlex
+import subprocess
+import sys
+from pathlib import Path
+
+
+def log(msg: str):
+    print(msg, flush=True)
+
+
+def run_command(args: list[str | Path], cwd: Path | None = None):
+    args = [str(arg) for arg in args]
+    log(f"++ Exec{f' [{cwd}]' if cwd else ''}$ {shlex.join(args)}")
+    subprocess.check_call(args, cwd=str(cwd) if cwd else None, stdin=subprocess.DEVNULL)
+
+
+def fetch_and_flatten(
+    *,
+    run_id: str,
+    family: str,
+    platform: str,
+    output_dir: Path,
+    download_cache_dir: Path,
+):
+    """Fetch artifacts for a single family and flatten into output_dir."""
+    log(f"\n{'='*60}")
+    log(f"Fetching artifacts for {family}")
+    log(f"{'='*60}")
+
+    run_command(
+        [
+            sys.executable,
+            "build_tools/artifact_manager.py",
+            "fetch",
+            f"--run-id={run_id}",
+            "--stage=all",
+            f"--amdgpu-families={family}",
+            f"--platform={platform}",
+            f"--output-dir={output_dir}",
+            "--flatten",
+            f"--download-cache-dir={download_cache_dir}",
+        ]
+    )
+
+
+def compress_tarball(*, source_dir: Path, tarball_path: Path):
+    """Compress a directory into a .tar.gz tarball.
+
+    Uses subprocess tar rather than Python's tarfile module. Benchmarking
+    on ~1.4GB of artifacts showed subprocess tar cfz at ~22s / 419MB output
+    vs Python tarfile at ~72s / 3545MB output (tarfile's default gzip
+    compresslevel may need tuning — worth revisiting if we want to avoid
+    the subprocess dependency). Could also consider piping through pigz or
+    zstd for parallel compression on CI runners.
+    """
+    log(f"\nCompressing {source_dir} -> {tarball_path}")
+    tarball_path.parent.mkdir(parents=True, exist_ok=True)
+    run_command(["tar", "cfz", str(tarball_path), "."], cwd=source_dir)
+    size_mb = tarball_path.stat().st_size / (1024 * 1024)
+    log(f"  Created {tarball_path.name} ({size_mb:.1f} MB)")
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Fetch multi-arch artifacts and package into per-family tarballs"
+    )
+    parser.add_argument("--run-id", required=True, help="Workflow run ID to fetch from")
+    parser.add_argument(
+        "--dist-amdgpu-families",
+        required=True,
+        help="Semicolon-separated GPU families (e.g. 'gfx94X-dcgpu;gfx110X-all')",
+    )
+    parser.add_argument(
+        "--platform",
+        default="linux",
+        choices=["linux", "windows"],
+        help="Platform to fetch artifacts for",
+    )
+    parser.add_argument(
+        "--package-version",
+        required=True,
+        help="ROCm package version string for tarball naming",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        required=True,
+        help="Output directory for tarballs",
+    )
+    args = parser.parse_args(argv)
+
+    families = [f.strip() for f in args.dist_amdgpu_families.split(";") if f.strip()]
+    if not families:
+        raise ValueError("No GPU families specified")
+
+    work_dir = args.output_dir / ".work"
+    download_cache_dir = work_dir / "download-cache"
+    download_cache_dir.mkdir(parents=True, exist_ok=True)
+
+    log(f"Building tarballs for {len(families)} families: {', '.join(families)}")
+    log(f"  Platform: {args.platform}")
+    log(f"  Version: {args.package_version}")
+    log(f"  Output: {args.output_dir}")
+
+    for family in families:
+        flatten_dir = work_dir / family
+        fetch_and_flatten(
+            run_id=args.run_id,
+            family=family,
+            platform=args.platform,
+            output_dir=flatten_dir,
+            download_cache_dir=download_cache_dir,
+        )
+
+        tarball_name = (
+            f"therock-dist-{args.platform}-{family}-{args.package_version}.tar.gz"
+        )
+        compress_tarball(
+            source_dir=flatten_dir,
+            tarball_path=args.output_dir / tarball_name,
+        )
+
+    log(f"\nDone. Tarballs in {args.output_dir}:")
+    for tb in sorted(args.output_dir.glob("*.tar.gz")):
+        size_mb = tb.stat().st_size / (1024 * 1024)
+        log(f"  {tb.name} ({size_mb:.1f} MB)")
+
+
+if __name__ == "__main__":
+    main()

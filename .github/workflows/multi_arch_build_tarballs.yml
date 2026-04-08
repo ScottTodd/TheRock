@@ -20,6 +20,9 @@ on:
           - linux
           - windows
         default: "linux"
+      package_version:
+        description: "ROCm package version string (e.g. '7.13.0.dev0+abc123')"
+        type: string
       release_type:
         description: 'Release type: "" for CI, or "dev", "nightly", "prerelease".'
         type: string
@@ -35,6 +38,9 @@ on:
       platform:
         type: string
         default: "linux"
+      package_version:
+        type: string
+        required: true
       release_type:
         type: string
         default: ""
@@ -77,10 +83,11 @@ jobs:
       # cache to avoid re-downloading generic (host) artifacts per family.
       - name: Build tarballs
         run: |
-          python build_tools/github_actions/build_tarballs.py \
+          python build_tools/build_tarballs.py \
             --run-id="${{ env.ARTIFACT_RUN_ID }}" \
             --dist-amdgpu-families="${{ inputs.dist_amdgpu_families }}" \
             --platform="${{ inputs.platform }}" \
+            --package-version="${{ inputs.package_version }}" \
             --output-dir="${{ github.workspace }}/tarballs"
 
       - name: Configure AWS Credentials
