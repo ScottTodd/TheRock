@@ -94,6 +94,7 @@ jobs:
     with:
       amdgpu_families: ${{ fromJSON(inputs.build_config).dist_amdgpu_families }}
       platform: linux
+      release_type: ${{ inputs.release_type }}
 
   test_artifacts_per_family:
     needs: [copy_prebuilt_stages, build_multi_arch_stages]
@@ -114,6 +115,7 @@ jobs:
       test_type: ${{ inputs.test_type }}
       test_labels: ${{ inputs.test_labels }}
       sanity_check_only_for_family: ${{ matrix.family_info.sanity_check_only_for_family }}
+      release_type: ${{ inputs.release_type }}
 
   build_python_packages:
     needs: [build_multi_arch_stages]
@@ -125,6 +127,7 @@ jobs:
       amdgpu_families: ${{ fromJSON(inputs.build_config).dist_amdgpu_families }}
       multiarch_index: true
       package_version: ${{ inputs.rocm_package_version }}
+      release_type: ${{ inputs.release_type }}
     permissions:
       contents: read
       id-token: write
