@@ -17,9 +17,6 @@ Tarball naming follows the existing release convention:
 
 Example
 -------
-
-::
-
     python build_tools/build_tarballs.py \\
         --run-id=24104028483 \\
         --dist-amdgpu-families="gfx94X-dcgpu;gfx110X-all" \\
@@ -78,12 +75,13 @@ def fetch_and_flatten(
 def compress_tarball(*, source_dir: Path, tarball_path: Path):
     """Compress a directory into a .tar.gz tarball.
 
-    Uses subprocess tar rather than Python's tarfile module. Benchmarking
-    on ~1.4GB of artifacts showed subprocess tar cfz at ~22s / 419MB output
-    vs Python tarfile at ~72s / 3545MB output (tarfile's default gzip
-    compresslevel may need tuning — worth revisiting if we want to avoid
-    the subprocess dependency). Could also consider piping through pigz or
-    zstd for parallel compression on CI runners.
+    Uses subprocess ``tar cfz`` rather than Python's ``tarfile`` module
+    (tarfile was significantly slower and produced larger output with default
+    settings — its ``compresslevel`` parameter may help but was not tuned).
+
+    Uses gzip to match the existing release tarball format. Switching to
+    zstd (``tar cf - . | zstd``) would be faster with better compression,
+    but requires downstream consumers to support ``.tar.zst``.
     """
     log(f"\nCompressing {source_dir} -> {tarball_path}")
     tarball_path.parent.mkdir(parents=True, exist_ok=True)
@@ -153,10 +151,8 @@ def main(argv=None):
         compress_tasks.append((flatten_dir, args.output_dir / tarball_name))
 
     # Phase 2: Compress all families in parallel.
-    # Each tar cfz is single-threaded (one core), so running N families in
-    # parallel on a multi-core runner is efficient. Benchmarking showed 10
-    # parallel compressions on a 64-core machine completed in ~29s wall vs
-    # ~244s sequential, with per-job time barely increasing (25s → 29s).
+    # Each tar cfz is single-threaded, so running N families concurrently
+    # on a multi-core runner scales well with minimal per-job slowdown.
     log(f"\nCompressing {len(compress_tasks)} tarballs in parallel...")
     with ProcessPoolExecutor(max_workers=len(compress_tasks)) as executor:
         futures = {
