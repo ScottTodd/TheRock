@@ -73,6 +73,7 @@ def fetch_and_flatten(
     platform: str,
     output_dir: Path,
     download_cache_dir: Path,
+    run_github_repo: str | None = None,
 ):
     """Fetch artifacts for one or more families and flatten into output_dir."""
     families_str = ";".join(amdgpu_families)
@@ -80,20 +81,21 @@ def fetch_and_flatten(
     log(f"Fetching artifacts for {families_str}")
     log(f"{'='*60}")
 
-    run_command(
-        [
-            sys.executable,
-            "build_tools/artifact_manager.py",
-            "fetch",
-            f"--run-id={run_id}",
-            "--stage=all",
-            f"--amdgpu-families={families_str}",
-            f"--platform={platform}",
-            f"--output-dir={output_dir}",
-            "--flatten",
-            f"--download-cache-dir={download_cache_dir}",
-        ]
-    )
+    cmd = [
+        sys.executable,
+        "build_tools/artifact_manager.py",
+        "fetch",
+        f"--run-id={run_id}",
+        "--stage=all",
+        f"--amdgpu-families={families_str}",
+        f"--platform={platform}",
+        f"--output-dir={output_dir}",
+        "--flatten",
+        f"--download-cache-dir={download_cache_dir}",
+    ]
+    if run_github_repo:
+        cmd.append(f"--run-github-repo={run_github_repo}")
+    run_command(cmd)
 
 
 def is_kpack_split(flatten_dir: Path) -> bool:
@@ -150,7 +152,16 @@ def main(argv=None):
         required=True,
         help="Output directory for tarballs",
     )
+    parser.add_argument(
+        "--run-github-repo",
+        type=str,
+        default=None,
+        help="GitHub repository for --run-id in 'owner/repo' format. "
+        "Defaults to GITHUB_REPOSITORY env var or 'ROCm/TheRock'",
+    )
     args = parser.parse_args(argv)
+    # Normalize empty string to None (workflow inputs default to "")
+    args.run_github_repo = args.run_github_repo or None
 
     families = [f.strip() for f in args.dist_amdgpu_families.split(";") if f.strip()]
     if not families:
@@ -178,6 +189,7 @@ def main(argv=None):
             platform=args.platform,
             output_dir=flatten_dir,
             download_cache_dir=download_cache_dir,
+            run_github_repo=args.run_github_repo,
         )
         family_dirs.append(flatten_dir)
         tarball_name = (
@@ -199,6 +211,7 @@ def main(argv=None):
             platform=args.platform,
             output_dir=multiarch_dir,
             download_cache_dir=download_cache_dir,
+            run_github_repo=args.run_github_repo,
         )
         tarball_name = (
             f"therock-dist-{args.platform}-multiarch-{args.package_version}.tar.gz"
