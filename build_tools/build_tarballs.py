@@ -9,11 +9,17 @@ For each GPU family in --dist-amdgpu-families, this script:
 2. Flattens them into a single install-prefix-like layout
 3. Compresses the result into a tarball
 
+When KPACK_SPLIT_ARTIFACTS is enabled in the build manifest, device-specific
+files are split by individual GPU target and don't conflict across families.
+In that case, this script also produces a combined multi-arch tarball
+containing all targets in a single install prefix.
+
 A shared download cache avoids re-downloading generic (host) artifacts
 when processing multiple families.
 
 Tarball naming follows the existing release convention:
     therock-dist-{platform}-{family}-{version}.tar.gz
+    therock-dist-{platform}-multiarch-{version}.tar.gz  (KPACK split only)
 
 Example
 -------
@@ -27,6 +33,7 @@ Example
 
 import argparse
 from concurrent.futures import ProcessPoolExecutor, as_completed
+import json
 import shlex
 import subprocess
 import sys
@@ -46,14 +53,15 @@ def run_command(args: list[str | Path], cwd: Path | None = None):
 def fetch_and_flatten(
     *,
     run_id: str,
-    family: str,
+    amdgpu_families: list[str],
     platform: str,
     output_dir: Path,
     download_cache_dir: Path,
 ):
-    """Fetch artifacts for a single family and flatten into output_dir."""
+    """Fetch artifacts for one or more families and flatten into output_dir."""
+    families_str = ";".join(amdgpu_families)
     log(f"\n{'='*60}")
-    log(f"Fetching artifacts for {family}")
+    log(f"Fetching artifacts for {families_str}")
     log(f"{'='*60}")
 
     run_command(
@@ -63,13 +71,22 @@ def fetch_and_flatten(
             "fetch",
             f"--run-id={run_id}",
             "--stage=all",
-            f"--amdgpu-families={family}",
+            f"--amdgpu-families={families_str}",
             f"--platform={platform}",
             f"--output-dir={output_dir}",
             "--flatten",
             f"--download-cache-dir={download_cache_dir}",
         ]
     )
+
+
+def is_kpack_split(flatten_dir: Path) -> bool:
+    """Check if KPACK_SPLIT_ARTIFACTS is enabled from the build manifest."""
+    manifest_path = flatten_dir / "share" / "therock" / "therock_manifest.json"
+    if not manifest_path.exists():
+        return False
+    manifest = json.loads(manifest_path.read_text())
+    return manifest.get("flags", {}).get("KPACK_SPLIT_ARTIFACTS", False)
 
 
 def compress_tarball(*, source_dir: Path, tarball_path: Path):
@@ -135,22 +152,44 @@ def main(argv=None):
     # Phase 1: Fetch and flatten sequentially.
     # Sequential so the shared download cache avoids re-downloading generic
     # (host) artifacts for each family.
+    family_dirs = []
     compress_tasks = []
     for family in families:
         flatten_dir = work_dir / family
         fetch_and_flatten(
             run_id=args.run_id,
-            family=family,
+            amdgpu_families=[family],
             platform=args.platform,
             output_dir=flatten_dir,
             download_cache_dir=download_cache_dir,
         )
+        family_dirs.append(flatten_dir)
         tarball_name = (
             f"therock-dist-{args.platform}-{family}-{args.package_version}.tar.gz"
         )
         compress_tasks.append((flatten_dir, args.output_dir / tarball_name))
 
-    # Phase 2: Compress all families in parallel.
+    # Phase 1.5: If KPACK_SPLIT_ARTIFACTS is enabled, fetch all families
+    # into a single combined directory. With KPACK split, device-specific
+    # files are per individual GPU target and don't conflict, so all
+    # families can coexist in a single install prefix.
+    kpack_split = is_kpack_split(family_dirs[0])
+    if kpack_split and len(families) > 1:
+        log("::: KPACK_SPLIT_ARTIFACTS detected — building multi-arch tarball")
+        multiarch_dir = work_dir / "multiarch"
+        fetch_and_flatten(
+            run_id=args.run_id,
+            amdgpu_families=families,
+            platform=args.platform,
+            output_dir=multiarch_dir,
+            download_cache_dir=download_cache_dir,
+        )
+        tarball_name = (
+            f"therock-dist-{args.platform}-multiarch-{args.package_version}.tar.gz"
+        )
+        compress_tasks.append((multiarch_dir, args.output_dir / tarball_name))
+
+    # Phase 2: Compress all tarballs in parallel.
     # Each tar cfz is single-threaded, so running N families concurrently
     # on a multi-core runner scales well with minimal per-job slowdown.
     log(f"\nCompressing {len(compress_tasks)} tarballs in parallel...")
