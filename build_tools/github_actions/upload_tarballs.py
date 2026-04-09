@@ -9,6 +9,21 @@ subdirectory of the workflow output root in S3.
 
 Usage:
     upload_tarballs.py --input-tarballs-dir TARBALLS_DIR --run-id RUN_ID
+
+Manual testing:
+    # Test with local output (no S3 credentials needed):
+    python build_tools/github_actions/upload_tarballs.py \\
+        --input-tarballs-dir /tmp/tarballs \\
+        --run-id 12345 \\
+        --output-dir /tmp/upload-test
+
+    # Verify: /tmp/upload-test/12345-{platform}/tarballs/*.tar.gz
+
+    # Dry run (prints plan without uploading):
+    python build_tools/github_actions/upload_tarballs.py \\
+        --input-tarballs-dir /tmp/tarballs \\
+        --run-id 12345 \\
+        --dry-run
 """
 
 import argparse

@@ -29,6 +29,22 @@ Example
         --platform=linux \\
         --package-version="7.13.0.dev0+abc123" \\
         --output-dir=/tmp/tarballs
+
+Manual testing
+--------------
+Find a recent multi-arch CI run at
+https://github.com/ROCm/TheRock/actions/workflows/multi_arch_ci.yml
+and use its run ID. Use ``--platform`` to select which platform's
+artifacts to fetch (defaults to the current system).
+
+Expected output: one .tar.gz per family in ``--output-dir``, named
+``therock-dist-{platform}-{family}-{version}.tar.gz``. If
+KPACK_SPLIT_ARTIFACTS is enabled in the build, also a
+``therock-dist-{platform}-multiarch-{version}.tar.gz``.
+
+Each tarball should contain a standard install prefix layout
+(``bin/``, ``lib/``, ``include/``, ``share/``, etc.) with GPU-specific
+files (e.g. ``lib/hipblaslt/library/*.co``) only for the target family.
 """
 
 import argparse

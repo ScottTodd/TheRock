@@ -44,11 +44,6 @@ on:
       release_type:
         type: string
         default: ""
-    outputs:
-      tarball_index_url:
-        description: URL for the tarball index
-        value: ${{ jobs.build_tarballs.outputs.tarball_index_url }}
-
 permissions:
   contents: read
 
@@ -60,8 +55,6 @@ jobs:
     runs-on: ${{ github.repository_owner == 'ROCm' && 'azure-linux-scale-rocm' || 'ubuntu-24.04' }}
     permissions:
       id-token: write
-    outputs:
-      tarball_index_url: ${{ steps.upload.outputs.tarball_index_url }}
     env:
       ARTIFACT_RUN_ID: "${{ inputs.artifact_run_id != '' && inputs.artifact_run_id || github.run_id }}"
       RELEASE_TYPE: ${{ inputs.release_type }}
