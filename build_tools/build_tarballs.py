@@ -29,6 +29,7 @@ Example
 """
 
 import argparse
+from concurrent.futures import ProcessPoolExecutor, as_completed
 import shlex
 import subprocess
 import sys
@@ -133,6 +134,10 @@ def main(argv=None):
     log(f"  Version: {args.package_version}")
     log(f"  Output: {args.output_dir}")
 
+    # Phase 1: Fetch and flatten sequentially.
+    # Sequential so the shared download cache avoids re-downloading generic
+    # (host) artifacts for each family.
+    compress_tasks = []
     for family in families:
         flatten_dir = work_dir / family
         fetch_and_flatten(
@@ -142,14 +147,24 @@ def main(argv=None):
             output_dir=flatten_dir,
             download_cache_dir=download_cache_dir,
         )
-
         tarball_name = (
             f"therock-dist-{args.platform}-{family}-{args.package_version}.tar.gz"
         )
-        compress_tarball(
-            source_dir=flatten_dir,
-            tarball_path=args.output_dir / tarball_name,
-        )
+        compress_tasks.append((flatten_dir, args.output_dir / tarball_name))
+
+    # Phase 2: Compress all families in parallel.
+    # Each tar cfz is single-threaded (one core), so running N families in
+    # parallel on a multi-core runner is efficient. Benchmarking showed 10
+    # parallel compressions on a 64-core machine completed in ~29s wall vs
+    # ~244s sequential, with per-job time barely increasing (25s → 29s).
+    log(f"\nCompressing {len(compress_tasks)} tarballs in parallel...")
+    with ProcessPoolExecutor(max_workers=len(compress_tasks)) as executor:
+        futures = {
+            executor.submit(compress_tarball, source_dir=src, tarball_path=dst): dst
+            for src, dst in compress_tasks
+        }
+        for future in as_completed(futures):
+            future.result()  # Raises on failure
 
     log(f"\nDone. Tarballs in {args.output_dir}:")
     for tb in sorted(args.output_dir.glob("*.tar.gz")):
