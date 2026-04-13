@@ -12,8 +12,7 @@ on:
           JSON object with build configuration for this platform. Fields:
           artifact_group, per_family_info, dist_amdgpu_families,
           build_variant_label, build_variant_cmake_preset,
-          build_variant_suffix, expect_failure, build_pytorch,
-          prebuilt_stages, baseline_run_id.
+          build_variant_suffix, build_pytorch, prebuilt_stages, baseline_run_id.
       test_labels:
         type: string
       rocm_package_version:
@@ -76,7 +75,6 @@ jobs:
       build_variant_label: ${{ fromJSON(inputs.build_config).build_variant_label }}
       build_variant_cmake_preset: ${{ fromJSON(inputs.build_config).build_variant_cmake_preset }}
       build_variant_suffix: ${{ fromJSON(inputs.build_config).build_variant_suffix }}
-      expect_failure: ${{ fromJSON(inputs.build_config).expect_failure }}
       prebuilt_stages: ${{ fromJSON(inputs.build_config).prebuilt_stages }}
       rocm_package_version: ${{ inputs.rocm_package_version }}
       test_type: ${{ inputs.test_type }}
@@ -88,8 +86,6 @@ jobs:
   validate_artifact_structure:
     needs: [build_multi_arch_stages]
     name: Validate Artifact Structure
-    # If we are expecting a build failure, do not run tests to save machine capacity.
-    if: ${{ !failure() && !cancelled() && fromJSON(inputs.build_config).expect_failure == false }}
     uses: ./.github/workflows/test_artifacts_structure.yml
     with:
       amdgpu_families: ${{ fromJSON(inputs.build_config).dist_amdgpu_families }}
@@ -99,8 +95,6 @@ jobs:
   test_artifacts_per_family:
     needs: [copy_prebuilt_stages, build_multi_arch_stages]
     name: Test ${{ matrix.family_info.amdgpu_family }}
-    # If we are expecting a build failure, do not run tests to save machine capacity.
-    if: ${{ !failure() && !cancelled() && fromJSON(inputs.build_config).expect_failure == false }}
     strategy:
       fail-fast: false
       matrix:
@@ -120,7 +114,6 @@ jobs:
   build_python_packages:
     needs: [build_multi_arch_stages]
     name: Build Python Packages
-    if: ${{ !failure() && !cancelled() && fromJSON(inputs.build_config).expect_failure == false }}
     uses: ./.github/workflows/build_portable_linux_python_packages.yml
     with:
       artifact_group: ${{ fromJSON(inputs.build_config).artifact_group }}
@@ -135,7 +128,6 @@ jobs:
   test_python_packages_per_family:
     needs: [build_python_packages]
     name: Test Python ${{ matrix.family_info.amdgpu_family }}
-    if: ${{ !failure() && !cancelled() && fromJSON(inputs.build_config).expect_failure == false }}
     strategy:
       fail-fast: false
       matrix:
@@ -160,6 +152,7 @@ jobs:
       fail-fast: false
       matrix:
         family_info: ${{ fromJSON(inputs.build_config).per_family_info }}
+        # TODO: use 'expect_pytorch_failure' from 'per_family_info' somehow (exclude from matrix? xfail job?)
     uses: ./.github/workflows/build_portable_linux_pytorch_wheels_ci.yml
     with:
       artifact_group: ${{ matrix.family_info.amdgpu_family }}
