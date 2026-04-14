@@ -65,6 +65,7 @@ jobs:
   build_multi_arch_stages:
     name: Build Multi-Arch Stages
     needs: copy_prebuilt_stages
+    if: ${{ !cancelled() && !failure() }}
     uses: ./.github/workflows/multi_arch_build_portable_linux.yml
     secrets: inherit
     with:
@@ -146,7 +147,7 @@ jobs:
   build_pytorch_wheels_per_family:
     needs: [build_python_packages]
     name: Build PyTorch | ${{ matrix.family_info.amdgpu_family }}
-    if: ${{ fromJSON(inputs.build_config).build_pytorch == true }}
+    if: ${{ !failure() && !cancelled() && fromJSON(inputs.build_config).build_pytorch == true }}
     strategy:
       fail-fast: false
       matrix:
