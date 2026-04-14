@@ -55,8 +55,8 @@ jobs:
       contents: read
       id-token: write
 
-  # TODO: publish_tarballs - copy from artifacts bucket to release bucket
-  #       (as part of multi_arch_build_tarballs or a separate job?)
+  # Tarball publishing is handled by multi_arch_build_tarballs.yml
+  # (publish step runs when release_type is set).
 
   # TODO(#3334): build python packages
   # build_python_packages:

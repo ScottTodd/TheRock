@@ -100,3 +100,11 @@ jobs:
             --input-tarballs-dir="${{ github.workspace }}/tarballs" \
             --run-id="${{ github.run_id }}" \
             --platform="${{ inputs.platform }}"
+
+      - name: Publish tarballs to release bucket
+        if: ${{ inputs.release_type != '' }}
+        run: |
+          python build_tools/github_actions/publish_tarballs.py \
+            --run-id="${{ github.run_id }}" \
+            --platform="${{ inputs.platform }}" \
+            --release-type="${{ inputs.release_type }}"
