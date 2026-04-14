@@ -142,15 +142,24 @@ class StorageBackend(ABC):
             Number of files copied.
         """
         files = self.list_files(source, include=include)
+        # list_files returns full keys. Strip the source prefix to get the
+        # path relative to the source directory, then prepend the dest prefix.
+        #
+        # Example with source="12345-linux/tarballs", dest="v3":
+        #   list_files returns: "12345-linux/tarballs/foo.tar.gz"
+        #   strip prefix:       "foo.tar.gz"
+        #   dest key:            "v3/foo.tar.gz"
+        #
+        # With nested paths (source="run-1/packages", dest="v3"):
+        #   list_files returns: "run-1/packages/gfx94X/rocm.whl"
+        #   strip prefix:       "gfx94X/rocm.whl"
+        #   dest key:            "v3/gfx94X/rocm.whl"
         source_prefix = source.relative_path
         if not source_prefix.endswith("/"):
             source_prefix = source_prefix + "/"
         pairs = []
         for f in files:
-            # Compute the path relative to the source prefix.
-            rel = f.relative_path
-            if rel.startswith(source_prefix):
-                rel = rel[len(source_prefix) :]
+            rel = f.relative_path.removeprefix(source_prefix)
             dest_loc = StorageLocation(dest.bucket, f"{dest.relative_path}/{rel}")
             pairs.append((f, dest_loc))
         logger.info(
@@ -161,10 +170,9 @@ class StorageBackend(ABC):
             len(pairs),
         )
         for src, dst in pairs:
-            rel = src.relative_path
-            if rel.startswith(source_prefix):
-                rel = rel[len(source_prefix) :]
-            logger.info("  %s -> %s", rel, dst.s3_uri)
+            logger.info(
+                "  %s -> %s", src.relative_path.removeprefix(source_prefix), dst.s3_uri
+            )
         return self.copy_files(pairs)
 
     def upload_files(self, files: list[tuple[Path, StorageLocation]]) -> int:
@@ -338,9 +346,8 @@ class S3StorageBackend(StorageBackend):
         for page in paginator.paginate(Bucket=location.bucket, Prefix=prefix):
             for obj in page.get("Contents", []):
                 key = obj["Key"]
-                # Skip the prefix itself (directory marker).
-                if key == prefix:
-                    continue
+                # Extract filename from key for filtering. Keys ending in /
+                # are S3 directory markers (e.g. "run-1/tarballs/"), skip them.
                 filename = key.rsplit("/", 1)[-1]
                 if not filename:
                     continue
