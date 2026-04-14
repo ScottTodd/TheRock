@@ -97,8 +97,10 @@ class StorageBackend(ABC):
 
         Args:
             location: The directory location to list.
-            include: Optional glob patterns to filter filenames
-                (e.g. ``["*.tar.gz"]``).  If ``None``, all files are listed.
+            include: Optional glob patterns matched against each file's
+                path relative to *location* (e.g. ``["*.tar.gz"]``).
+                Uses ``fnmatch`` semantics (``*`` matches across ``/``).
+                If ``None``, all files are listed.
 
         Returns:
             List of ``StorageLocation`` objects for each matching file.
@@ -346,12 +348,13 @@ class S3StorageBackend(StorageBackend):
         for page in paginator.paginate(Bucket=location.bucket, Prefix=prefix):
             for obj in page.get("Contents", []):
                 key = obj["Key"]
-                # Extract filename from key for filtering. Keys ending in /
-                # are S3 directory markers (e.g. "run-1/tarballs/"), skip them.
-                filename = key.rsplit("/", 1)[-1]
-                if not filename:
+                # Path relative to the listing prefix, used for include
+                # filtering. Matches rglob semantics in upload_directory.
+                # Keys ending in / are S3 directory markers — skip them.
+                rel = key.removeprefix(prefix)
+                if not rel or rel.endswith("/"):
                     continue
-                if include and not any(fnmatch.fnmatch(filename, p) for p in include):
+                if include and not any(fnmatch.fnmatch(rel, p) for p in include):
                     continue
                 results.append(StorageLocation(location.bucket, key))
         return results
