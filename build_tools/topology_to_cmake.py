@@ -289,6 +289,13 @@ def generate_validation_metadata(topology: BuildTopology, f: TextIO):
             f.write(f'set(THEROCK_ARTIFACT_DEPS_{artifact.name} "")\n')
     f.write("\n")
 
+    # Generate artifact-to-feature-name mapping (for topology validation)
+    f.write("# Artifact-to-feature-name mapping (for topology validation)\n")
+    for artifact in topology.get_artifacts():
+        feature_name = topology.get_artifact_feature_name(artifact)
+        f.write(f'set(THEROCK_ARTIFACT_FEATURE_{artifact.name} "{feature_name}")\n')
+    f.write("\n")
+
 
 def main():
     parser = argparse.ArgumentParser(

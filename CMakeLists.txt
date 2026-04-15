@@ -504,7 +504,10 @@ endif()
 # Verify that CMake subproject deps (BUILD_DEPS/RUNTIME_DEPS) are reflected
 # in BUILD_TOPOLOGY.toml artifact_deps. Without this, enabling a single
 # feature may fail because transitive deps won't be auto-enabled.
+# Runs automatically when THEROCK_ENABLE_ALL=OFF. With THEROCK_ENABLE_ALL=ON,
+# pass -DTHEROCK_VALIDATE_TOPOLOGY=ON to opt in.
 ################################################################################
+option(THEROCK_VALIDATE_TOPOLOGY "Validate CMake deps against BUILD_TOPOLOGY.toml" OFF)
 include(therock_topology_validation)
 therock_validate_topology_deps()
 
