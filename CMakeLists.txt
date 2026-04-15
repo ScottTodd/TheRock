@@ -500,6 +500,15 @@ if(THEROCK_BUILD_TESTING)
 endif()
 
 ################################################################################
+# Topology validation
+# Verify that CMake subproject deps (BUILD_DEPS/RUNTIME_DEPS) are reflected
+# in BUILD_TOPOLOGY.toml artifact_deps. Without this, enabling a single
+# feature may fail because transitive deps won't be auto-enabled.
+################################################################################
+include(therock_topology_validation)
+therock_validate_topology_deps()
+
+################################################################################
 # Finalization
 ################################################################################
 therock_subproject_merge_compile_commands()

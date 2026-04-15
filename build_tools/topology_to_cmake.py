@@ -272,6 +272,23 @@ def generate_validation_metadata(topology: BuildTopology, f: TextIO):
             f.write(f"  {artifact.name}\n")
         f.write(")\n\n")
 
+    # Generate per-artifact transitive dependency sets (for topology validation)
+    f.write("# Per-artifact transitive dependency sets (for topology validation)\n")
+    f.write(
+        "# Each variable lists all artifacts that this artifact transitively depends on.\n"
+    )
+    for artifact in topology.get_artifacts():
+        transitive_deps: set = set()
+        for dep_name in artifact.artifact_deps:
+            transitive_deps.add(dep_name)
+            topology._collect_transitive_artifact_deps(dep_name, transitive_deps)
+        if transitive_deps:
+            deps_str = ";".join(sorted(transitive_deps))
+            f.write(f'set(THEROCK_ARTIFACT_DEPS_{artifact.name} "{deps_str}")\n')
+        else:
+            f.write(f'set(THEROCK_ARTIFACT_DEPS_{artifact.name} "")\n')
+    f.write("\n")
+
 
 def main():
     parser = argparse.ArgumentParser(

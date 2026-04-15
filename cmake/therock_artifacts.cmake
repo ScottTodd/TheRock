@@ -139,6 +139,18 @@ function(therock_provide_artifact slice_name)
     set(_bundle_suffix "_${THEROCK_AMDGPU_DIST_BUNDLE_NAME}")
   endif()
 
+  # Record subproject-to-artifact mapping for topology validation.
+  # A subproject may appear in multiple artifacts' SUBPROJECT_DEPS (e.g. for
+  # packaging convenience), so we APPEND rather than overwrite.
+  set_property(GLOBAL APPEND PROPERTY
+    THEROCK_ARTIFACT_SUBPROJECTS_${slice_name} ${ARG_SUBPROJECT_DEPS})
+  foreach(_subproject_dep ${ARG_SUBPROJECT_DEPS})
+    if(TARGET "${_subproject_dep}")
+      set_property(TARGET "${_subproject_dep}" APPEND PROPERTY
+        THEROCK_ARTIFACT_NAMES "${slice_name}")
+    endif()
+  endforeach()
+
   ### Generate artifact directories.
   # Determine dependencies.
   set(_stamp_file_deps)
