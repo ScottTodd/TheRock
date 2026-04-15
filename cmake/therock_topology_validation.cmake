@@ -10,32 +10,12 @@
 # update, enabling a single feature (e.g. -DTHEROCK_ENABLE_PRIM=ON) won't
 # implicitly enable the feature's transitive dependencies, causing configure
 # failures in downstream consumers.
-#
-# False-positive filtering:
-#   Some subprojects (e.g. rocm-cmake) are declared unconditionally — outside
-#   any if(THEROCK_ENABLE_*) guard — so they are always available even when
-#   their artifact's feature is OFF. The validator detects this by checking
-#   whether a dep's artifact feature is currently disabled yet the dep target
-#   still exists.
-#
-#   This detection only works when THEROCK_ENABLE_ALL is OFF (so that some
-#   features are actually disabled). With THEROCK_ENABLE_ALL=ON (the default),
-#   all features are ON and we cannot distinguish gated from ungated
-#   subprojects. In that case validation is skipped unless explicitly requested
-#   via -DTHEROCK_VALIDATE_TOPOLOGY=ON.
 
 # therock_validate_topology_deps
 # Call this after all add_subdirectory() calls so that all subproject targets
 # and artifact mappings are available.
 function(therock_validate_topology_deps)
   if(NOT DEFINED THEROCK_TOPOLOGY_ARTIFACTS)
-    return()
-  endif()
-
-  # With THEROCK_ENABLE_ALL=ON all features are enabled, making it impossible
-  # to distinguish subprojects gated by if(THEROCK_ENABLE_*) from those
-  # declared unconditionally. Skip unless the user explicitly opted in.
-  if(THEROCK_ENABLE_ALL AND NOT THEROCK_VALIDATE_TOPOLOGY)
     return()
   endif()
 
@@ -77,7 +57,7 @@ function(therock_validate_topology_deps)
         get_target_property(_dep_artifacts "${_dep}" THEROCK_ARTIFACT_NAMES)
         if(NOT _dep_artifacts OR "${_dep_artifacts}" STREQUAL "_dep_artifacts-NOTFOUND")
           # Dep has no artifact mapping — it's an infrastructure subproject
-          # (e.g. therock-googletest). Skip.
+          # (e.g. therock-googletest, rocm-cmake). Skip.
           continue()
         endif()
 
@@ -90,16 +70,6 @@ function(therock_validate_topology_deps)
             break()
           endif()
           if("${_dep_artifact}" IN_LIST _topology_deps)
-            set(_satisfied TRUE)
-            break()
-          endif()
-          # If the dep artifact's feature is OFF but the dep target still
-          # exists, the subproject is declared unconditionally (outside any
-          # if(THEROCK_ENABLE_*) guard). It will always be available
-          # regardless of which features are enabled, so topology coverage
-          # is not required.
-          set(_dep_feature "${THEROCK_ARTIFACT_FEATURE_${_dep_artifact}}")
-          if(_dep_feature AND NOT THEROCK_ENABLE_${_dep_feature})
             set(_satisfied TRUE)
             break()
           endif()
