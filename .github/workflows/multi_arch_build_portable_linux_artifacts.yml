@@ -65,7 +65,8 @@ on:
 jobs:
   build_stage:
     name: ${{ inputs.stage_display_name }}
-    runs-on: ${{ contains(inputs.build_variant_cmake_preset, 'san') && 'azure-linux-scale-rocm-heavy-ramdisk' || 'azure-linux-scale-rocm' }}
+    # TODO: revert before merge - temporary override for fork testing of SHA pinning
+    runs-on: ${{ github.repository_owner == 'ROCm' && (contains(inputs.build_variant_cmake_preset, 'san') && 'azure-linux-scale-rocm-heavy-ramdisk' || 'azure-linux-scale-rocm') || 'ubuntu-24.04' }}
     timeout-minutes: ${{ inputs.timeout_minutes }}
     permissions:
       id-token: write
