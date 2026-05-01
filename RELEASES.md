@@ -472,6 +472,26 @@ We provide several Python packages which together form the complete ROCm SDK.
 | `rocm-sdk-libraries` | OS-specific libraries                                              |
 | `rocm-sdk-devel`     | OS-specific development tools                                      |
 
+##### Optional profiler package
+
+A new optional package `rocm-profiler` is available, providing ROCm profiling tools:
+
+- ROCm Systems Profiler (rocprofiler-systems)
+- ROCm Compute Profiler (rocprofiler-compute)
+
+###### Installing the profiler package
+
+Install profiling tools via the meta package:
+
+```bash
+pip install "rocm[profiler]"
+```
+
+This will install:
+
+- `rocm-sdk-core` (required runtime + SDK)
+- `rocm-profiler` (profiling tools)
+
 ##### rocm for gfx94X-dcgpu
 
 Supported devices in this family:
