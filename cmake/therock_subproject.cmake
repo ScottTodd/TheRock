@@ -904,10 +904,15 @@ function(therock_cmake_subproject_activate target_name)
       COMMAND "${CMAKE_COMMAND}" -E touch "${_build_stamp_file}"
       DEPENDS "${_prebuilt_file}"
     )
+    therock_subproject_log_command(_stage_log_prefix
+      LOG_FILE "${target_name}_stage.log"
+      LABEL "${target_name} stage"
+      OUTPUT_ON_FAILURE "${THEROCK_QUIET_INSTALL}"
+    )
     add_custom_command(
       OUTPUT "${_stage_stamp_file}"
       # Populate local dist directory with this+all transitive stage installs.
-      COMMAND "${Python3_EXECUTABLE}" "${_fileset_tool}" copy ${_fileset_verbose_arg} "${_dist_dir}" ${_dist_source_dirs}
+      COMMAND ${_stage_log_prefix} "${Python3_EXECUTABLE}" "${_fileset_tool}" copy ${_fileset_verbose_arg} "${_dist_dir}" ${_dist_source_dirs}
       COMMAND "${CMAKE_COMMAND}" -E touch "${_stage_stamp_file}"
       DEPENDS
         "${_prebuilt_file}"
@@ -1078,6 +1083,11 @@ function(therock_cmake_subproject_activate target_name)
       # for interactive use.
       OUTPUT_ON_FAILURE "${THEROCK_QUIET_INSTALL}"
     )
+    therock_subproject_log_command(_stage_log_prefix
+      LOG_FILE "${target_name}_stage.log"
+      LABEL "${target_name} stage"
+      OUTPUT_ON_FAILURE "${THEROCK_QUIET_INSTALL}"
+    )
     add_custom_command(
       OUTPUT "${_stage_stamp_file}"
       # Install default (all target) to stage directory.
@@ -1085,7 +1095,7 @@ function(therock_cmake_subproject_activate target_name)
       # Expand optional components _install command(s).
       ${_optional_component_install_commands}
       # Populate local dist directory with this+all transitive stage installs.
-      COMMAND "${Python3_EXECUTABLE}" "${_fileset_tool}" copy ${_fileset_verbose_arg} "${_dist_dir}" ${_dist_source_dirs}
+      COMMAND ${_stage_log_prefix} "${Python3_EXECUTABLE}" "${_fileset_tool}" copy ${_fileset_verbose_arg} "${_dist_dir}" ${_dist_source_dirs}
       COMMAND "${CMAKE_COMMAND}" -E touch "${_stage_stamp_file}"
       WORKING_DIRECTORY "${_binary_dir}"
       COMMENT "Stage installing sub-project ${target_name}"

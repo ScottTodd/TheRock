@@ -164,8 +164,13 @@ function(therock_provide_artifact slice_name)
 
   # Populate commands.
   set(_fileset_tool "${THEROCK_SOURCE_DIR}/build_tools/fileset_tool.py")
+  therock_subproject_log_command(_artifact_log_prefix
+    LOG_FILE "${slice_name}_artifact.log"
+    LABEL "${slice_name} artifact"
+    OUTPUT_ON_FAILURE TRUE
+  )
   set(_artifact_command
-    COMMAND "${Python3_EXECUTABLE}" "${_fileset_tool}" artifact
+    COMMAND ${_artifact_log_prefix} "${Python3_EXECUTABLE}" "${_fileset_tool}" artifact
           --root-dir "${THEROCK_BINARY_DIR}" --descriptor "${ARG_DESCRIPTOR}"
           --artifact-name "${slice_name}"
   )
@@ -198,8 +203,13 @@ function(therock_provide_artifact slice_name)
   # that reads from split outputs (new inodes) instead of from the
   # multiply-aliased unsplit hardlinks.
   if(ARG_DISTRIBUTION AND NOT _should_split)
+    therock_subproject_log_command(_flatten_log_prefix
+      LOG_FILE "${slice_name}_flatten.log"
+      LABEL "${slice_name} flatten"
+      OUTPUT_ON_FAILURE TRUE
+    )
     list(APPEND _flatten_command_list
-      COMMAND "${Python3_EXECUTABLE}" "${_fileset_tool}" artifact-flatten
+      COMMAND ${_flatten_log_prefix} "${Python3_EXECUTABLE}" "${_fileset_tool}" artifact-flatten
         -o "${_dist_dir}" ${_component_dirs}
     )
   endif()
@@ -273,10 +283,15 @@ function(therock_provide_artifact slice_name)
       endforeach()
 
       set(_flatten_stamp "${THEROCK_BINARY_DIR}/artifacts/.flatten-${slice_name}.stamp")
+      therock_subproject_log_command(_flatten_split_log_prefix
+        LOG_FILE "${slice_name}_flatten_split.log"
+        LABEL "${slice_name} flatten-split"
+        OUTPUT_ON_FAILURE TRUE
+      )
       add_custom_command(
         OUTPUT "${_flatten_stamp}"
         COMMENT "Flatten split artifacts for ${slice_name} to dist/${ARG_DISTRIBUTION}"
-        COMMAND "${Python3_EXECUTABLE}" "${_fileset_tool}" artifact-flatten-split
+        COMMAND ${_flatten_split_log_prefix} "${Python3_EXECUTABLE}" "${_fileset_tool}" artifact-flatten-split
           -o "${_dist_dir}"
           --artifacts-dir "${THEROCK_BINARY_DIR}/artifacts"
           ${_artifact_prefixes}
@@ -364,12 +379,18 @@ function(therock_provide_artifact slice_name)
     # TODO(#726): Lower compression levels are much faster for development and CI.
     #             Set back to 6+ for production builds?
     set(_archive_compression_level 2)
+    therock_subproject_log_command(_archive_log_prefix
+      LOG_FILE "${slice_name}_${_component}_archive.log"
+      LABEL "${slice_name} ${_component} archive"
+      OUTPUT_ON_FAILURE TRUE
+    )
     add_custom_command(
       OUTPUT
         "${_archive_file}"
         "${_archive_sha_file}"
       COMMENT "Creating archive ${_archive_file}"
       COMMAND
+        ${_archive_log_prefix}
         "${Python3_EXECUTABLE}" "${_fileset_tool}"
         artifact-archive "${_component_dir}"
           -o "${_archive_file}"
