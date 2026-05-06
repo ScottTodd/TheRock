@@ -1,7 +1,7 @@
 # Copyright Advanced Micro Devices, Inc.
 # SPDX-License-Identifier: MIT
 
-name: Setup (Multi-Arch)
+name: Multi-Arch Setup
 
 on:
   workflow_call:

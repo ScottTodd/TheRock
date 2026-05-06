@@ -303,7 +303,7 @@ class MainFunctionMultiplePackageTypesTest(unittest.TestCase):
         compute_rocm_package_version.gha_set_output = mock_gha_set_output
 
         try:
-            # This mimics setup_multi_arch.yml line 66: no --package-type specified
+            # This mimics multi_arch_setup.yml: no --package-type specified
             compute_rocm_package_version.main(["--release-type", "dev"])
 
             # Existing workflow reads rocm_package_version, which should still exist

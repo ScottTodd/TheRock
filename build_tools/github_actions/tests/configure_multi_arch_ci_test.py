@@ -45,7 +45,7 @@ def _run_from_environ(
     the environment to simulate that.
 
     Workflow inputs (families, labels, prebuilt config) are passed via env vars,
-    matching how setup_multi_arch.yml passes them to the script.
+    matching how multi_arch_setup.yml passes them to the script.
 
     See: https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-environment-variables#default-environment-variables
     """

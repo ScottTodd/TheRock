@@ -76,7 +76,7 @@ run-name: >-
 
 jobs:
   setup:
-    uses: ./.github/workflows/setup_multi_arch.yml
+    uses: ./.github/workflows/multi_arch_setup.yml
     with:
       build_variant: "release"
       release_type: ${{ inputs.release_type }}

@@ -177,7 +177,7 @@ class CIInputs:
         event = gha_load_github_event()
 
         # Workflow inputs are passed as environment variables by
-        # setup_multi_arch.yml. GitHub-specific context (PR labels,
+        # multi_arch_setup.yml. GitHub-specific context (PR labels,
         # push before-commit) comes from the event payload.
         build_variant = os.environ.get("BUILD_VARIANT", "release")
         release_type = os.environ.get("RELEASE_TYPE", "")

@@ -61,7 +61,8 @@ concurrency:
 
 jobs:
   setup:
-    uses: ./.github/workflows/setup_multi_arch.yml
+    name: Multi Arch CI Setup
+    uses: ./.github/workflows/multi_arch_setup.yml
     with:
       build_variant: "release"
       linux_amdgpu_families: ${{ inputs.linux_amdgpu_families || '' }}
@@ -111,8 +112,8 @@ jobs:
       contents: read
       id-token: write
 
-  ci_summary:
-    name: CI Summary
+  multi_arch_ci_summary:
+    name: Multi Arch CI Summary
     if: always()
     needs:
       - setup
