@@ -29,7 +29,7 @@ def format_summary(
     """Generate the full step summary markdown."""
     lines = []
     lines.append(
-        "## Multi-Arch CI Configuration (tips: [ci_behavior_manipulation.md](https://github.com/ROCm/TheRock/blob/main/docs/development/ci_behavior_manipulation.md))"
+        "## Multi-Arch CI/CD Configuration (tips: [ci_behavior_manipulation.md](https://github.com/ROCm/TheRock/blob/main/docs/development/ci_behavior_manipulation.md))"
     )
     lines.append("")
 

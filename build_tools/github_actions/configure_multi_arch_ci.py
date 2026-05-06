@@ -2,7 +2,7 @@
 # Copyright Advanced Micro Devices, Inc.
 # SPDX-License-Identifier: MIT
 
-"""Configures CI matrix and job decisions for multi-arch workflows.
+"""Configures CI/CD matrix and job decisions for multi-arch workflows.
 
 This script is a pipeline of data transformations:
 
