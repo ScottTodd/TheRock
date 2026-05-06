@@ -16,6 +16,8 @@ project(THEROCK)
 
 cmake_policy(SET CMP0135 NEW)
 
+# Test CMake change 1
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(CMakeDependentOption)
 include(ExternalProject)
