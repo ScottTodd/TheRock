@@ -3,13 +3,18 @@
 
 from pathlib import Path
 import os
+import subprocess
 import sys
 import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, os.fspath(Path(__file__).parent.parent))
 
-from configure_ci_path_filters import is_ci_run_required, _GITHUB_WORKFLOWS_CI_FILENAMES
+from configure_ci_path_filters import (
+    _GITHUB_WORKFLOWS_CI_FILENAMES,
+    get_git_modified_paths,
+    is_ci_run_required,
+)
 from workflow_utils import get_transitive_workflow_uses
 
 
@@ -60,6 +65,46 @@ class ConfigureCIPathFiltersTest(unittest.TestCase):
         paths = ["source_file.h", ".github/workflows/pre-commit.yml"]
         run_ci = is_ci_run_required(paths)
         self.assertTrue(run_ci)
+
+    @patch("configure_ci_path_filters.subprocess.run")
+    def test_missing_base_sha_is_fetched_and_retried(self, mock_run):
+        base_sha = "f5c168058a7ceaa0f179cc36784b491a11a3adc7"
+        diff_attempts = 0
+
+        def run_side_effect(args, **kwargs):
+            nonlocal diff_attempts
+            if args == ["git", "diff", "--name-only", base_sha]:
+                diff_attempts += 1
+                if diff_attempts == 1:
+                    raise subprocess.CalledProcessError(128, args)
+                return subprocess.CompletedProcess(
+                    args=args,
+                    returncode=0,
+                    stdout="compiler/amd-llvm\ncompiler/spirv-llvm-translator\n",
+                )
+            if args == [
+                "git",
+                "fetch",
+                "--no-tags",
+                "--no-recurse-submodules",
+                "--depth=1",
+                "origin",
+                base_sha,
+            ]:
+                return subprocess.CompletedProcess(
+                    args=args,
+                    returncode=0,
+                    stdout="",
+                )
+            self.fail(f"Unexpected subprocess.run call: {args!r}")
+
+        mock_run.side_effect = run_side_effect
+
+        self.assertEqual(
+            get_git_modified_paths(base_sha),
+            ["compiler/amd-llvm", "compiler/spirv-llvm-translator"],
+        )
+        self.assertEqual(diff_attempts, 2)
 
     def test_ci_workflow_filenames_cover_all_transitive_uses(self):
         """_GITHUB_WORKFLOWS_CI_FILENAMES must exactly match the set of

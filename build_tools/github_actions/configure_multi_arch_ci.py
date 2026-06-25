@@ -72,6 +72,8 @@ from github_actions_api import (
     gha_set_output,
 )
 
+_NULL_GIT_SHA = "0" * 40
+
 # ---------------------------------------------------------------------------
 # Input parsing helpers
 # ---------------------------------------------------------------------------
@@ -194,7 +196,12 @@ class CIInputs:
             # The merge commit's first parent is the PR base.
             base_ref = "HEAD^"
         elif event_name == "push":
-            base_ref = event.get("before", "HEAD^1")
+            before_ref = event.get("before")
+            # GitHub uses the null SHA when a push creates a new ref. That
+            # is not a real object, and this workflow only fetches HEAD and
+            # its parent for path filtering.
+            if before_ref and before_ref != _NULL_GIT_SHA:
+                base_ref = before_ref
 
         # Test labels come from two sources:
         # 1. LINUX/WINDOWS_TEST_LABELS env vars (workflow_dispatch inputs)

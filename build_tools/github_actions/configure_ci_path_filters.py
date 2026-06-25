@@ -17,9 +17,13 @@ Public API:
 
 import fnmatch
 from pathlib import Path
+import re
 import subprocess
 import sys
 from typing import Iterable, Optional
+
+
+_FULL_GIT_SHA_RE = re.compile(r"^[0-9a-fA-F]{40}$")
 
 
 # ============================================================================
@@ -39,7 +43,8 @@ def get_git_modified_paths(base_ref: str) -> Optional[Iterable[str]]:
     Returns:
         List of relative file paths that were modified, or None if the operation times out
     """
-    try:
+
+    def run_git_diff() -> list[str]:
         return subprocess.run(
             ["git", "diff", "--name-only", base_ref],
             stdout=subprocess.PIPE,
@@ -47,7 +52,37 @@ def get_git_modified_paths(base_ref: str) -> Optional[Iterable[str]]:
             text=True,
             timeout=60,
         ).stdout.splitlines()
-    except TimeoutError:
+
+    try:
+        return run_git_diff()
+    except subprocess.CalledProcessError:
+        if not _FULL_GIT_SHA_RE.fullmatch(base_ref):
+            raise
+
+        # Push events can advance a branch by multiple commits. The setup
+        # checkout is intentionally shallow, so event.before may be older than
+        # the fetched history even though it is a valid reachable commit.
+        print(
+            f"Base ref {base_ref} is not available locally. "
+            "Fetching it for path filtering..."
+        )
+        subprocess.run(
+            [
+                "git",
+                "fetch",
+                "--no-tags",
+                "--no-recurse-submodules",
+                "--depth=1",
+                "origin",
+                base_ref,
+            ],
+            stdout=subprocess.PIPE,
+            check=True,
+            text=True,
+            timeout=60,
+        )
+        return run_git_diff()
+    except subprocess.TimeoutExpired:
         print(
             "Computing modified files timed out. Not using PR diff to determine"
             " jobs to run.",
