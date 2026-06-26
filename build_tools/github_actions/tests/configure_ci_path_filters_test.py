@@ -67,16 +67,13 @@ class ConfigureCIPathFiltersTest(unittest.TestCase):
         self.assertTrue(run_ci)
 
     @patch("configure_ci_path_filters.subprocess.run")
-    def test_missing_base_sha_is_fetched_and_retried(self, mock_run):
+    def test_missing_base_sha_is_fetched_before_diffing(self, mock_run):
         base_sha = "f5c168058a7ceaa0f179cc36784b491a11a3adc7"
-        diff_attempts = 0
 
         def run_side_effect(args, **kwargs):
-            nonlocal diff_attempts
+            if args == ["git", "cat-file", "-e", f"{base_sha}^{{commit}}"]:
+                return subprocess.CompletedProcess(args=args, returncode=1)
             if args == ["git", "diff", "--name-only", base_sha]:
-                diff_attempts += 1
-                if diff_attempts == 1:
-                    raise subprocess.CalledProcessError(128, args)
                 return subprocess.CompletedProcess(
                     args=args,
                     returncode=0,
@@ -104,7 +101,24 @@ class ConfigureCIPathFiltersTest(unittest.TestCase):
             get_git_modified_paths(base_sha),
             ["compiler/amd-llvm", "compiler/spirv-llvm-translator"],
         )
-        self.assertEqual(diff_attempts, 2)
+
+    @patch("configure_ci_path_filters.subprocess.run")
+    def test_diff_failure_for_available_base_sha_is_not_treated_as_missing(
+        self, mock_run
+    ):
+        base_sha = "f5c168058a7ceaa0f179cc36784b491a11a3adc7"
+
+        def run_side_effect(args, **kwargs):
+            if args == ["git", "cat-file", "-e", f"{base_sha}^{{commit}}"]:
+                return subprocess.CompletedProcess(args=args, returncode=0)
+            if args == ["git", "diff", "--name-only", base_sha]:
+                raise subprocess.CalledProcessError(128, args)
+            self.fail(f"Unexpected subprocess.run call: {args!r}")
+
+        mock_run.side_effect = run_side_effect
+
+        with self.assertRaises(subprocess.CalledProcessError):
+            get_git_modified_paths(base_sha)
 
     def test_ci_workflow_filenames_cover_all_transitive_uses(self):
         """_GITHUB_WORKFLOWS_CI_FILENAMES must exactly match the set of

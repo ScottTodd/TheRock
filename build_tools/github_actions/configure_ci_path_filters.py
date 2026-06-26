@@ -43,8 +43,47 @@ def get_git_modified_paths(base_ref: str) -> Optional[Iterable[str]]:
     Returns:
         List of relative file paths that were modified, or None if the operation times out
     """
+    try:
+        base_ref_is_sha = _FULL_GIT_SHA_RE.fullmatch(base_ref) is not None
+        # Push events can advance a branch by multiple commits. The setup
+        # checkout is intentionally shallow, so event.before may be older than
+        # the fetched history even though it is a valid reachable commit.
+        if base_ref_is_sha:
+            is_commit_available_locally = (
+                subprocess.run(
+                    ["git", "cat-file", "-e", f"{base_ref}^{{commit}}"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                    timeout=60,
+                ).returncode
+                == 0
+            )
+        else:
+            is_commit_available_locally = True
 
-    def run_git_diff() -> list[str]:
+        if not is_commit_available_locally:
+            print(
+                f"Base ref {base_ref} is not available locally. "
+                "Fetching it for path filtering..."
+            )
+            subprocess.run(
+                [
+                    "git",
+                    "fetch",
+                    "--no-tags",
+                    "--no-recurse-submodules",
+                    "--depth=1",
+                    "origin",
+                    base_ref,
+                ],
+                stdout=subprocess.PIPE,
+                check=True,
+                text=True,
+                timeout=60,
+            )
+
+        # We have the commit, now run the diff.
         return subprocess.run(
             ["git", "diff", "--name-only", base_ref],
             stdout=subprocess.PIPE,
@@ -52,36 +91,6 @@ def get_git_modified_paths(base_ref: str) -> Optional[Iterable[str]]:
             text=True,
             timeout=60,
         ).stdout.splitlines()
-
-    try:
-        return run_git_diff()
-    except subprocess.CalledProcessError:
-        if not _FULL_GIT_SHA_RE.fullmatch(base_ref):
-            raise
-
-        # Push events can advance a branch by multiple commits. The setup
-        # checkout is intentionally shallow, so event.before may be older than
-        # the fetched history even though it is a valid reachable commit.
-        print(
-            f"Base ref {base_ref} is not available locally. "
-            "Fetching it for path filtering..."
-        )
-        subprocess.run(
-            [
-                "git",
-                "fetch",
-                "--no-tags",
-                "--no-recurse-submodules",
-                "--depth=1",
-                "origin",
-                base_ref,
-            ],
-            stdout=subprocess.PIPE,
-            check=True,
-            text=True,
-            timeout=60,
-        )
-        return run_git_diff()
     except subprocess.TimeoutExpired:
         print(
             "Computing modified files timed out. Not using PR diff to determine"
