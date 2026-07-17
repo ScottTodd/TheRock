@@ -10,9 +10,13 @@
 
 <!-- Explain the changes along with any relevant GitHub links. -->
 
-## Test Plan/Results
+## Test Plan
 
 <!-- Explain any relevant testing done to verify this PR. -->
+
+## Test Result
+
+<!-- Briefly summarize test outcomes. -->
 
 ## Submission Checklist
 

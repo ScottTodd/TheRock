@@ -7,10 +7,10 @@ better volunteer to help contribute to help close these gaps!
 ## Developer policies
 
 > [!IMPORTANT]
-> AMD employees should also follow the ROCm open source software
+> AMD employees must also follow the ROCm open source software
 > contributing policies at http://u.amd.com/rocm-oss-policies.
 
-### Governance
+### Project governance
 
 See
 [ROCm Project Governance](https://github.com/ROCm/ROCm/blob/develop/GOVERNANCE.md),
@@ -66,6 +66,62 @@ human commentary explaining the relevance and accuracy of the content.
 > - [`skills/therock-pr-quality/`](/skills/therock-pr-quality/) — TheRock overlay for changes touching
 >   the superbuild, submodules/patches, artifact descriptors, or reusable CI workflows.
 
+### Branch creation policy
+
+Most contributions from AMD employees should be made via branches in the shared
+repository and not personal forks according to the
+http://u.amd.com/rocm-oss-contributing policy. Branches in the shared repository
+benefit from code security scanning, code quality tooling, and easier
+collaboration.
+
+<!-- TODO: u.amd.com shortlink to a page explaining how to get write access -->
+
+For external contributors, PRs from forks are of course accepted and most
+workflows are compatible with this contribution model.
+
+> [!NOTE]
+> One notable exception is GitHub Actions workflows using our self-hosted
+> runners can only be triggered using
+> [workflow_dispatch](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow)
+> from branches in the shared repository, so if a change requires more extensive
+> testing than what our standard CI workflows provide then a branch in the
+> shared workflow may need to be created.
+
+### Branch naming policy
+
+Branches in personal forks can use any name.
+
+Branches created in the shared repository should match one of these patterns so
+branches are easily sortable and can be audited by repository maintainers:
+
+| Branch name pattern                      | Example                          |
+| ---------------------------------------- | -------------------------------- |
+| `users/[USERNAME]/[feature-or-bug-name]` | `users/cooldeveloper/my-feature` |
+| `shared/[feature-or-bug-name]`           | `shared/kpack-integration`       |
+
+A few exceptions are granted for automation and some subproject-specific branch
+naming conventions:
+
+- `bump-*`
+- `revert-*`
+- `dependabot/**/*`
+- `copilot/**/*`
+- `compiler-*`
+- `amd-compiler-*`
+- `amd/dev/**/*`
+- `amd/staging/**/*`
+
+Additionally, a few long-lived branches exist using other patterns:
+
+- [`main`](https://github.com/ROCm/TheRock/tree/main)
+- [`release/*`](https://github.com/ROCm/TheRock/branches/all?query=release%2F)
+- [`compiler/amd-staging`](https://github.com/ROCm/TheRock/tree/compiler/amd-staging)
+
+Branch naming is enforced via a
+[branch protection ruleset](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets)
+that restricts branch creation (specifically [this ruleset](https://github.com/ROCm/TheRock/settings/rules/18327486)
+for maintainers).
+
 ## Development workflows
 
 ### Issue tracking
@@ -93,9 +149,10 @@ Discussion about new features is welcome via
 - Posting a [GitHub discussion](https://github.com/ROCm/TheRock/discussions)
 - Reaching out [on Discord](https://discord.com/invite/amd-dev)
 
-When planning complex changes please solicit feedback and announce your intent
-to work on a pull request early in development, as this gives other contributors
-time to offer advice and avoid duplicating effort.
+> [!TIP]
+> When planning complex changes please solicit feedback and announce your intent
+> to work on a pull request early in development, as this gives other
+> contributors time to offer advice and avoid duplicating effort.
 
 ### Creating pull requests
 
@@ -104,7 +161,7 @@ requests to the following standards:
 
 | Check description                   | Enforced via                                                                                                                                 | Details                                                                                                                                                   |
 | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ✅ Branch naming patterns           | <ul><li>Repository ruleset</li></ul>                                                                                                         | <ul><li>[Branch naming policy](#branch-naming)<br>(`users/USERNAME/feature-name`)</ul></li>                                                               |
+| ✅ Branch naming patterns           | <ul><li>Repository ruleset</li></ul>                                                                                                         | <ul><li>[Branch naming policy](#branch-naming-policy)<br>(`users/USERNAME/feature-name`)</ul></li>                                                        |
 | ✅ Pull requests must link an issue | <ul><li>[`therock-pr-bot.yml`](/.github/workflows/therock-pr-bot.yml)</li></ul>                                                              | <ul><li>[`pull_request_template.md`](/.github/pull_request_template.md)<li>Policy Bot [`FAQ.md`](/skills/therock_pr_bot/FAQ.md#-pr-description)</li></ul> |
 | ✅ Lint pre-commit checks           | <ul><li>[`pre-commit.yml`](.github/workflows/pre-commit.yml)</li></ul>                                                                       | <ul><li>[pre-commit checks](#pre-commit-checks)</li></ul>                                                                                                 |
 | ✅ Changes must be unit tested      | <ul><li>[`unit_tests.yml`](.github/workflows/unit_tests.yml)</li><li>[`therock-pr-bot.yml`](/.github/workflows/therock-pr-bot.yml)</li></ul> | <ul><li>[`docs/development/adding_tests.md`](docs/development/adding_tests.md)</li></ul>                                                                  |
@@ -141,64 +198,9 @@ fixes together, and helps with for release planning. See also the
   Fixes https://github.com/ROCm/TheRock/issues/123
   ```
   See the ["PR Description" section of `therock_pr_bot/FAQ.md`](/skills/therock_pr_bot/FAQ.md#-pr-description) for full details.
-- Contributions by AMD employees _may_ also/instead reference a JIRA ID instead,
-  through GitHub issues are strongly preffered for open source development.
-
-#### Branch creation
-
-Most contributions from AMD employees should be made via branches in the shared
-repository and not personal forks according to the
-http://u.amd.com/rocm-oss-contributing policy. Branches in the shared repository
-benefit from code security scanning, code quality tooling, and easier
-collaboration.
-
-<!-- TODO: u.amd.com shortlink to a page explaining how to get write access -->
-
-For external contributors, PRs from forks are of course accepted and most
-workflows are compatible with this contribution model.
-
-> [!NOTE]
-> One notable exception is GitHub Actions workflows using our self-hosted
-> runners can only be triggered using
-> [workflow_dispatch](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow)
-> from branches in the shared repository, so if a change requires more extensive
-> testing than what our standard CI workflows provide then a branch in the
-> shared workflow may need to be created.
-
-#### Branch naming
-
-Branches in personal forks can use any name.
-
-Branches created in the shared repository should match one of these patterns so
-branches are easily sortable and can be audited by repository maintainers:
-
-| Branch name pattern                      | Example                          |
-| ---------------------------------------- | -------------------------------- |
-| `users/[USERNAME]/[feature-or-bug-name]` | `users/cooldeveloper/my-feature` |
-| `shared/[feature-or-bug-name]`           | `shared/kpack-integration`       |
-
-A few exceptions are granted for automation and some subproject-specific branch
-naming conventions:
-
-- `bump-*`
-- `revert-*`
-- `dependabot/**/*`
-- `copilot/**/*`
-- `compiler-*`
-- `amd-compiler-*`
-- `amd/dev/**/*`
-- `amd/staging/**/*`
-
-Additionally, a few long-lived branches exist using other patterns:
-
-- [`main`](https://github.com/ROCm/TheRock/tree/main)
-- [`release/*`](https://github.com/ROCm/TheRock/branches/all?query=release%2F)
-- [`compiler/amd-staging`](https://github.com/ROCm/TheRock/tree/compiler/amd-staging)
-
-Branch naming is enforced via a
-[branch protection ruleset](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets)
-that restricts branch creation (specifically [this ruleset](https://github.com/ROCm/TheRock/settings/rules/18327486)
-for maintainers).
+- Contributions by AMD employees may also/instead reference a JIRA ID, though
+  GitHub issues are strongly preferred for open source development.
+- Exceptions may be granted on a case-by-case basis via the PR Policy Bot.
 
 #### pre-commit checks
 
@@ -238,5 +240,13 @@ We have project-wide style guides with recommendations to follow at
 - [GitHub Actions Style Guide](/docs/development/style_guides/github_actions_style_guide.md)
 - [Python Style Guide](/docs/development/style_guides/python_style_guide.md)
 
-The PR-quality skills for AI agents under [`skills/`](/skills/) also reference
-these guides.
+If you find gaps in the style guides that you think would be useful to close,
+please do propose changes.
+
+> [!TIP]
+> These style guides are intended for both human developers _and_ AI agents.
+>
+> The repository's [`CLAUDE.md`](/CLAUDE.md) references them, as do the
+> PR-quality skills for AI agents under [`skills/`](/skills/). Following these
+> guides during agent-driven development can help produce higher quality
+> contributions that are easier for maintainers to review.
