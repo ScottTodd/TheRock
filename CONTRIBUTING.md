@@ -99,17 +99,28 @@ time to offer advice and avoid duplicating effort.
 
 ### Creating pull requests
 
-> [!IMPORTANT]
-> All pull requests are expected to be associated with a GitHub issue.
->
-> Our PR Policy Bot enforces this by checking for references in the pull request
-> description such as:
->
-> ```markdown
-> Fixes https://github.com/ROCm/TheRock/issues/123
-> ```
->
-> See the ["PR Description" section of `therock_pr_bot/FAQ.md`](/skills/therock_pr_bot/FAQ.md#-pr-description) for full details.
+To keep code quality high across the project, we run checks which hold pull
+requests to the following standards:
+
+| Check description                          | Enforced via                                                                                                                                 | Details                                                                                                                                                   |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ✅ Branch names must use approved patterns | <ul><li>Repository ruleset</li></ul>                                                                                                         | <ul><li>[Branch naming policy](#branch-naming) (`users/USERNAME/feature`)</ul></li>                                                                       |
+| ✅ Pull requests must link to an issue     | <ul><li>[`therock-pr-bot.yml`](/.github/workflows/therock-pr-bot.yml)</li></ul>                                                              | <ul><li>[`pull_request_template.md`](/.github/pull_request_template.md)<li>Policy Bot [`FAQ.md`](/skills/therock_pr_bot/FAQ.md#-pr-description)</li></ul> |
+| ✅ pre-commit lint checks must pass        | <ul><li>[`pre-commit.yml`](.github/workflows/pre-commit.yml)</li></ul>                                                                       | <ul><li>[pre-commit checks](#pre-commit-checks)</li></ul>                                                                                                 |
+| ✅ Changes must be unit tested             | <ul><li>[`unit_tests.yml`](.github/workflows/unit_tests.yml)</li><li>[`therock-pr-bot.yml`](/.github/workflows/therock-pr-bot.yml)</li></ul> | <ul><li>[`docs/development/adding_tests.md`](docs/development/adding_tests.md)</li></ul>                                                                  |
+
+#### Pull requests must be associated with a GitHub issue
+
+All pull requests are expected to be associated with at least one GitHub issue.
+
+Our PR Policy Bot enforces this by checking for references in the pull request
+description such as:
+
+```markdown
+Fixes https://github.com/ROCm/TheRock/issues/123
+```
+
+See the ["PR Description" section of `therock_pr_bot/FAQ.md`](/skills/therock_pr_bot/FAQ.md#-pr-description) for full details.
 
 <!-- When you create a pull request, you should target the *main* branch.
 
@@ -156,16 +167,18 @@ http://u.amd.com/rocm-oss-contributing policy. Branches in the shared repository
 benefit from code security scanning, code quality tooling, and easier
 collaboration.
 
+<!-- TODO: u.amd.com shortlink to a page explaining how to get write access -->
+
 For external contributors, PRs from forks are of course accepted and most
 workflows are compatible with this contribution model.
 
-> [!TIP]
+> [!NOTE]
 > One notable exception is GitHub Actions workflows using our self-hosted
 > runners can only be triggered using
 > [workflow_dispatch](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow)
 > from branches in the shared repository, so if a change requires more extensive
-> testing than our standard CI workflows provide then a branch in the shared
-> workflow may need to be created.
+> testing than what our standard CI workflows provide then a branch in the
+> shared workflow may need to be created.
 
 #### Branch naming
 
@@ -174,8 +187,10 @@ Branches in personal forks can use any name.
 Branches created in the shared repository should match one of these patterns so
 branches are easily sortable and can be audited by repository maintainers:
 
-- `users/[USERNAME]/[feature-or-bug-name]`
-- `shared/[feature-or-bug-name]`
+| Branch name pattern                      | Example                          |
+| ---------------------------------------- | -------------------------------- |
+| `users/[USERNAME]/[feature-or-bug-name]` | `users/cooldeveloper/my-feature` |
+| `shared/[feature-or-bug-name]`           | `shared/kpack-integration`       |
 
 A few exceptions are granted for automation and some subproject-specific branch
 naming conventions:
@@ -210,5 +225,5 @@ We have project-wide style guides with recommendations to follow at
 - [GitHub Actions Style Guide](/docs/development/style_guides/github_actions_style_guide.md)
 - [Python Style Guide](/docs/development/style_guides/python_style_guide.md)
 
-The PR-quality skills under [`skills/`](/skills/) defer to these same guides, so a finding from a
-review cites the specific guide section rather than inventing new rules.
+The PR-quality skills for AI agents under [`skills/`](/skills/) also reference
+these guides.
