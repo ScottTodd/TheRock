@@ -102,64 +102,49 @@ time to offer advice and avoid duplicating effort.
 To keep code quality high across the project, we run checks which hold pull
 requests to the following standards:
 
-| Check description                          | Enforced via                                                                                                                                 | Details                                                                                                                                                   |
-| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ✅ Branch names must use approved patterns | <ul><li>Repository ruleset</li></ul>                                                                                                         | <ul><li>[Branch naming policy](#branch-naming) (`users/USERNAME/feature`)</ul></li>                                                                       |
-| ✅ Pull requests must link to an issue     | <ul><li>[`therock-pr-bot.yml`](/.github/workflows/therock-pr-bot.yml)</li></ul>                                                              | <ul><li>[`pull_request_template.md`](/.github/pull_request_template.md)<li>Policy Bot [`FAQ.md`](/skills/therock_pr_bot/FAQ.md#-pr-description)</li></ul> |
-| ✅ pre-commit lint checks must pass        | <ul><li>[`pre-commit.yml`](.github/workflows/pre-commit.yml)</li></ul>                                                                       | <ul><li>[pre-commit checks](#pre-commit-checks)</li></ul>                                                                                                 |
-| ✅ Changes must be unit tested             | <ul><li>[`unit_tests.yml`](.github/workflows/unit_tests.yml)</li><li>[`therock-pr-bot.yml`](/.github/workflows/therock-pr-bot.yml)</li></ul> | <ul><li>[`docs/development/adding_tests.md`](docs/development/adding_tests.md)</li></ul>                                                                  |
+| Check description                   | Enforced via                                                                                                                                 | Details                                                                                                                                                   |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ✅ Branch naming patterns           | <ul><li>Repository ruleset</li></ul>                                                                                                         | <ul><li>[Branch naming policy](#branch-naming)<br>(`users/USERNAME/feature-name`)</ul></li>                                                               |
+| ✅ Pull requests must link an issue | <ul><li>[`therock-pr-bot.yml`](/.github/workflows/therock-pr-bot.yml)</li></ul>                                                              | <ul><li>[`pull_request_template.md`](/.github/pull_request_template.md)<li>Policy Bot [`FAQ.md`](/skills/therock_pr_bot/FAQ.md#-pr-description)</li></ul> |
+| ✅ Lint pre-commit checks           | <ul><li>[`pre-commit.yml`](.github/workflows/pre-commit.yml)</li></ul>                                                                       | <ul><li>[pre-commit checks](#pre-commit-checks)</li></ul>                                                                                                 |
+| ✅ Changes must be unit tested      | <ul><li>[`unit_tests.yml`](.github/workflows/unit_tests.yml)</li><li>[`therock-pr-bot.yml`](/.github/workflows/therock-pr-bot.yml)</li></ul> | <ul><li>[`docs/development/adding_tests.md`](docs/development/adding_tests.md)</li></ul>                                                                  |
+
+If you are not looking for a review on a pull request yet, please mark that pull
+request as a draft:
+
+- GitHub Docs: [Creating a pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request)
+- GitHub Docs: [Changing the stage of a pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/changing-the-stage-of-a-pull-request)
+
+When you are ready for a review, please request review from a maintainer or
+CODEOWNER. You can check the git history to see who recently authored or
+approved PRs in the same files or folders:
+
+- [`.github/CODEOWNERS`](/.github/CODEOWNERS)
+- GitHub Docs: [About code owners](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners)
+- GitHub Docs: [Viewing and understanding files](https://docs.github.com/en/repositories/working-with-files/using-files/viewing-and-understanding-files)
+- GitHub Docs: [Differences between commit views](https://docs.github.com/en/pull-requests/committing-changes-to-your-project/viewing-and-comparing-commits/differences-between-commit-views)
 
 #### Pull requests must be associated with a GitHub issue
 
 All pull requests are expected to be associated with at least one GitHub issue.
 
-Our PR Policy Bot enforces this by checking for references in the pull request
-description such as:
+This lets reviewers see the context for contributions, helps link bugs and their
+fixes together, and helps with for release planning. See also the
+[Issue tracking](#issue-tracking) and
+[New feature development](#new-feature-development) sections above.
 
-```markdown
-Fixes https://github.com/ROCm/TheRock/issues/123
-```
+- The repository [`pull_request_template.md`](/.github/pull_request_template.md)
+  has a section for this.
+- Our PR Policy Bot enforces this by checking for references in the pull request
+  description such as:
+  ```markdown
+  Fixes https://github.com/ROCm/TheRock/issues/123
+  ```
+  See the ["PR Description" section of `therock_pr_bot/FAQ.md`](/skills/therock_pr_bot/FAQ.md#-pr-description) for full details.
+- Contributions by AMD employees _may_ also/instead reference a JIRA ID instead,
+  through GitHub issues are strongly preffered for open source development.
 
-See the ["PR Description" section of `therock_pr_bot/FAQ.md`](/skills/therock_pr_bot/FAQ.md#-pr-description) for full details.
-
-<!-- When you create a pull request, you should target the *main* branch.
-
-- Identify the issue you want to fix
-- Target the main branch
-- Ensure your code has all workflows pass
-- Submit your PR and work with the reviewer or maintainer to get your PR approved -->
-
-- If you don't know who to add to a PR as a maintainer, please review the git history to see recently approved PRs in the same file or folder.
-
-### pre-commit checks
-
-We use [pre-commit](https://pre-commit.com/) to run automated "hooks" like lint
-checks and formatters on each commit. See the list of hooks we currently
-run at [`.pre-commit-config.yaml`](.pre-commit-config.yaml). Contributors are
-encouraged to download pre-commit and run it on their commits before sending
-pull requests for review.
-
-> [!TIP]
-> The pre-commit tool can also be "installed" as a git hook to run automatically
-> on every `git commit`.
-
-For example:
-
-```bash
-# Download (note: this is already included in requirements.txt).
-pip install pre-commit
-
-# Run locally on staged files.
-pre-commit run
-
-# Run locally on all files.
-pre-commit run --all-files
-
-# Install the git hook.
-pre-commit install
-```
-
-### Branch creation
+#### Branch creation
 
 Most contributions from AMD employees should be made via branches in the shared
 repository and not personal forks according to the
@@ -214,6 +199,34 @@ Branch naming is enforced via a
 [branch protection ruleset](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets)
 that restricts branch creation (specifically [this ruleset](https://github.com/ROCm/TheRock/settings/rules/18327486)
 for maintainers).
+
+#### pre-commit checks
+
+We use [pre-commit](https://pre-commit.com/) to run automated "hooks" like lint
+checks and formatters on each commit. See the list of hooks we currently
+run at [`.pre-commit-config.yaml`](.pre-commit-config.yaml). Contributors are
+encouraged to download pre-commit and run it on their commits before sending
+pull requests for review.
+
+> [!TIP]
+> The pre-commit tool can also be "installed" as a git hook to run automatically
+> on every `git commit`.
+
+For example:
+
+```bash
+# Download (note: this is already included in requirements.txt).
+pip install pre-commit
+
+# Run locally on staged files.
+pre-commit run
+
+# Run locally on all files.
+pre-commit run --all-files
+
+# Install the git hook.
+pre-commit install
+```
 
 ### Style guides
 
