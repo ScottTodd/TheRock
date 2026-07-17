@@ -6,6 +6,8 @@ even better, volunteer to contribute to help close these gaps!
 
 ## Developer policies
 
+These policies apply to all forms of activity and engagement in this project.
+
 > [!IMPORTANT]
 > AMD employees must also follow the ROCm open source software
 > contributing policies at http://u.amd.com/rocm-oss-policies.
@@ -66,9 +68,10 @@ human commentary explaining the relevance and accuracy of the content.
 > "skills" that help you author and review changes. See
 > [`skills/`](/skills/) for the full index:
 >
-> - [`skills/rocm-pr-quality/`](/skills/rocm-pr-quality/) — the ROCm-wide base (start here).
-> - [`skills/therock-pr-quality/`](/skills/therock-pr-quality/) — TheRock overlay for changes touching
->   the superbuild, submodules/patches, artifact descriptors, or reusable CI workflows.
+> - [`skills/rocm-pr-quality/`](/skills/rocm-pr-quality/): the ROCm-wide base
+>   (start here).
+> - [`skills/therock-pr-quality/`](/skills/therock-pr-quality/): TheRock overlay
+>   for changes to this spepcific repository.
 
 ### Branch creation policy
 
@@ -126,9 +129,9 @@ Branch naming is enforced via a
 that restricts branch creation (specifically [this ruleset](https://github.com/ROCm/TheRock/settings/rules/18327486)
 for maintainers).
 
-## Development workflows
+## Development workflows and contributing guide
 
-### Issue tracking
+### Using GitHub Issues for bug reporting
 
 Before filing a new issue, please search through
 [existing issues](https://github.com/ROCm/TheRock/issues) to make sure your issue hasn't
@@ -145,7 +148,7 @@ General issue guidelines:
 - Check your issue regularly, as we may require additional information to
   resolve the issue.
 
-### New feature development
+### Using GitHub Issues for feature development
 
 Discussion about new features is welcome via
 
@@ -160,30 +163,37 @@ Discussion about new features is welcome via
 
 ### Creating pull requests
 
-To keep code quality high across the project, we run checks which hold pull
-requests to the following standards:
+To keep code quality high across the project, we hold pull requests to the
+following standards:
 
 | Check description                     | Enforced via                                                                                                                                 | Details                                                                                                                                                   |
 | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ✅ Code style guidelines              | <ul><li>Manual code review</li></ul>                                                                                                         | <ul><li>[Coding style guides](#coding-style-guides)</li></ul>                                                                                             |
 | ✅ Branch naming patterns             | <ul><li>Repository ruleset</li></ul>                                                                                                         | <ul><li>[Branch naming policy](#branch-naming-policy)<br>(`users/USERNAME/feature-name`)</li></ul>                                                        |
 | ✅ Pull requests should link an issue | <ul><li>[`therock-pr-bot.yml`](/.github/workflows/therock-pr-bot.yml)</li></ul>                                                              | <ul><li>[`pull_request_template.md`](/.github/pull_request_template.md)<li>Policy Bot [`FAQ.md`](/skills/therock_pr_bot/FAQ.md#-pr-description)</li></ul> |
 | ✅ Lint pre-commit checks             | <ul><li>[`pre-commit.yml`](.github/workflows/pre-commit.yml)</li></ul>                                                                       | <ul><li>[pre-commit checks](#pre-commit-checks)</li></ul>                                                                                                 |
 | ✅ Changes should be unit tested      | <ul><li>[`unit_tests.yml`](.github/workflows/unit_tests.yml)</li><li>[`therock-pr-bot.yml`](/.github/workflows/therock-pr-bot.yml)</li></ul> | <ul><li>[`docs/development/adding_tests.md`](docs/development/adding_tests.md)</li></ul>                                                                  |
 
-If you are not looking for a review on a pull request yet, please mark that pull
-request as a draft:
+#### Coding style guides
 
-- GitHub Docs: [Creating a pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request)
-- GitHub Docs: [Changing the stage of a pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/changing-the-stage-of-a-pull-request)
+We have project-wide style guides with recommendations to follow at
+[`docs/development/style_guides/`](/docs/development/style_guides/):
 
-When you are ready for a review, please request a review from a maintainer. You
-can check the git history to see who recently authored or approved PRs in the
-same files or folders:
+- [Bash Style Guide](/docs/development/style_guides/bash_style_guide.md)
+- [CMake Style Guide](/docs/development/style_guides/cmake_style_guide.md)
+- [GitHub Actions Style Guide](/docs/development/style_guides/github_actions_style_guide.md)
+- [Python Style Guide](/docs/development/style_guides/python_style_guide.md)
 
-- [`.github/CODEOWNERS`](/.github/CODEOWNERS)
-- GitHub Docs: [About code owners](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners)
-- GitHub Docs: [Viewing and understanding files](https://docs.github.com/en/repositories/working-with-files/using-files/viewing-and-understanding-files)
-- GitHub Docs: [Differences between commit views](https://docs.github.com/en/pull-requests/committing-changes-to-your-project/viewing-and-comparing-commits/differences-between-commit-views)
+If you find gaps in the style guides that you think would be useful to close,
+please do propose changes.
+
+> [!TIP]
+> These style guides are intended for both human developers _and_ AI agents.
+>
+> The repository's [`CLAUDE.md`](/CLAUDE.md) references them, as do the
+> PR-quality skills for AI agents under [`skills/`](/skills/). Following these
+> guides during agent-driven development can help produce higher-quality
+> contributions that are easier for maintainers to review.
 
 #### Linking pull requests to GitHub issues
 
@@ -234,23 +244,24 @@ pre-commit run --all-files
 pre-commit install
 ```
 
-### Style guides
+#### Requesting a code review
 
-We have project-wide style guides with recommendations to follow at
-[`docs/development/style_guides/`](/docs/development/style_guides/):
+If you are not looking for a review on a pull request yet, please mark that pull
+request as a draft:
 
-- [Bash Style Guide](/docs/development/style_guides/bash_style_guide.md)
-- [CMake Style Guide](/docs/development/style_guides/cmake_style_guide.md)
-- [GitHub Actions Style Guide](/docs/development/style_guides/github_actions_style_guide.md)
-- [Python Style Guide](/docs/development/style_guides/python_style_guide.md)
+- GitHub Docs: [Creating a pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request)
+- GitHub Docs: [Changing the stage of a pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/changing-the-stage-of-a-pull-request)
 
-If you find gaps in the style guides that you think would be useful to close,
-please do propose changes.
+When you are ready for a review, please request a review from a maintainer. You
+can check the git history to see who recently authored or approved PRs in the
+same files or folders:
 
-> [!TIP]
-> These style guides are intended for both human developers _and_ AI agents.
->
-> The repository's [`CLAUDE.md`](/CLAUDE.md) references them, as do the
-> PR-quality skills for AI agents under [`skills/`](/skills/). Following these
-> guides during agent-driven development can help produce higher-quality
-> contributions that are easier for maintainers to review.
+- [`.github/CODEOWNERS`](/.github/CODEOWNERS)
+- GitHub Docs: [About code owners](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners)
+- GitHub Docs: [Viewing and understanding files](https://docs.github.com/en/repositories/working-with-files/using-files/viewing-and-understanding-files)
+- GitHub Docs: [Differences between commit views](https://docs.github.com/en/pull-requests/committing-changes-to-your-project/viewing-and-comparing-commits/differences-between-commit-views)
+
+After addressing feedback please
+[re-request review](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/requesting-a-pull-request-review#requesting-reviews-from-collaborators-and-organization-members)
+so your pull request shows up for reviewers on dashboards such as
+<https://github.com/pulls/reviews>.
