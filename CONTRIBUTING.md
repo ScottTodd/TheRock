@@ -71,7 +71,7 @@ human commentary explaining the relevance and accuracy of the content.
 > - [`skills/rocm-pr-quality/`](/skills/rocm-pr-quality/): the ROCm-wide base
 >   (start here).
 > - [`skills/therock-pr-quality/`](/skills/therock-pr-quality/): TheRock overlay
->   for changes to this spepcific repository.
+>   for changes to this specific repository.
 
 ### Branch creation policy
 
@@ -201,8 +201,10 @@ All pull requests should be associated with at least one GitHub issue.
 
 This lets reviewers see the context for contributions, helps link bugs and their
 fixes together, and helps with release planning. See also the
-[Issue tracking](#issue-tracking) and
-[New feature development](#new-feature-development) sections above.
+[Using GitHub Issues for bug reporting](#using-github-issues-for-bug-reporting)
+and
+[Using GitHub Issues for feature development](#using-github-issues-for-feature-development)
+sections above.
 
 - The repository [`pull_request_template.md`](/.github/pull_request_template.md)
   has a section for this.
@@ -261,7 +263,7 @@ same files or folders:
 - GitHub Docs: [Viewing and understanding files](https://docs.github.com/en/repositories/working-with-files/using-files/viewing-and-understanding-files)
 - GitHub Docs: [Differences between commit views](https://docs.github.com/en/pull-requests/committing-changes-to-your-project/viewing-and-comparing-commits/differences-between-commit-views)
 
-After addressing feedback please
+After addressing feedback, please
 [re-request review](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/requesting-a-pull-request-review#requesting-reviews-from-collaborators-and-organization-members)
 so your pull request shows up for reviewers on dashboards such as
 <https://github.com/pulls/reviews>.
