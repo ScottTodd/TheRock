@@ -20,4 +20,4 @@
 
 ## Submission Checklist
 
-- [ ] Look over the contributing guidelines at https://github.com/ROCm/TheRock/blob/develop/CONTRIBUTING.md.
+- [ ] Look over the contributing guidelines at https://github.com/ROCm/TheRock/blob/main/CONTRIBUTING.md.

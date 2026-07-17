@@ -1,8 +1,8 @@
 # Contributing to TheRock
 
 We are enthusiastic about contributions to our code and documentation. Please
-feel free to file issues where documentation or functionality is lacking or even
-better volunteer to help contribute to help close these gaps!
+feel free to file issues where documentation or functionality is lacking or,
+even better, volunteer to contribute to help close these gaps!
 
 ## Developer policies
 
@@ -47,9 +47,13 @@ inspiration from policies in neighboring ecosystem projects:
 - https://llvm.org/docs/AIToolPolicy.html
 - https://github.com/pytorch/pytorch/blob/main/AI_POLICY.md
 
-Of particular note:
+Of particular note, from the LLVM AI Tool Use Policy:
 
-> The contributor is always the author and is fully accountable for their contributions. Contributors should be sufficiently confident that the contribution is high enough quality that asking for a review is a good use of scarce maintainer time, and they should be able to answer questions about their work during review.
+> The contributor is always the author and is fully accountable for their
+> contributions. Contributors should be sufficiently confident that the
+> contribution is high enough quality that asking for a review is a good use of
+> scarce maintainer time, and they should be able to answer questions about
+> their work during review.
 
 When posting significant portions of AI-generated content on issues or pull
 requests, we also encourage contributors to clearly disclose which sections
@@ -80,12 +84,12 @@ For external contributors, PRs from forks are of course accepted and most
 workflows are compatible with this contribution model.
 
 > [!NOTE]
-> One notable exception is GitHub Actions workflows using our self-hosted
+> One notable exception is that GitHub Actions workflows using our self-hosted
 > runners can only be triggered using
 > [workflow_dispatch](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow)
 > from branches in the shared repository, so if a change requires more extensive
 > testing than what our standard CI workflows provide then a branch in the
-> shared workflow may need to be created.
+> shared repository may need to be created.
 
 ### Branch naming policy
 
@@ -136,7 +140,7 @@ General issue guidelines:
   closed) issue already reported, upvote the issue and leave a comment with
   any new details, such as how you reproduced it.
 - When filing an issue, be sure to provide as much information as possible,
-  including reproduction steps and complete script output so we triage
+  including reproduction steps and complete script output so we can triage
   efficiently.
 - Check your issue regularly, as we may require additional information to
   resolve the issue.
@@ -150,8 +154,8 @@ Discussion about new features is welcome via
 - Reaching out [on Discord](https://discord.com/invite/amd-dev)
 
 > [!TIP]
-> When planning complex changes please solicit feedback and announce your intent
-> to work on a pull request early in development, as this gives other
+> When planning complex changes, please solicit feedback and announce your
+> intent to work on a pull request early in development, as this gives other
 > contributors time to offer advice and avoid duplicating effort.
 
 ### Creating pull requests
@@ -161,7 +165,7 @@ requests to the following standards:
 
 | Check description                   | Enforced via                                                                                                                                 | Details                                                                                                                                                   |
 | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ✅ Branch naming patterns           | <ul><li>Repository ruleset</li></ul>                                                                                                         | <ul><li>[Branch naming policy](#branch-naming-policy)<br>(`users/USERNAME/feature-name`)</ul></li>                                                        |
+| ✅ Branch naming patterns           | <ul><li>Repository ruleset</li></ul>                                                                                                         | <ul><li>[Branch naming policy](#branch-naming-policy)<br>(`users/USERNAME/feature-name`)</li></ul>                                                        |
 | ✅ Pull requests must link an issue | <ul><li>[`therock-pr-bot.yml`](/.github/workflows/therock-pr-bot.yml)</li></ul>                                                              | <ul><li>[`pull_request_template.md`](/.github/pull_request_template.md)<li>Policy Bot [`FAQ.md`](/skills/therock_pr_bot/FAQ.md#-pr-description)</li></ul> |
 | ✅ Lint pre-commit checks           | <ul><li>[`pre-commit.yml`](.github/workflows/pre-commit.yml)</li></ul>                                                                       | <ul><li>[pre-commit checks](#pre-commit-checks)</li></ul>                                                                                                 |
 | ✅ Changes must be unit tested      | <ul><li>[`unit_tests.yml`](.github/workflows/unit_tests.yml)</li><li>[`therock-pr-bot.yml`](/.github/workflows/therock-pr-bot.yml)</li></ul> | <ul><li>[`docs/development/adding_tests.md`](docs/development/adding_tests.md)</li></ul>                                                                  |
@@ -172,9 +176,9 @@ request as a draft:
 - GitHub Docs: [Creating a pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request)
 - GitHub Docs: [Changing the stage of a pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/changing-the-stage-of-a-pull-request)
 
-When you are ready for a review, please request review from a maintainer or
-CODEOWNER. You can check the git history to see who recently authored or
-approved PRs in the same files or folders:
+When you are ready for a review, please request a review from a maintainer. You
+can check the git history to see who recently authored or approved PRs in the
+same files or folders:
 
 - [`.github/CODEOWNERS`](/.github/CODEOWNERS)
 - GitHub Docs: [About code owners](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners)
@@ -186,7 +190,7 @@ approved PRs in the same files or folders:
 All pull requests are expected to be associated with at least one GitHub issue.
 
 This lets reviewers see the context for contributions, helps link bugs and their
-fixes together, and helps with for release planning. See also the
+fixes together, and helps with release planning. See also the
 [Issue tracking](#issue-tracking) and
 [New feature development](#new-feature-development) sections above.
 
@@ -248,5 +252,5 @@ please do propose changes.
 >
 > The repository's [`CLAUDE.md`](/CLAUDE.md) references them, as do the
 > PR-quality skills for AI agents under [`skills/`](/skills/). Following these
-> guides during agent-driven development can help produce higher quality
+> guides during agent-driven development can help produce higher-quality
 > contributions that are easier for maintainers to review.
