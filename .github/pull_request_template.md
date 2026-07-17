@@ -2,7 +2,7 @@
 
 <!-- Explain the purpose of this PR and the goals it aims to achieve. -->
 
-<!-- Including a GitHub issue link is strongly encouraged. -->
+<!-- Most pull requests should be associated with at least one GitHub issue -->
 
 <!-- GitHub issue: https://github.com/ROCm/TheRock/issues/1234 -->
 

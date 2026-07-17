@@ -163,12 +163,12 @@ Discussion about new features is welcome via
 To keep code quality high across the project, we run checks which hold pull
 requests to the following standards:
 
-| Check description                   | Enforced via                                                                                                                                 | Details                                                                                                                                                   |
-| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ✅ Branch naming patterns           | <ul><li>Repository ruleset</li></ul>                                                                                                         | <ul><li>[Branch naming policy](#branch-naming-policy)<br>(`users/USERNAME/feature-name`)</li></ul>                                                        |
-| ✅ Pull requests must link an issue | <ul><li>[`therock-pr-bot.yml`](/.github/workflows/therock-pr-bot.yml)</li></ul>                                                              | <ul><li>[`pull_request_template.md`](/.github/pull_request_template.md)<li>Policy Bot [`FAQ.md`](/skills/therock_pr_bot/FAQ.md#-pr-description)</li></ul> |
-| ✅ Lint pre-commit checks           | <ul><li>[`pre-commit.yml`](.github/workflows/pre-commit.yml)</li></ul>                                                                       | <ul><li>[pre-commit checks](#pre-commit-checks)</li></ul>                                                                                                 |
-| ✅ Changes must be unit tested      | <ul><li>[`unit_tests.yml`](.github/workflows/unit_tests.yml)</li><li>[`therock-pr-bot.yml`](/.github/workflows/therock-pr-bot.yml)</li></ul> | <ul><li>[`docs/development/adding_tests.md`](docs/development/adding_tests.md)</li></ul>                                                                  |
+| Check description                     | Enforced via                                                                                                                                 | Details                                                                                                                                                   |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ✅ Branch naming patterns             | <ul><li>Repository ruleset</li></ul>                                                                                                         | <ul><li>[Branch naming policy](#branch-naming-policy)<br>(`users/USERNAME/feature-name`)</li></ul>                                                        |
+| ✅ Pull requests should link an issue | <ul><li>[`therock-pr-bot.yml`](/.github/workflows/therock-pr-bot.yml)</li></ul>                                                              | <ul><li>[`pull_request_template.md`](/.github/pull_request_template.md)<li>Policy Bot [`FAQ.md`](/skills/therock_pr_bot/FAQ.md#-pr-description)</li></ul> |
+| ✅ Lint pre-commit checks             | <ul><li>[`pre-commit.yml`](.github/workflows/pre-commit.yml)</li></ul>                                                                       | <ul><li>[pre-commit checks](#pre-commit-checks)</li></ul>                                                                                                 |
+| ✅ Changes should be unit tested      | <ul><li>[`unit_tests.yml`](.github/workflows/unit_tests.yml)</li><li>[`therock-pr-bot.yml`](/.github/workflows/therock-pr-bot.yml)</li></ul> | <ul><li>[`docs/development/adding_tests.md`](docs/development/adding_tests.md)</li></ul>                                                                  |
 
 If you are not looking for a review on a pull request yet, please mark that pull
 request as a draft:
@@ -185,9 +185,9 @@ same files or folders:
 - GitHub Docs: [Viewing and understanding files](https://docs.github.com/en/repositories/working-with-files/using-files/viewing-and-understanding-files)
 - GitHub Docs: [Differences between commit views](https://docs.github.com/en/pull-requests/committing-changes-to-your-project/viewing-and-comparing-commits/differences-between-commit-views)
 
-#### Pull requests must be associated with a GitHub issue
+#### Linking pull requests to GitHub issues
 
-All pull requests are expected to be associated with at least one GitHub issue.
+All pull requests should be associated with at least one GitHub issue.
 
 This lets reviewers see the context for contributions, helps link bugs and their
 fixes together, and helps with release planning. See also the
@@ -203,7 +203,7 @@ fixes together, and helps with release planning. See also the
   ```
   See the ["PR Description" section of `therock_pr_bot/FAQ.md`](/skills/therock_pr_bot/FAQ.md#-pr-description) for full details.
 - Contributions by AMD employees may also/instead reference a JIRA ID, though
-  GitHub issues are strongly preferred for open source development.
+  GitHub issues are preferred for open source development.
 - Exceptions may be granted on a case-by-case basis via the PR Policy Bot.
 
 #### pre-commit checks
