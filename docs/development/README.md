@@ -17,11 +17,11 @@
 
 ### Testing
 
+- [Testing Overview](testing_overview.md) - **Start here** for an overview of testing in this project
 - [Adding tests](adding_tests.md)
 - [Test Debugging](test_debugging.md)
 - [Test Filtering](test_filtering.md)
 - [Test Environment Reproduction](test_environment_reproduction.md)
-- [Test Runner Info](test_runner_info.md)
 
 ### Infrastructure
 
