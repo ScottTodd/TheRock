@@ -6,9 +6,9 @@
 > [issue #6711](https://github.com/ROCm/TheRock/issues/6711).
 
 This page is the entry point for understanding how changes to TheRock are
-validated. It will describe the project's testing strategy, help contributors
-choose an appropriate test plan, and explain what confidence can and cannot be
-inferred from local and CI results.
+validated. It will describe the project's testing strategy, explain where each
+testing mechanism fits, and clarify what confidence can and cannot be inferred
+from local and CI results.
 
 TheRock is both a CMake super-project and the integration point for ROCm build,
 test, packaging, and release pipelines. Testing therefore spans more than the
@@ -18,18 +18,6 @@ workflows also called from repositories such as
 [`ROCm/rockrel`](https://github.com/ROCm/rockrel).
 
 ## Testing strategy
-
-### Validate the risk introduced by the change
-
-- Identify the behavior and interfaces affected by the change, including
-  downstream consumers.
-- Start with the smallest deterministic test that can catch a regression, then
-  add integration coverage where components, platforms, or services meet.
-- Add a focused regression test for bug fixes whenever practical.
-- Prefer testing the same commands, artifacts, and packages that users and CI
-  consume rather than a convenient substitute.
-- Record important dimensions that were and were not tested instead of relying
-  on an ambiguous statement such as "CI passed."
 
 ### Confidence comes from layers
 
@@ -48,6 +36,62 @@ correct.
 | System tests              | PyTorch, JAX, functional tests, benchmarks                  | Multiple ROCm components work together for representative user workloads                       |
 | Release tests             | `dev`, nightly, and prerelease pipelines                    | Versioning, publishing, indexes, credentials, and release orchestration work end to end        |
 
+### Favor fast, representative local tests
+
+Fast tests shorten development cycles and make failures easier to reproduce and
+debug. Where possible, build, test, packaging, and release logic should be
+structured so that its important decisions can be tested on a CPU-only
+developer machine without building ROCm, reserving a GPU runner, or accessing a
+live service.
+
+The fastest test is only useful when it represents the behavior that matters.
+Unit tests should exercise observable behavior through appropriately scoped
+interfaces and realistic data rather than reimplementing the code's logic in
+the test. A focused regression test should be added for a bug fix whenever
+practical. These tests can then run for every change, across both Linux and
+Windows where appropriate.
+
+### Add integration coverage where unit tests stop
+
+Unit tests cannot establish every property that matters to TheRock. Mocks do
+not prove that a GitHub Actions expression is valid, that a package contains the
+right shared libraries, that those libraries load on a clean system, or that a
+component works on real GPU hardware.
+
+Integration tests should cover these real boundaries. For example, TheRock
+builds components on CPU machines, assembles artifacts and packages, installs
+them on separate test machines, and runs component or framework tests on
+matching GPUs. This is slower and more expensive than a unit test, but it
+provides confidence that isolated pieces work together in the form users
+receive.
+
+The two layers should reinforce each other: use fast tests for detailed
+behavior and failure cases, then use a smaller number of end-to-end tests for
+the assumptions that only real tools, packages, services, and hardware can
+verify.
+
+### Use the mechanism that matches the requirement
+
+Different checks belong in different tools:
+
+- Formatting and mechanically enforceable source conventions belong in
+  pre-commit hooks. For example, a project-wide line-length rule should be a
+  formatter or lint hook, not a Python unit test or PR Policy Bot rule.
+- Deterministic behavior in Python scripts and functions belongs in unit tests.
+- Cross-file or workflow contracts that a general-purpose linter does not
+  understand can be enforced with repository-specific unit tests.
+- Repository contribution policies belong in branch protection or the PR
+  Policy Bot when they require pull request metadata or organization-level
+  state.
+- Runtime behavior of workflows, packages, and GPU software must ultimately be
+  exercised in the corresponding real environment.
+
+These mechanisms can be complementary. The `actionlint` pre-commit hook catches
+many syntax and expression errors in GitHub Actions workflows, while
+[`workflow_dispatch_inputs_test.py`](../../build_tools/github_actions/tests/workflow_dispatch_inputs_test.py)
+checks a TheRock-specific caller/callee input contract that `actionlint` cannot
+validate.
+
 ### Keep ownership close to the code
 
 - Component repositories own detailed unit, algorithm, correctness, and
@@ -60,9 +104,10 @@ correct.
 - TheRock's test adapters should select and invoke component tests, not
   duplicate component test logic.
 
-### Treat coverage as a set of dimensions
+### Know what the available automation does not cover
 
-A test plan may need to vary across:
+TheRock cannot test the Cartesian product of every configuration for every
+change. Relevant dimensions include:
 
 - operating system and distribution;
 - GPU family and exact GPU target;
@@ -72,38 +117,19 @@ A test plan may need to vary across:
 - pull request, postsubmit, scheduled, or release trigger; and
 - `ci`, `dev`, nightly, or prerelease storage and versioning behavior.
 
-The goal is not to test the Cartesian product for every change. The goal is to
-choose representative dimensions based on risk and explicitly identify gaps.
+Developers should understand which of these dimensions are exercised by the
+available local and CI tests. When an affected feature or configuration is not
+enabled in CI, the author is responsible for validating it through an
+appropriate local build or purpose-built workflow run.
 
-## Choosing a test plan
-
-This table will become the quick-start path for contributors. Each row should
-eventually link to exact commands and examples in the sections below.
-
-| Change area                    | Expected starting point                                                   | Reasons to expand coverage                                                                                            |
-| ------------------------------ | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Documentation or metadata      | Targeted pre-commit hooks                                                 | Generated docs, embedded commands, or workflow metadata also changed                                                  |
-| Python build/CI/release script | Focused unit tests, then the full `build_tools` unit suite                | Subprocesses, network services, package files, or platform-specific behavior changed                                  |
-| GitHub Actions workflow        | `actionlint`, workflow unit/contract tests, affected automatic trigger    | Expressions, permissions, self-hosted runners, reusable callers, publishing, or schedules changed                     |
-| CMake or build topology        | Configure plus the smallest affected build and `dist` targets             | Dependency edges, artifacts, platform logic, feature flags, or submodules changed                                     |
-| Component or submodule         | Native component tests plus TheRock component tests on relevant GPUs      | Installed layout, downstream dependencies, multiple GPU families, or both operating systems are affected              |
-| Packaging                      | Unit tests plus build, install, and runtime checks of the affected format | Package indexes, dependency metadata, multiple Python versions, or multiple Linux distributions are affected          |
-| Release pipeline               | End-to-end `dev` release using a narrow representative matrix             | Code is shared with nightly/prerelease, changes destinations or credentials, or affects downstream framework releases |
-
-### Document the test result
-
-- Include exact commands, relevant inputs, GPU and operating system details,
-  and the observed result in the pull request.
-- Link GitHub Actions runs when they are part of the evidence.
-- State which important configurations were not tested and why.
-- Distinguish a test that was skipped, expected to fail, or allowed to fail
-  from one that passed.
-
-## Static checks and Python unit tests
+## TODO: Static checks and Python unit tests
 
 ### Pre-commit checks
 
-- Explain the repository's formatting, file validation, and `actionlint`
+- Explain that all commits must pass the repository's pre-commit hooks and that
+  these checks are the standard enforcement point for formatting, source
+  hygiene, and workflow linting.
+- Describe the repository's formatting, file validation, and `actionlint`
   checks, with focused and all-files commands.
 - Clarify that static validation catches malformed workflow syntax but does not
   execute GitHub expressions, contact services, or exercise runner state.
@@ -140,32 +166,55 @@ eventually link to exact commands and examples in the sections below.
   and S3 boundaries so the core logic can be tested directly.
 - Cover invalid inputs, missing data, partial failures, retry behavior, and
   platform-specific paths in addition to the happy path.
-- Use temporary directories and representative small fixtures for artifact and
-  package transformations.
-- Mock external boundaries in unit tests, but retain an integration test for
-  assumptions only the real tool or service can verify.
+- Use real files in temporary directories and representative small fixtures for
+  filesystem, archive, artifact, and package transformations. These operations
+  are usually cheap, deterministic, and clearer than deeply mocked tests.
+- Mock network services such as GitHub and S3 when testing local decisions,
+  request construction, and error handling. Do not mock so much of the code
+  under test that the test only verifies configured return values.
+- Put expensive or environment-dependent subprocess calls behind a narrow
+  boundary. Unit test the command and surrounding decisions, use the real tool
+  when it is cheap and reliably available, and retain an integration test for
+  assumptions that only the actual tool can verify.
+- Prefer dependency injection or small boundary functions over patching many
+  implementation details. Tests should remain valid through reasonable
+  refactoring.
 - For workflow helpers, test both the Python decision logic and invariants in
   the workflow YAML. Existing examples validate dispatch input contracts,
   matrix references, and the transitive set of reusable workflows.
+- Connect this guidance to the
+  [Python style guide's testing standards](style_guides/python_style_guide.md#testing-standards)
+  and expand both pages consistently as the standards mature.
 
-## Testing build system changes
+## TODO: Testing build system changes
 
-### Local configure and build loop
+### Source builds are the primary validation
 
-- Start with a GPU family that is relevant to the change and, when possible,
-  matches locally available hardware.
-- Use feature flags to configure the smallest useful component set, while
-  preserving the dependency edges being changed.
-- Build the affected project phase or directory rather than rebuilding all of
-  ROCm. Link to the target model in [Build System](build_system.md) and the
-  [Development Guide](development_guide.md).
-- Use a component's `+expunge` target when changes to configure-time inputs or
-  generated build state require a clean component rebuild.
-- Build `+dist` or the relevant artifact targets when the change affects
-  install rules, runtime dependencies, RPATHs, or artifact composition.
-- Run `ctest --test-dir <build-dir>` for TheRock's build-integrity tests when
-  `BUILD_TESTING` is enabled.
-- Run topology validation when changing `BUILD_TOPOLOGY.toml` or its parser.
+- Build system changes are expected to be validated with a source build. Unit
+  tests for CMake helpers or topology parsers can provide faster feedback, but
+  they do not replace configuring and building the affected path.
+- The important question is whether the selected configuration exercises the
+  behavior being changed, not whether a particular example command was copied
+  verbatim.
+- A targeted build is sufficient when it preserves the relevant dependency and
+  install relationships. Changes to shared configuration, dependency edges, or
+  artifact composition may require a broader build.
+- When a feature, platform, option, or build variant is not enabled in CI, the
+  contributor is responsible for ensuring that configuration continues to
+  build.
+- Link to [Build System](build_system.md) and the
+  [Development Guide](development_guide.md) for commands and build-target
+  mechanics rather than duplicating them here.
+
+### Compare local and CI configurations
+
+- Explain how to inspect the effective CMake options, enabled features, target
+  families, build variant, and platform used by CI.
+- Encourage contributors to compare those values with their local build and
+  identify affected configurations that neither environment covers.
+- Note that a successful build validates configuration and compilation, while
+  runtime behavior, installed layouts, and GPU execution require later testing
+  layers.
 
 ### What Multi-Arch CI covers
 
@@ -195,7 +244,7 @@ eventually link to exact commands and examples in the sections below.
 - The workflow summary and selected build configuration should be inspected to
   determine what actually ran before making a coverage claim.
 
-## Testing ROCm components
+## TODO: Testing ROCm components
 
 ### Component tests in TheRock
 
@@ -221,27 +270,12 @@ eventually link to exact commands and examples in the sections below.
   [`test_runner.py`](../../build_tools/github_actions/test_executable_scripts/test_runner.py)
   discovers installed CTest labels and selects the category appropriate for
   `TEST_TYPE` and `AMDGPU_FAMILIES`.
+- Use specific component behavior as examples throughout this section. For
+  instance, hipBLASLt maps smoke, quick, pre-checkin, nightly, and HMM test
+  categories into TheRock's cumulative tiers; its installed tests also require
+  generated test data and a device library for the executing GPU.
 - Cover sharding, timeouts, GPU resource constraints, expected failures, and
   documented exclusions as distinct mechanisms.
-
-### hipBLASLt as a concrete example
-
-- Show the progression from a focused native hipBLASLt test to TheRock
-  integration testing:
-  1. build and run the relevant test in the component's recommended standalone
-     development loop;
-  1. build hipBLASLt and its test artifacts through TheRock; and
-  1. run the installed component suite through `test_artifacts.yml` on a
-     matching GPU.
-- Ground the example in
-  `rocm-libraries/projects/hipblaslt/clients/tests/test_categories.yaml`, the
-  `hipblaslt-test` executable, generated test data, and the required device
-  library for the executing GPU.
-- Demonstrate how the hipBLASLt smoke, quick, pre-checkin, nightly, and HMM
-  categories map into TheRock's cumulative tiers without duplicating the full
-  component documentation here.
-- Generalize the same ownership and integration pattern to rocBLAS, rocFFT,
-  MIOpen, and other components.
 
 ### Adding and debugging component tests
 
@@ -252,7 +286,7 @@ eventually link to exact commands and examples in the sections below.
   command locally.
 - Link to [Test Debugging](test_debugging.md) for component-specific logging.
 
-## Testing GitHub Actions workflows safely
+## TODO: Testing GitHub Actions workflows safely
 
 ### Test workflow changes at three levels
 
@@ -318,7 +352,7 @@ shell. See the
 - Correct release type, version, bucket, prefix, and package index.
 - Idempotency and recovery behavior for uploads, copies, and promotions.
 
-## Testing artifacts, packages, and releases
+## TODO: Testing artifacts, packages, and releases
 
 ### Artifact structure and runtime sanity
 
@@ -357,7 +391,7 @@ shell. See the
 - For an end-to-end change, verify published URLs by installing from the
   generated `dev` index rather than inspecting S3 contents alone.
 
-## Higher-level and specialized validation
+## TODO: Higher-level and specialized validation
 
 ### Framework integrations
 
@@ -386,7 +420,7 @@ shell. See the
 - Call out Windows, WSL ROCDXG, multi-GPU, HMM, and other specialized paths when
   a change touches their conditions or artifacts.
 
-## Interpreting and maintaining test results
+## TODO: Interpreting and maintaining test results
 
 ### Read what actually ran
 
@@ -395,6 +429,11 @@ shell. See the
 - Do not equate an overall green conclusion with execution of every matrix
   entry.
 - Preserve run IDs and artifact URLs needed to reproduce failures.
+- Avoid listing routine automatically enforced formatting or lint checks as if
+  they were substantive manual validation. Record additional evidence when it
+  helps a reviewer understand an exceptional case, such as reproducing a bug,
+  validating a fix on specific hardware, relying on CI for an unavailable
+  configuration, or exercising a release workflow manually.
 
 ### Reproduce before weakening coverage
 
@@ -415,10 +454,10 @@ shell. See the
 - Remove expected-failure and exclusion entries when the underlying issue is
   fixed.
 
-## Known coverage gaps
+## TODO: Known coverage gaps
 
 This section will track important limitations that contributors should consider
-when choosing a test plan. Initial topics to document include:
+when evaluating coverage. Initial topics to document include:
 
 - GPU families that are build-only or lack active test runners;
 - differences between pull request, postsubmit, and release matrices;
