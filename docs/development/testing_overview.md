@@ -5,17 +5,38 @@
 > tested commands, examples, and links as part of
 > [issue #6711](https://github.com/ROCm/TheRock/issues/6711).
 
-This page is the entry point for understanding how changes to TheRock are
-validated. It will describe the project's testing strategy, explain where each
-testing mechanism fits, and clarify what confidence can and cannot be inferred
-from local and CI results.
+TheRock is both ROCm's CMake super-project and the integration point for its
+build, test, packaging, and release infrastructure. The build system and
+GitHub Actions workflows in this repository underpin contributions across ROCm
+Core, while its release workflows assemble and publish packages used directly
+and by downstream projects.
 
-TheRock is both a CMake super-project and the integration point for ROCm build,
-test, packaging, and release pipelines. Testing therefore spans more than the
-source code in this repository. It includes component-owned tests, assembled
-artifacts, installable packages, downstream frameworks, and GitHub Actions
-workflows also called from repositories such as
-[`ROCm/rockrel`](https://github.com/ROCm/rockrel).
+TheRock aims to keep ROCm ready to release throughout development. Reliable
+automated tests make that possible by detecting regressions close to when they
+are introduced and by continuously demonstrating that the projects assembled
+by TheRock work together. These tests should also provide fast, actionable
+feedback so that adding confidence does not come at the expense of productive
+development.
+
+That confidence must scale across a broad support surface that includes Linux
+and Windows, multiple packaging formats, GPU generations and system
+configurations, and downstream frameworks. Testing every combination for every
+change is neither practical nor necessary. The testing strategy must instead
+combine fast local tests, representative presubmit coverage, real-hardware
+integration tests, broader scheduled testing, and targeted testing for
+specialized configurations.
+
+Good testing should be accessible to all contributors, including those without
+access to every supported GPU or operating system. Wherever possible, code and
+automation should be structured so that important behavior can be tested
+quickly on a CPU-only development machine. GitHub Actions workflows should be
+thin orchestration around scripts that can also be run and tested locally,
+leaving CI systems, installed packages, downstream applications, and real GPU
+hardware to validate the boundaries that local tests cannot represent.
+
+This page describes how these testing layers work together, how TheRock code
+can make good testing the easy path, and what good testing looks like for
+common types of contributions.
 
 ## Testing strategy
 
