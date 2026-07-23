@@ -5,34 +5,44 @@
 > tested commands, examples, and links as part of
 > [issue #6711](https://github.com/ROCm/TheRock/issues/6711).
 
-TheRock is both ROCm's CMake super-project and the integration point for its
-build, test, packaging, and release infrastructure. The build system and
-GitHub Actions workflows in this repository underpin contributions across ROCm
-Core, while its release workflows assemble and publish packages used directly
-and by downstream projects.
+TheRock is the integration point for all build, test, packaging, and release
+infrastructure for ROCm Core. The code here is used by developers building
+ROCm from source, CI systems validating pull request contributions
+in repositories like [rocm-systems](https://github.com/ROCm/rocm-systems) and
+[rocm-libraries](https://github.com/ROCm/rocm-libraries), and release workflows
+publishing nightly and stable releases in
+[rockrel](https://github.com/ROCm/rockrel) which are trusted by users and
+downstream projects.
 
-TheRock aims to keep ROCm ready to release throughout development. Reliable
-automated tests make that possible by detecting regressions close to when they
-are introduced and by continuously demonstrating that the projects assembled
-by TheRock work together. These tests should also provide fast, actionable
-feedback so that adding confidence does not come at the expense of productive
-development.
+TheRock aims to keep ROCm "ready to release" at any time. Achieving this at
+scale requires robust automated tests that detect issues as close as possible
+to their source. Early detection limits the impact of regressions and makes
+them easier to diagnose and fix, while continuous validation provides the
+confidence needed to release frequently.
 
-That confidence must scale across a broad support surface that includes Linux
-and Windows, multiple packaging formats, GPU generations and system
-configurations, and downstream frameworks. Testing every combination for every
-change is neither practical nor necessary. The testing strategy must instead
-combine fast local tests, representative presubmit coverage, real-hardware
-integration tests, broader scheduled testing, and targeted testing for
-specialized configurations.
+That confidence must scale across a broad support surface that includes
+40+ subprojects, 25+ GPU targets across multiple hardware generations, multiple
+operating systems, various packaging formats, and usage by downstream
+frameworks. Testing every combination for every change is not practical, so
+TheRock layers automated tests according to their cost and the confidence they
+provide. Presubmit testing prioritizes fast, high-signal test suites and
+configurations with enough capacity to run for every change. Longer test suites
+and hardware with limited runner capacity are exercised through nightly,
+scheduled, and on-demand testing.
 
-Good testing should be accessible to all contributors, including those without
-access to every supported GPU or operating system. Wherever possible, code and
-automation should be structured so that important behavior can be tested
-quickly on a CPU-only development machine. GitHub Actions workflows should be
-thin orchestration around scripts that can also be run and tested locally,
-leaving CI systems, installed packages, downstream applications, and real GPU
-hardware to validate the boundaries that local tests cannot represent.
+Good testing should be accessible to all contributors, especially given how
+diverse our support matrix is. Wherever possible, code and automation should be
+structured so that important behavior can be tested quickly on commonly
+available development machines. Local testing usually provides the fastest
+feedback, while continuous integration (CI) workflows provide consistent
+environments for validating changes across representative project-wide
+configurations and component boundaries.
+
+Individual subprojects can validate their own behavior in isolation, but ROCm
+Core is built and released as a single product. TheRock therefore assembles and
+tests those projects together as often as practical throughout development,
+exposing cross-component and product-wide issues that component-level testing
+cannot see.
 
 This page describes how these testing layers work together, how TheRock code
 can make good testing the easy path, and what good testing looks like for
