@@ -4,6 +4,183 @@
 > This local working file preserves material from the initial outline while
 > `testing_overview.md` is reorganized. It is not intended for submission.
 
+## Recent structure and content notes
+
+These notes capture ideas discussed while reorganizing the main document. They
+are working material, not proposed final wording.
+
+### Proposed top-level progression
+
+1. **Testing principles:** Practices that apply across TheRock, ROCm
+   subprojects, and the assembled product.
+1. **Testing changes to TheRock:** Python tools, CMake and build logic, GitHub
+   Actions workflows, packaging, release infrastructure, and framework
+   integration tooling.
+1. **Testing ROCm subproject changes with TheRock:** Building subprojects
+   through the super-project and running their tests through standardized,
+   locally reproducible interfaces.
+1. **Validating assembled ROCm:** Artifacts, installed packages, component
+   tests, supported GPU hardware, downstream frameworks, and release
+   pipelines.
+1. **Maintaining reliable testing infrastructure:** Safely changing and
+   operating the runners and services that produce test results.
+
+The first four sections progress from common practices, to code maintained in
+TheRock, to integrated subprojects, and finally to the product delivered to
+users. The infrastructure section covers the availability, reliability, and
+observability needed to trust all of those results.
+
+### Reusable testing strategy profile
+
+The subsections under "Testing changes to TheRock" could follow a standard
+profile. Other ROCm subprojects could reuse the same structure in their own
+testing strategy documents.
+
+| Attribute         | Details to document                                                  |
+| ----------------- | -------------------------------------------------------------------- |
+| Code under test   | Files, directories, workflows, or produced artifacts                 |
+| Test location     | Where the checks and tests are implemented                           |
+| Purpose           | The behavior or property in which the tests provide confidence       |
+| Environment       | Required OS, build, package installation, GPU, or external service   |
+| Local entry point | How the same coverage is run during development                      |
+| CI coverage       | Workflows and configurations that run the test                       |
+| Frequency         | Presubmit, postsubmit, nightly, scheduled, on demand, or release     |
+| Blocking status   | Informational or required                                            |
+| Cost and capacity | Typical runtime, sharding, and scarce runner requirements            |
+| Limitations       | Important behavior or configurations that the tests do not establish |
+
+Keep environment, frequency, and cost separate. A test may be fast but require
+scarce GPU hardware, or it may run on a CPU machine but take several hours.
+Either property can determine whether coverage runs presubmit, nightly, or on
+demand.
+
+After the profile, each area can explain:
+
+- how the code should be structured for testability;
+- which behavior can be tested quickly on commonly available development
+  machines;
+- which boundaries require a real build, workflow, package, service, or GPU;
+  and
+- one or two concrete examples from TheRock.
+
+The profile should describe current coverage and known limits, not only the
+intended design.
+
+### Separate test layers from execution stages
+
+Do not conflate what a test validates with where or how often it runs. Static
+checks, unit tests, build tests, package tests, and system tests are testing
+layers. Local development, presubmit, on-demand, nightly, and prerelease are
+execution stages. Unit and integration tests may run locally, in CI, or both.
+
+A testing-layer table could document:
+
+| Layer                       | Primary confidence provided                      | Typical requirements             |
+| --------------------------- | ------------------------------------------------ | -------------------------------- |
+| Static checks               | Source and configuration meet mechanical rules   | CPU only                         |
+| Unit tests                  | Isolated logic behaves as expected               | Usually CPU only                 |
+| Build and integration tests | Components work across real boundaries           | Build environment, sometimes GPU |
+| Package and system tests    | Installed ROCm behaves as users expect           | Clean installation and often GPU |
+| Release tests               | Publishing and orchestration work across systems | Live services and credentials    |
+
+An execution-stage table could separately document:
+
+| Stage             | Coverage policy                                          | Time and capacity considerations              |
+| ----------------- | -------------------------------------------------------- | --------------------------------------------- |
+| Local development | Relevant coverage selected during development            | Seconds to hours; available local environment |
+| Presubmit         | Fast, high-signal required coverage                      | Bounded feedback time and sufficient capacity |
+| On demand         | Change-specific configurations                           | Scarce hardware or unusual variants           |
+| Nightly/scheduled | Broader configurations and longer test suites            | Longer budgets and all available hardware     |
+| Prerelease        | Highest-confidence validation of release-relevant inputs | Potentially several hours                     |
+
+The detailed execution stages can reference the existing `quick`, `standard`,
+`comprehensive`, and `full` test-filter categories and their time budgets.
+
+Coverage can also expand based on change risk. Submodule updates, compiler
+updates, and changes with a wide build-system impact are candidates for deeper
+or broader validation. Changes affecting a particular GPU target or build
+variant should be able to request the corresponding opt-in coverage.
+
+### Testing ROCm subprojects through TheRock
+
+TheRock provides integration coverage for subprojects without replacing their
+native unit and component testing. Useful principles include:
+
+- build subprojects through the super-project to validate dependency, install,
+  and packaging relationships;
+- use standardized CTest categories, GPU labels, and installed test artifacts;
+- keep component-specific CI adapters minimal;
+- use the same test entry points locally and in CI when their environment
+  requirements are available;
+- make required environment setup explicit, deterministic, and shared; and
+- avoid hidden assumptions about a particular CI runner or filesystem layout.
+
+`build_tools/github_actions/test_executable_scripts/test_runner.py` represents
+the desired standardized direction. Ad hoc setup such as
+`copy_dlls_exe_path()` in `test_hiptests.py` is a useful counterexample: it
+depends on implicit directory layout, mutates the test directory, and suppresses
+copying failures. Some integration tests inherently need environment setup, but
+that setup should not exist only inside CI or a component-specific adapter.
+
+### Maintaining reliable testing infrastructure
+
+TheRock depends on self-hosted runners, build containers, caches, dependency
+mirrors, artifact and package storage, credentials, and other external
+services. The testing overview should cover the practices needed to trust these
+systems without becoming a provider-specific operations manual.
+
+#### Validate infrastructure changes
+
+Test changes against development or isolated environments when possible. This
+includes changes to runner images and configuration, build containers, caches,
+mirrors, storage, credentials, and external services.
+
+#### Roll out changes progressively
+
+Some infrastructure behavior cannot be established before deployment. Introduce
+such changes to a limited runner pool, workflow population, or share of traffic;
+compare their behavior with the existing configuration; expand only after
+establishing confidence; and retain a rollback path.
+
+#### Make system health observable
+
+Automated results are only trustworthy when the systems producing them are
+observable.
+
+- Follow consistent logging practices in build and CI/CD infrastructure.
+  Record relevant commands, configuration, environment details, stage
+  boundaries, and failure context without exposing secrets.
+- Preserve logs and related diagnostics long enough to investigate failures,
+  and make them accessible to contributors who need to reproduce or triage
+  them.
+- Run health checks for build and test runners before expensive work. Validate
+  prerequisites such as GPU and driver health so infrastructure failures can be
+  distinguished from failures in the code under test.
+- Health checks must enforce their results rather than merely print
+  diagnostics. PR
+  [#6604](https://github.com/ROCm/TheRock/pull/6604) is a concrete example: a
+  driver/GPU sanity check printed a HIP failure but did not propagate it, making
+  a broken runner appear to be a component failure later in the job.
+- Monitor workflow and nightly health, runner availability and queue time,
+  build and test duration, failure and flake rates, cache and storage
+  reliability, build performance, binary size, and downstream-reported
+  results.
+
+Quartz can provide a common data path for TheRock results, downstream
+notifications and feedback, and dashboard analytics. Detailed architecture
+belongs in `docs/rfcs/RFC0011-Quartz-CICD-Datahub.md`.
+
+#### Keep test results trustworthy
+
+Separate product failures from infrastructure failures, avoid silent retries
+that hide instability, track flakes instead of normalizing them, and ensure
+that missing or failed reports reach a terminal state.
+
+The section should explicitly exclude detailed service configuration,
+operational ownership, alert thresholds, incident response, and
+provider-specific procedures. Those belong in dedicated operational
+documentation.
+
 ## Testing strategy
 
 ### Confidence comes from layers

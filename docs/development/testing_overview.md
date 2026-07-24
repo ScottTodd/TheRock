@@ -38,6 +38,8 @@ those projects together as often as practical throughout development, providing
 confidence in cross-component behavior and product-wide properties that
 component-level testing cannot evaluate.
 
+<!-- TODO: make this content flow better, "good testing" is too vague -->
+
 This page describes how these testing layers work together, how TheRock code
 can make good testing the easy path, and what good testing looks like for
 common types of contributions.
@@ -48,25 +50,49 @@ common types of contributions.
 
 ### Use layered validation
 
-### Scale coverage to available resources
+- Use static analysis for mechanical checks
 
-### Use static analysis for mechanical checks
+Tests are split into a few
+
+- pre-commit: these are fast checks for formatting, linting, repository policies, and more.
+- unit tests: these are fast tests for script behavior, runnable on generic hardware.
+- integration tests: these provide validation for build outputs and packages and run on real hardware.
+
+| Test type         | Description                                                         | Time budget | Special requirements                                            | Validated by                                                                                                                                                                                                                                                                                                                                      |
+| ----------------- | ------------------------------------------------------------------- | ----------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| pre-commit        | Fast checks for formatting, linting, repository policies, and more. | 10 seconds  | None (run on _every_ commit)                                    | <ul><li>[`.pre-commit-config.yaml`](/.pre-commit-config.yaml)</li><li>[`.github/workflows/pre-commit.yml`](/.github/workflows/pre-commit.yml)</li></ul>                                                                                                                                                                                           |
+| Unit tests        | Fast tests for script behavior, runnable on generic hardware.       | 5 minutes   | File system and network access                                  | <ul><li>[`.github/workflows/unit_tests.yml`](/.github/workflows/unit_tests.yml)</li></ul>                                                                                                                                                                                                                                                         |
+| Integration tests | Validation for build outputs and packages, running on real hardware | 30 minutes  | Build system outputs, specific operating systems, physical GPUs | <ul><li>[`.github/workflows/test_artifacts_structure.yml`](/.github/workflows/test_artifacts_structure.yml)</li><li>[`.github/workflows/test_native_linux_packages_install.yml`](/.github/workflows/test_native_linux_packages_install.yml)</li><li>[`.github/workflows/test_rocm_wheels.yml`](/.github/workflows/test_rocm_wheels.yml)</li></ul> |
+
+### Scale coverage to available resources
 
 ### Add reliable tests to required CI
 
-## Testing changes to TheRock
+______________________________________________________________________
 
-### Python scripts and tools
+## Testing changes to TheRock
 
 ### CMake and super-project build logic
 
 ### GitHub Actions workflows
 
+### Python scripts and tools
+
 ### Packaging and release infrastructure
+
+<!-- TODO: "infrastrcture" is overloaded here -->
+
+### Maintaining reliable CI infrastructure
 
 ### Framework integration tooling
 
-## Testing ROCm subproject changes with TheRock
+______________________________________________________________________
+
+## Testing changes to ROCm subprojects with TheRock
+
+<!-- TODO: mention therock_cmake_subproject_build_test -->
+
+<!-- TODO: mention build_tools/github_actions/test_executable_scripts/README.md -->
 
 ### Build subprojects through TheRock
 
@@ -74,9 +100,15 @@ common types of contributions.
 
 ### Make test environments explicit and reproducible
 
-### Run the same tests locally and in CI
+### "TheRock CI" in component repositories
 
-### Test submodule updates and component boundaries
+### Test submodule updates
+
+#### Testing changes to rocm-libraries and rocm-systems
+
+#### Testing changes to llvm-project
+
+______________________________________________________________________
 
 ## Validating assembled ROCm
 
