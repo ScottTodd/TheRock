@@ -134,13 +134,66 @@ continuously build a few slices through this support matrix.
 
 ### GitHub Actions workflows
 
+<!-- DRAFT -->
+
+Types of workflows:
+
+- Lightweight checks: codeql.yml, gitleaks.yml, pre-commit.yml, unit_tests.yml, therock-pr-bot.yml
+- CI/CD workflows: multi_arch_ci.yml, multi_arch_release.yml, etc.
+- Other automation: bump_submodules.yml, copy_release.yml, publish_build_manylinux_x86_64.yml
+
+Per docs/development/style_guides/github_actions_style_guide.md...
+
+- "Prefer Python scripts over inline Bash"
+- "Separate build and test stages" and modular workflows allow for testing
+  without needing to build fully from scratch during testing (see docs/development/github_actions_debugging.md also)
+
+emphasize that
+
+- CI needs to stay stable or all development is blocked
+- nightly releases need to stay stable so we can release at any point
+- iteration cycles on changes to workflows can be exceedingly long if working
+  directly in workflow files, put logic in scripts that are runnable locally
+
+<!-- DRAFT -->
+
 ### Python scripts and tools
 
 ### Packaging and release infrastructure
 
 <!-- TODO: "infrastrcture" is overloaded here -->
 
+<!-- TODO: merge with "Validating assembled ROCm" section below?
+
+     could focus this on release workflows?
+-->
+
+<!-- DRAFT -->
+
+Types of packages:
+
+- artifacts (the raw build system outputs)
+- tarballs/archives (folder distributions that are not associated with any particular package manager / ecosystem)
+- native linux packages (deb/rpm)
+- native windows packages (msi)
+- python packages
+
+Test for:
+
+- unit test: package construction (no crashes, outputs are not malformed, files are filtered as expected)
+- integration test: package install/usage behavior
+  - installable
+  - can load and call APIs - matching what user-facing instructions say to do
+  - install on multiple supported distros (e.g. build on manylinux -> test on Ubuntu and RHEL)
+- integration test: interaction between multiple packages
+  - ROCm packages should be self-sufficient and not conflict with system packages
+  - packages should be compatible/usable with other packages in the same ecosystem (e.g. PyTorch using ROCm python packages)
+
+<!-- DRAFT -->
+
 ### Maintaining reliable CI infrastructure
+
+<!-- TODO: "infrastrcture" is overloaded here -->
 
 ### Framework integration tooling
 
@@ -156,9 +209,24 @@ ______________________________________________________________________
 
 ### Use standardized component test interfaces
 
+- build_tools/github_actions/test_executable_scripts/test_runner.py
+
 ### Make test environments explicit and reproducible
 
+<!-- TODO: reword section header, merge with prior section? -->
+
+- tests should aim to be runnable from installed artifacts using standard test runners, e.g. `pytest` or `ctest`
+  - avoid what build_tools/github_actions/test_executable_scripts/test_hiptests.py does with copy_dlls_exe_path
+  - avoid that build_tools/github_actions/test_executable_scripts/test_origami.py does with `LD_LIBRARY_PATH`
+- developers _working on the projects_ and users/CI systems that _install test artifacts_ should have the same experience
+
 ### "TheRock CI" in component repositories
+
+<!-- DRAFT -->
+
+- First CI line of defense against regressions
+
+<!-- DRAFT -->
 
 ### Test submodule updates
 
