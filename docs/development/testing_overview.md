@@ -52,18 +52,6 @@ common types of contributions.
 
 - Use static analysis for mechanical checks
 
-Tests are split into a few
-
-- pre-commit: these are fast checks for formatting, linting, repository policies, and more.
-- unit tests: these are fast tests for script behavior, runnable on generic hardware.
-- integration tests: these provide validation for build outputs and packages and run on real hardware.
-
-| Test type         | Description                                                         | Time budget | Special requirements                                            | Validated by                                                                                                                                                                                                                                                                                                                                      |
-| ----------------- | ------------------------------------------------------------------- | ----------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| pre-commit        | Fast checks for formatting, linting, repository policies, and more. | 10 seconds  | None (run on _every_ commit)                                    | <ul><li>[`.pre-commit-config.yaml`](/.pre-commit-config.yaml)</li><li>[`.github/workflows/pre-commit.yml`](/.github/workflows/pre-commit.yml)</li></ul>                                                                                                                                                                                           |
-| Unit tests        | Fast tests for script behavior, runnable on generic hardware.       | 5 minutes   | File system and network access                                  | <ul><li>[`.github/workflows/unit_tests.yml`](/.github/workflows/unit_tests.yml)</li></ul>                                                                                                                                                                                                                                                         |
-| Integration tests | Validation for build outputs and packages, running on real hardware | 30 minutes  | Build system outputs, specific operating systems, physical GPUs | <ul><li>[`.github/workflows/test_artifacts_structure.yml`](/.github/workflows/test_artifacts_structure.yml)</li><li>[`.github/workflows/test_native_linux_packages_install.yml`](/.github/workflows/test_native_linux_packages_install.yml)</li><li>[`.github/workflows/test_rocm_wheels.yml`](/.github/workflows/test_rocm_wheels.yml)</li></ul> |
-
 ### Scale coverage to available resources
 
 ### Add reliable tests to required CI
@@ -72,7 +60,76 @@ ______________________________________________________________________
 
 ## Testing changes to TheRock
 
+### Test categories in TheRock
+
+Tests for the code in TheRock itself are split into a few broad categories:
+
+- pre-commit / static analysis
+  - These are fast checks for formatting, linting, repository policies, and more
+  - Example tests:
+    - `actionlint` for GitHub Actions workflow files
+    - `black` formatting for python scripts
+    - `check-merge-conflicts` for all files
+- unit tests
+  - These are fast tests for script behavior, runnable on generic hardware
+  - Example tests:
+    - [`build_tools/tests/build_topology_test.py`](/build_tools/tests/build_topology_test.py)
+    - [`build_tools/tests/fileset_tool_test.py`](/build_tools/tests/fileset_tool_test.py)
+    - [`build_tools/github_actions/tests/workflow_dispatch_inputs_test.py`](/build_tools/github_actions/tests/workflow_dispatch_inputs_test.py)
+- integration tests
+  - These provide validation for build outputs and packages, running on real hardware
+  - Example tests:
+    - [`tests/test_artifact_structure.py`](/tests/test_artifact_structure.py)
+    - [`tests/test_rocm_sanity.py`](/tests/test_rocm_sanity.py)
+    - [`build_tools/packaging/linux/native_linux_package_install_test.py`](/build_tools/packaging/linux/native_linux_package_install_test.py)
+    - [`build_tools/packaging/python/templates/rocm/src/rocm_sdk/tests/core_test.py`](/build_tools/packaging/python/templates/rocm/src/rocm_sdk/tests/core_test.py)
+
+Tests in each category are runnable as part of local development and are also
+run as part of our CI workflows:
+
+| Test type         | Time budget | Validated by                                                                                                                                                                                                                                                                                                                                      |
+| ----------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| pre-commit        | 10 seconds  | <ul><li>[`.pre-commit-config.yaml`](/.pre-commit-config.yaml)</li><li>[`.github/workflows/pre-commit.yml`](/.github/workflows/pre-commit.yml)</li></ul>                                                                                                                                                                                           |
+| unit tests        | 5 minutes   | <ul><li>[`.github/workflows/unit_tests.yml`](/.github/workflows/unit_tests.yml)</li></ul>                                                                                                                                                                                                                                                         |
+| integration tests | 30 minutes  | <ul><li>[`.github/workflows/test_artifacts_structure.yml`](/.github/workflows/test_artifacts_structure.yml)</li><li>[`.github/workflows/test_native_linux_packages_install.yml`](/.github/workflows/test_native_linux_packages_install.yml)</li><li>[`.github/workflows/test_rocm_wheels.yml`](/.github/workflows/test_rocm_wheels.yml)</li></ul> |
+
 ### CMake and super-project build logic
+
+As the centralized build system for ROCm Core, TheRock includes a CMake
+super-project including key files in:
+
+- CMake project files like [`CMakeLists.txt`](/CMakeLists.txt) and
+  [`cmake/therock_amdgpu_targets.cmake`](/cmake/therock_amdgpu_targets.cmake)
+- Topology metadata in [`BUILD_TOPOLOGY.toml`](/BUILD_TOPOLOGY.toml)
+- Sub-project declarations like [`math-libs/CMakeLists.txt`](/math-libs/CMakeLists.txt)
+- Sub-project artifact descriptors like [`math-libs/BLAS/artifact-blas.toml`](/math-libs/BLAS/artifact-blas.toml)
+
+The build system supports a broad matrix of configurations:
+
+| Matrix dimension      | Available configurations                                                                        | Tested on CI                                    |
+| --------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| Operating system      | Linux (multiple distros), WSL, Windows                                                          | Manylinux, WSL, Windows                         |
+| Build variant         | Release, Debug, Address Sanitizer (ASan), etc.                                                  | Release, ASan                                   |
+| AMDGPU targets        | `gfx942`, `gfx950`, `gfx1100`, `gfx1200`, etc.                                                  | 1-3 targets (based on test runner availability) |
+| Enabled subprojects   | `THEROCK_ENABLE_ALL`, `THEROCK_ENABLE_PROFILER`, etc.                                           | All enabled, subsets as an optimization         |
+| Enabled feature flags | See [`FLAGS.cmake`](/FLAGS.cmake) and [`docs/development/flags.md`](/docs/development/flags.md) | Default values                                  |
+| Other CMake options   | `THEROCK_BUILD_TESTING`, `THEROCK_BUNDLE_SYSDEPS`, etc.                                         | Default values                                  |
+
+The CI systems in [TheRock](https://github.com/ROCm/TheRock) and component
+repositories like [rocm-systems](https://github.com/ROCm/rocm-systems)
+continuously build a few slices through this support matrix.
+
+> [!WARNING]
+> Certain types of changes often warrant additional validation, such as:
+>
+> - Adding new subprojects
+> - Adjusting support for specific AMDGPU targets
+> - Updates to the compiler (llvm-project)
+>
+> Pull requests modifying key git submodules in TheRock automatically run extra
+> CI jobs and other changes may want to opt-in as well. See
+> [ci_behavior_manipulation.md](/docs/development/ci_behavior_manipulation.md)
+> for more information on configuring which CI jobs are triggered on PRs.
 
 ### GitHub Actions workflows
 
