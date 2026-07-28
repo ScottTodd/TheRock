@@ -66,15 +66,14 @@ Tests for the code in TheRock itself are split into a few broad categories:
 
 - pre-commit and static checks
   - These are fast checks for formatting, linting, repository policies, and more
-  - Example tests:
+  - Example checks (see [`.pre-commit-config.yaml`](/.pre-commit-config.yaml)):
     - `actionlint` for GitHub Actions workflow files
     - `black` formatting for Python scripts
-    - `check-merge-conflicts` for all files
 - unit tests
-  - These are fast tests for script behavior, runnable on generic hardware
+  - These are tests for script behavior, runnable on generic hardware
   - Example tests:
     - [`build_tools/tests/build_topology_test.py`](/build_tools/tests/build_topology_test.py)
-    - [`build_tools/tests/fileset_tool_test.py`](/build_tools/tests/fileset_tool_test.py)
+    - [`build_tools/tests/py_packaging_test.py`](/build_tools/tests/py_packaging_test.py)
     - [`build_tools/github_actions/tests/workflow_dispatch_inputs_test.py`](/build_tools/github_actions/tests/workflow_dispatch_inputs_test.py)
 - integration tests
   - These provide validation for build outputs and packages and may run on real hardware
@@ -87,13 +86,18 @@ Tests for the code in TheRock itself are split into a few broad categories:
 Tests in each category are runnable as part of local development and are also
 run as part of our CI workflows:
 
-| Test type         | Target test runtime | CI workflows                                                                                                                                                                                                                                                                                                                                      |
-| ----------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| pre-commit        | 10 seconds          | <ul><li>[`.pre-commit-config.yaml`](/.pre-commit-config.yaml)</li><li>[`.github/workflows/pre-commit.yml`](/.github/workflows/pre-commit.yml)</li></ul>                                                                                                                                                                                           |
-| unit tests        | 5 minutes           | <ul><li>[`.github/workflows/unit_tests.yml`](/.github/workflows/unit_tests.yml)</li></ul>                                                                                                                                                                                                                                                         |
-| integration tests | 30 minutes          | <ul><li>[`.github/workflows/test_artifacts_structure.yml`](/.github/workflows/test_artifacts_structure.yml)</li><li>[`.github/workflows/test_native_linux_packages_install.yml`](/.github/workflows/test_native_linux_packages_install.yml)</li><li>[`.github/workflows/test_rocm_wheels.yml`](/.github/workflows/test_rocm_wheels.yml)</li></ul> |
+| Test type         | Target test runtime               | CI workflows                                                                                                                                                                                                                                                                                                                                      |
+| ----------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| pre-commit        | 10 seconds                        | <ul><li>[`.github/workflows/pre-commit.yml`](/.github/workflows/pre-commit.yml)</li></ul>                                                                                                                                                                                                                                                         |
+| unit tests        | 5 minutes (independent of builds) | <ul><li>[`.github/workflows/unit_tests.yml`](/.github/workflows/unit_tests.yml)</li></ul>                                                                                                                                                                                                                                                         |
+| integration tests | 30 minutes (after builds)         | <ul><li>[`.github/workflows/test_artifacts_structure.yml`](/.github/workflows/test_artifacts_structure.yml)</li><li>[`.github/workflows/test_native_linux_packages_install.yml`](/.github/workflows/test_native_linux_packages_install.yml)</li><li>[`.github/workflows/test_rocm_wheels.yml`](/.github/workflows/test_rocm_wheels.yml)</li></ul> |
 
-### CMake and super-project build logic
+Project features should be tested using a combination of these test types
+that balance time to signal and representative coverage. For example, Python
+packages should have both unit tests for package building and integration tests
+for package installation and runtime behavior.
+
+### TheRock feature area: CMake and super-project build logic
 
 As the centralized build system for ROCm Core, TheRock includes a CMake
 super-project using code in:
@@ -132,7 +136,7 @@ continuously build a few slices through this support matrix.
 > the mechanisms documented in
 > [ci_behavior_manipulation.md](/docs/development/ci_behavior_manipulation.md).
 
-### GitHub Actions workflows
+### TheRock feature area: GitHub Actions workflows
 
 <!-- DRAFT -->
 
@@ -157,9 +161,9 @@ emphasize that
 
 <!-- DRAFT -->
 
-### Python scripts and tools
+### TheRock feature area: Python scripts and tools
 
-### Packaging and release infrastructure
+### TheRock feature area: Packaging and release infrastructure
 
 <!-- TODO: "infrastrcture" is overloaded here -->
 
@@ -191,11 +195,11 @@ Test for:
 
 <!-- DRAFT -->
 
-### Maintaining reliable CI infrastructure
+### TheRock feature area: CI infrastructure
 
 <!-- TODO: "infrastrcture" is overloaded here -->
 
-### Framework integration tooling
+### TheRock feature area: Framework integration tooling
 
 ______________________________________________________________________
 
