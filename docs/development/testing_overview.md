@@ -115,17 +115,26 @@ The build system supports a broad matrix of configurations:
 | ------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------- |
 | Operating system          | Linux (multiple distros), WSL, Windows                                                          | Linux (manylinux), WSL, Windows                 |
 | Build variant             | Release, Debug, Address Sanitizer (ASan), etc.                                                  | Release, ASan                                   |
-| AMDGPU build/test targets | `gfx942`, `gfx950`, `gfx1100`, `gfx1200`, etc.                                                  | 1-3 targets (based on test runner availability) |
+| AMDGPU build/test targets | `gfx942`, `gfx950`, `gfx1100`, `gfx1200`, etc.                                                  | 1-5 targets (based on test runner availability) |
 | Enabled subprojects       | `THEROCK_ENABLE_ALL`, `THEROCK_ENABLE_PROFILER`, etc.                                           | All enabled, subsets as an optimization         |
 | Enabled feature flags     | See [`FLAGS.cmake`](/FLAGS.cmake) and [`docs/development/flags.md`](/docs/development/flags.md) | Default values                                  |
 | Other CMake options       | `THEROCK_BUILD_TESTING`, `THEROCK_BUNDLE_SYSDEPS`, etc.                                         | Default values                                  |
 
 The CI systems in [TheRock](https://github.com/ROCm/TheRock) and component
 repositories like [rocm-systems](https://github.com/ROCm/rocm-systems)
-continuously build a few slices through this support matrix.
+continuously build a few slices through this support matrix. For changes
+to build system files, we generally look for
+
+- The build and test jobs in
+  [`.github/workflows/multi_arch_ci.yml`](/.github/workflows/multi_arch_ci.yml)
+  should not have new failures.
+- The build jobs should not significantly regress in duration.
+  - _We currently only monitor for this after merge, we'd like to watch these metrics more proactively in the future_
+- The build artifacts should not unexpectedly grow in size.
+  - _We currently only monitor for this after merge, we'd like to watch these metrics more proactively in the future_
 
 > [!IMPORTANT]
-> Certain types of changes often warrant additional validation, such as:
+> Certain types of changes may warrant additional validation, such as:
 >
 > - Adding new subprojects
 > - Adjusting support for specific AMDGPU targets
@@ -136,15 +145,30 @@ continuously build a few slices through this support matrix.
 > the mechanisms documented in
 > [ci_behavior_manipulation.md](/docs/development/ci_behavior_manipulation.md).
 
+> [!TIP]
+> As a general reference, here are some metrics for different CI jobs as of
+> July 2026:
+>
+> | Job description                                                                                                                 | Wall time | Build runner usage | Test runner usage |
+> | ------------------------------------------------------------------------------------------------------------------------------- | --------- | ------------------ | ----------------- |
+> | Per-commit `multi_arch_ci.yml`<br><ul><li>Linux, Windows</li><li>5 GPU families</li><li>"quick" test type</li></ul>             | 4 hours   | 12 hours           | 10 hours          |
+> | Nightly `multi_arch_release.yml`<br><ul><li>Linux, Windows</li><li>15+ GPU families</li><li>"comprehensive" test type</li></ul> | 6 hours   | 40+ hours          | 100+ hours        |
+>
+> Our target is 30 minutes "time to signal" wall time including builds and tests.
+
 ### TheRock feature area: GitHub Actions workflows
 
 <!-- DRAFT -->
 
-Types of workflows:
+We use [GitHub Actions](https://github.com/features/actions) in the
+[`.github/workflows`](/.github/workflows/) directory for a variety of workflows:
 
-- Lightweight checks: codeql.yml, gitleaks.yml, pre-commit.yml, unit_tests.yml, therock-pr-bot.yml
+- Lightweight checks: codeql.yml, gitleaks.yml, pre-commit.yml, unit_tests.yml, therock-pr-bot.yml, etc.
 - CI/CD workflows: multi_arch_ci.yml, multi_arch_release.yml, etc.
 - Other automation: bump_submodules.yml, copy_release.yml, publish_build_manylinux_x86_64.yml
+
+Many of these workflows are central to day to day project development and
+official releases, so care must be taken to test them thoroughly.
 
 Per docs/development/style_guides/github_actions_style_guide.md...
 
@@ -222,6 +246,7 @@ ______________________________________________________________________
 - tests should aim to be runnable from installed artifacts using standard test runners, e.g. `pytest` or `ctest`
   - avoid what build_tools/github_actions/test_executable_scripts/test_hiptests.py does with copy_dlls_exe_path
   - avoid that build_tools/github_actions/test_executable_scripts/test_origami.py does with `LD_LIBRARY_PATH`
+  - goal: download/extract rocm artifacts, call test script with no environment variables, observe no side effects in the install itself (external temp directories are fine)
 - developers _working on the projects_ and users/CI systems that _install test artifacts_ should have the same experience
 
 ### "TheRock CI" in component repositories
