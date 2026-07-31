@@ -102,8 +102,9 @@ for package installation and runtime behavior.
 As the centralized build system for ROCm Core, TheRock includes a CMake
 super-project using code in:
 
-- CMake project files like [`CMakeLists.txt`](/CMakeLists.txt) and
-  [`cmake/therock_amdgpu_targets.cmake`](/cmake/therock_amdgpu_targets.cmake)
+- CMake files like [`CMakeLists.txt`](/CMakeLists.txt),
+  [`cmake/therock_amdgpu_targets.cmake`](/cmake/therock_amdgpu_targets.cmake),
+  and [`FLAGS.cmake`](/FLAGS.cmake)
 - Topology metadata in [`BUILD_TOPOLOGY.toml`](/BUILD_TOPOLOGY.toml)
 - Sub-project declarations like [`math-libs/CMakeLists.txt`](/math-libs/CMakeLists.txt)
 - Sub-project artifact descriptors like [`math-libs/BLAS/artifact-blas.toml`](/math-libs/BLAS/artifact-blas.toml)
@@ -149,16 +150,15 @@ to build system files, we generally look for
 > As a general reference, here are some metrics for different CI jobs as of
 > July 2026:
 >
-> | Job description                                                                                                                 | Wall time | Build runner usage | Test runner usage |
-> | ------------------------------------------------------------------------------------------------------------------------------- | --------- | ------------------ | ----------------- |
-> | Per-commit `multi_arch_ci.yml`<br><ul><li>Linux, Windows</li><li>5 GPU families</li><li>"quick" test type</li></ul>             | 4 hours   | 12 hours           | 10 hours          |
-> | Nightly `multi_arch_release.yml`<br><ul><li>Linux, Windows</li><li>15+ GPU families</li><li>"comprehensive" test type</li></ul> | 6 hours   | 40+ hours          | 100+ hours        |
+> | Job description                                                                                                    | Wall time | Build runner usage | Test runner usage |
+> | ------------------------------------------------------------------------------------------------------------------ | --------- | ------------------ | ----------------- |
+> | rocm-systems per-commit CI<br><ul><li>Linux, Windows</li><li>2 GPU families</li><li>"standard" test type</li></ul> | 3 hours   | 4 hours            | 2 hours           |
+> | TheRock per-commit CI<br><ul><li>Linux, Windows</li><li>5 GPU families</li><li>"quick" test type</li></ul>         | 4 hours   | 12 hours           | 10 hours          |
+> | Nightly releases<br><ul><li>Linux, Windows</li><li>15+ GPU families</li><li>"comprehensive" test type</li></ul>    | 6 hours   | 40+ hours          | 100+ hours        |
 >
 > Our target is 30 minutes "time to signal" wall time including builds and tests.
 
 ### TheRock feature area: GitHub Actions workflows
-
-<!-- DRAFT -->
 
 We use [GitHub Actions](https://github.com/features/actions) in the
 [`.github/workflows`](/.github/workflows/) directory for a variety of workflows:
@@ -170,20 +170,41 @@ We use [GitHub Actions](https://github.com/features/actions) in the
 Many of these workflows are central to day to day project development and
 official releases, so care must be taken to test them thoroughly.
 
-Per docs/development/style_guides/github_actions_style_guide.md...
+We test our GitHub Actions workflows using a combination of these practices:
 
-- "Prefer Python scripts over inline Bash"
-- "Separate build and test stages" and modular workflows allow for testing
-  without needing to build fully from scratch during testing (see docs/development/github_actions_debugging.md also)
+- Run workflows through [actionlint](https://github.com/rhysd/actionlint)
+  static analysis (this is required via a pre-commit hook)
+- Add unit tests like
+  [`build_tools/github_actions/tests/workflow_dispatch_inputs_test.py`](/build_tools/github_actions/tests/workflow_dispatch_inputs_test.py)
+  where actionlint falls short
+- Keep workflows as simple as possible, e.g. by putting logic in
+  Python scripts rather than inline Bash and then writing unit tests for those
+  scripts (see [this section in `github_actions_style_guide.md`](/docs/development/style_guides/github_actions_style_guide.md#prefer-python-scripts-over-inline-bash))
+- Test changes to workflows using "CI" and "dev" environments isolated from
+  production (see
+  ["Testing release workflows" in `github_actions_debugging.md`](/docs/development/github_actions_debugging.md#testing-release-workflows)
+  and [`s3_buckets.md`](/docs/development/s3_buckets.md))
+- Where possible, support testing workflows in repository forks (see
+  ["Working effectively from forks" in `github_actions_debugging.md`](/docs/development/github_actions_debugging.md#testing-release-workflows))
+- When workflows and scripts are used across repositories, pin to specific commits
+  - In https://github.com/ROCm/rocm-libraries and
+    https://github.com/ROCm/rocm-systems, "TheRock CI" uses commit pins that
+    receive regular update pull requests via
+    [`build_tools/github_actions/bump_automation.py`](/build_tools/github_actions/bump_automation.py).
+    These pull requests can be reviewed and fixed when there are breaking
+    changes to the build system, workflows, or scripts.
 
-emphasize that
+  - In https://github.com/ROCm/rockrel (our dedicated releases repository with
+    tighter access controls) we use unpinned references so nightly releases
+    always use the latest code:
 
-- CI needs to stay stable or all development is blocked
-- nightly releases need to stay stable so we can release at any point
-- iteration cycles on changes to workflows can be exceedingly long if working
-  directly in workflow files, put logic in scripts that are runnable locally
+    ```yml
+    uses: ROCm/TheRock/.github/workflows/multi_arch_release.yml@main
+    ```
 
-<!-- DRAFT -->
+    This has been a frequent source of breaks where workflow inputs differ
+    across repositories if parity commits are not merged together. See
+    https://github.com/ROCm/rockrel/issues/49 for ideas to improve that.
 
 ### TheRock feature area: Python scripts and tools
 
