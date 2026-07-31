@@ -208,7 +208,32 @@ We test our GitHub Actions workflows using a combination of these practices:
 
 ### TheRock feature area: Python scripts and tools
 
-### TheRock feature area: Packaging and release infrastructure
+We test our Python scripts using [pytest](https://docs.pytest.org/), aiming to
+follow the style guidelines in
+[`python_style_guide.md`](/docs/development/style_guides/python_style_guide.md)
+and particularly the
+["testing standards" section](/docs/development/style_guides/python_style_guide.md#testing-standards).
+
+All Python unit tests should be run as part of
+[`.github/workflows/unit_tests.yml`](/.github/workflows/unit_tests.yml), with
+the help of files like
+[`build_tools/pyproject.toml`](/build_tools/pyproject.toml). Some tests have
+been added without including them on CI, which is getting fixed via
+https://github.com/ROCm/TheRock/issues/6927.
+
+Good unit test design is part science and part art. Where our style guide
+is not specific, we encourage learning from and referencing content such as
+https://testing.googleblog.com/, including:
+
+- [Blog 2024-05: Test Failures Should Be Actionable](https://testing.googleblog.com/2024/05/test-failures-should-be-actionable.html)
+- [Blog 2024-04: Prefer Narrow Assertions in Unit Tests](https://testing.googleblog.com/2024/04/prefer-narrow-assertions-in-unit-tests.html)
+- [Blog 2024-02: Increase Test Fidelity By Avoiding Mocks](https://testing.googleblog.com/2024/02/increase-test-fidelity-by-avoiding-mocks.html)
+- [Blog 2017-12: Only Verify State-Changing Method Calls](https://testing.googleblog.com/2018/06/testing-on-toilet-only-verify-relevant.html)
+- [Blog 2018-06: Only Verify Relevant Method Arguments](https://testing.googleblog.com/2017/12/testing-on-toilet-only-verify-state.html)
+- [Blog 2015-01: Change-Detector Tests Considered Harmful](https://testing.googleblog.com/2015/01/testing-on-toilet-change-detector-tests.html)
+- [Blog 2014-07: Don't Put Logic in Tests](https://testing.googleblog.com/2014/07/testing-on-toilet-dont-put-logic-in.html)
+
+### TheRock feature area: Packaging
 
 <!-- TODO: "infrastrcture" is overloaded here -->
 
