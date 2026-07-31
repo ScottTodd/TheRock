@@ -54,6 +54,48 @@ common types of contributions.
 
 ### Scale coverage to available resources
 
+<!-- DRAFT diagrams -->
+
+```mermaid
+flowchart LR
+    Pre["Presubmit<br/><br/>
+    • Static checks and unit tests<br/>
+    • Representative Linux and Windows builds<br/>
+    • Fast, high-signal tests<br/>
+    • Hardware with sufficient capacity"]
+
+    Post["Postsubmit<br/><br/>
+    Presubmit coverage, plus:<br/>
+    • Additional build configurations<br/>
+    • Broader integration testing<br/>
+    • Build time and artifact-size monitoring"]
+
+    Night["Nightly<br/><br/>
+    Broader coverage, including:<br/>
+    • All available GPU families<br/>
+    • Longer component test suites<br/>
+    • Package and downstream testing<br/>
+    • Release workflow validation"]
+
+    Pre --> Post --> Night
+
+    Demand["On demand during development<br/><br/>
+    • Specific GPU targets<br/>
+    • Unusual build variants<br/>
+    • Comprehensive or full test suites"]
+
+    Pre -. request additional coverage .-> Demand
+```
+
+```mermaid
+flowchart LR
+    Pre["Presubmit<br/>Fast, high-signal coverage"]
+    Post["Postsubmit<br/>Broader configurations and monitoring"]
+    Night["Nightly<br/>Long suites, scarce hardware, and downstream validation"]
+
+    Pre --> Post --> Night
+```
+
 ### Add reliable tests to required CI
 
 ______________________________________________________________________
@@ -96,6 +138,15 @@ Project features should be tested using a combination of these test types
 that balance time to signal and representative coverage. For example, Python
 packages should have both unit tests for package building and integration tests
 for package installation and runtime behavior.
+
+<!-- TODO: add subsections to each feature area:
+
+#### Scope
+#### Design for testing
+#### Validation methods
+#### Limitations and known gaps
+
+ -->
 
 ### TheRock feature area: CMake and super-project build logic
 
@@ -184,8 +235,9 @@ We test our GitHub Actions workflows using a combination of these practices:
   production (see
   ["Testing release workflows" in `github_actions_debugging.md`](/docs/development/github_actions_debugging.md#testing-release-workflows)
   and [`s3_buckets.md`](/docs/development/s3_buckets.md))
+- Configure workflows to support limited testing configurations (e.g. one Python version for testing, full `3.11,3.12,3.13,3.14` for releases) <!-- TODO: wordsmith here-->
 - Where possible, support testing workflows in repository forks (see
-  ["Working effectively from forks" in `github_actions_debugging.md`](/docs/development/github_actions_debugging.md#testing-release-workflows))
+  ["Working effectively from forks" in `github_actions_debugging.md`](/docs/development/github_actions_debugging.md#working-effectively-from-forks))
 - When workflows and scripts are used across repositories, pin to specific commits
   - In https://github.com/ROCm/rocm-libraries and
     https://github.com/ROCm/rocm-systems, "TheRock CI" uses commit pins that
@@ -205,6 +257,14 @@ We test our GitHub Actions workflows using a combination of these practices:
     This has been a frequent source of breaks where workflow inputs differ
     across repositories if parity commits are not merged together. See
     https://github.com/ROCm/rockrel/issues/49 for ideas to improve that.
+
+<!-- TODO: flowchart for how to test workflow changes
+
+run scripts locally
+use scripts in workflows
+trigger test runs prior to merge
+monitor test runs after merge (downstream, nightly jobs, etc.)
+  -->
 
 ### TheRock feature area: Python scripts and tools
 
