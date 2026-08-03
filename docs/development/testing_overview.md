@@ -96,6 +96,8 @@ for package installation and runtime behavior.
 
 ### TheRock feature area: CMake and super-project build logic
 
+#### Super-project CMake build - Scope
+
 As the centralized build system for ROCm Core, TheRock includes a CMake
 super-project using code in:
 
@@ -118,9 +120,31 @@ The build system supports a broad matrix of configurations:
 | Enabled feature flags     | See [`FLAGS.cmake`](/FLAGS.cmake) and [`docs/development/flags.md`](/docs/development/flags.md) | Default values                                  |
 | Other CMake options       | `THEROCK_BUILD_TESTING`, `THEROCK_BUNDLE_SYSDEPS`, etc.                                         | Default values                                  |
 
+#### Super-project CMake build - Design for testing
+
+<!-- DRAFT -->
+
+- Build architecture:
+  - `build/`, `stage/`, `dist/`
+  - same build system for Linux and Windows with minimal branches
+  - logging with `teatime.py` --> `build/logs/`
+  - ninja logs: `.ninja_log` --> `build_tools/github_actions/post_stage_upload.py` archive
+  - `workflow_outputs.md`
+- Dockerfiles for portable build environments
+- CMake presets for shared configurations
+- `BUILD_TOPOLOGY.toml` --> `build_tools/configure_stage.py`
+
+<!-- DRAFT -->
+
+#### Super-project CMake build - Validation methods
+
+We are evaluating adding unit tests for certain features of the CMake
+build system itself, see https://github.com/ROCm/TheRock/pull/6984 for
+example.
+
 The CI systems in [TheRock](https://github.com/ROCm/TheRock) and component
 repositories like [rocm-systems](https://github.com/ROCm/rocm-systems)
-continuously build a few slices through this support matrix. For changes
+continuously build a few slices through our support matrix. For changes
 to build system files, we generally look for
 
 - The build and test jobs in
@@ -130,12 +154,9 @@ to build system files, we generally look for
   - _We currently only monitor for this after merge, we'd like to watch these metrics more proactively in the future_
 - The build artifacts should not unexpectedly grow in size.
   - _We currently only monitor for this after merge, we'd like to watch these metrics more proactively in the future_
-- We are also evaluating adding unit tests for certain features of the CMake
-  build system itself, see https://github.com/ROCm/TheRock/pull/6984 for
-  example.
 
 > [!IMPORTANT]
-> Certain types of changes may warrant additional validation, such as:
+> Certain types of changes benefit from additional validation, such as:
 >
 > - Adding new subprojects
 > - Adjusting support for specific AMDGPU targets
@@ -145,6 +166,14 @@ to build system files, we generally look for
 > extra CI jobs. These extra CI jobs can be enabled for other PRs through
 > the mechanisms documented in
 > [ci_behavior_manipulation.md](/docs/development/ci_behavior_manipulation.md).
+
+#### Super-project CMake build - Limitations and known gaps
+
+The full matrix of all build settings and feature combinations is too expensive
+to test as part of every change, so we rely on a progressively expanding list of
+jobs as part of our CI/CD systems. Some non-default build variants like
+Debug and Address Sanitizer (ASan) also stress the build system and CI servers
+in unique ways so they are particularly costly to test regularly.
 
 > [!TIP]
 > As a general reference, here are some metrics for different CI jobs as of
