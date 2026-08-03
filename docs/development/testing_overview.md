@@ -44,60 +44,6 @@ This page describes how these testing layers work together, how TheRock code
 can make good testing the easy path, and what good testing looks like for
 common types of contributions.
 
-## Testing principles
-
-### Make tests accessible during development
-
-### Use layered validation
-
-- Use static analysis for mechanical checks
-
-### Scale coverage to available resources
-
-<!-- DRAFT diagrams -->
-
-```mermaid
-flowchart LR
-    Pre["Presubmit<br/><br/>
-    • Static checks and unit tests<br/>
-    • Representative Linux and Windows builds<br/>
-    • Fast, high-signal tests<br/>
-    • Hardware with sufficient capacity"]
-
-    Post["Postsubmit<br/><br/>
-    Presubmit coverage, plus:<br/>
-    • Additional build configurations<br/>
-    • Broader integration testing<br/>
-    • Build time and artifact-size monitoring"]
-
-    Night["Nightly<br/><br/>
-    Broader coverage, including:<br/>
-    • All available GPU families<br/>
-    • Longer component test suites<br/>
-    • Package and downstream testing<br/>
-    • Release workflow validation"]
-
-    Pre --> Post --> Night
-
-    Demand["On demand during development<br/><br/>
-    • Specific GPU targets<br/>
-    • Unusual build variants<br/>
-    • Comprehensive or full test suites"]
-
-    Pre -. request additional coverage .-> Demand
-```
-
-```mermaid
-flowchart LR
-    Pre["Presubmit<br/>Fast, high-signal coverage"]
-    Post["Postsubmit<br/>Broader configurations and monitoring"]
-    Night["Nightly<br/>Long suites, scarce hardware, and downstream validation"]
-
-    Pre --> Post --> Night
-```
-
-### Add reliable tests to required CI
-
 ______________________________________________________________________
 
 ## Testing changes to TheRock
@@ -184,6 +130,9 @@ to build system files, we generally look for
   - _We currently only monitor for this after merge, we'd like to watch these metrics more proactively in the future_
 - The build artifacts should not unexpectedly grow in size.
   - _We currently only monitor for this after merge, we'd like to watch these metrics more proactively in the future_
+- We are also evaluating adding unit tests for certain features of the CMake
+  build system itself, see https://github.com/ROCm/TheRock/pull/6984 for
+  example.
 
 > [!IMPORTANT]
 > Certain types of changes may warrant additional validation, such as:
@@ -235,7 +184,14 @@ We test our GitHub Actions workflows using a combination of these practices:
   production (see
   ["Testing release workflows" in `github_actions_debugging.md`](/docs/development/github_actions_debugging.md#testing-release-workflows)
   and [`s3_buckets.md`](/docs/development/s3_buckets.md))
-- Configure workflows to support limited testing configurations (e.g. one Python version for testing, full `3.11,3.12,3.13,3.14` for releases) <!-- TODO: wordsmith here-->
+- Make workflows fast and cheap to test by supporting runs using prebuilt
+  artifacts/packages and minimal matrices. For example,
+  [`test_rocm_wheels.yml`](/.github/workflows/test_rocm_wheels.yml)
+  is used as part of the
+  [`multi_arch_ci.yml`](/.github/workflows/multi_arch_ci.yml) workflow which
+  builds ROCm fully from source, but it can be run directly against prebuilt
+  ROCm Python packages for any specific Python version, runner type, and test
+  container image.
 - Where possible, support testing workflows in repository forks (see
   ["Working effectively from forks" in `github_actions_debugging.md`](/docs/development/github_actions_debugging.md#working-effectively-from-forks))
 - When workflows and scripts are used across repositories, pin to specific commits
@@ -245,26 +201,15 @@ We test our GitHub Actions workflows using a combination of these practices:
     [`build_tools/github_actions/bump_automation.py`](/build_tools/github_actions/bump_automation.py).
     These pull requests can be reviewed and fixed when there are breaking
     changes to the build system, workflows, or scripts.
-
   - In https://github.com/ROCm/rockrel (our dedicated releases repository with
     tighter access controls) we use unpinned references so nightly releases
     always use the latest code:
-
     ```yml
     uses: ROCm/TheRock/.github/workflows/multi_arch_release.yml@main
     ```
-
     This has been a frequent source of breaks where workflow inputs differ
     across repositories if parity commits are not merged together. See
     https://github.com/ROCm/rockrel/issues/49 for ideas to improve that.
-
-<!-- TODO: flowchart for how to test workflow changes
-
-run scripts locally
-use scripts in workflows
-trigger test runs prior to merge
-monitor test runs after merge (downstream, nightly jobs, etc.)
-  -->
 
 ### TheRock feature area: Python scripts and tools
 
@@ -281,55 +226,43 @@ the help of files like
 been added without including them on CI, which is getting fixed via
 https://github.com/ROCm/TheRock/issues/6927.
 
-Good unit test design is part science and part art. Where our style guide
-is not specific, we encourage learning from and referencing content such as
-https://testing.googleblog.com/, including:
-
-- [Blog 2024-05: Test Failures Should Be Actionable](https://testing.googleblog.com/2024/05/test-failures-should-be-actionable.html)
-- [Blog 2024-04: Prefer Narrow Assertions in Unit Tests](https://testing.googleblog.com/2024/04/prefer-narrow-assertions-in-unit-tests.html)
-- [Blog 2024-02: Increase Test Fidelity By Avoiding Mocks](https://testing.googleblog.com/2024/02/increase-test-fidelity-by-avoiding-mocks.html)
-- [Blog 2017-12: Only Verify State-Changing Method Calls](https://testing.googleblog.com/2018/06/testing-on-toilet-only-verify-relevant.html)
-- [Blog 2018-06: Only Verify Relevant Method Arguments](https://testing.googleblog.com/2017/12/testing-on-toilet-only-verify-state.html)
-- [Blog 2015-01: Change-Detector Tests Considered Harmful](https://testing.googleblog.com/2015/01/testing-on-toilet-change-detector-tests.html)
-- [Blog 2014-07: Don't Put Logic in Tests](https://testing.googleblog.com/2014/07/testing-on-toilet-dont-put-logic-in.html)
-
 ### TheRock feature area: Packaging
 
-<!-- TODO: "infrastrcture" is overloaded here -->
+The [artifacts](/docs/development/artifacts.md) produced by the build system
+are assembled into tarballs/archives, Python packages, and native operating
+system packages using the code at
+[`build_tools/packaging/`](/build_tools/packaging/).
 
-<!-- TODO: merge with "Validating assembled ROCm" section below?
+Packages are tested using a combination of these practices:
 
-     could focus this on release workflows?
--->
+- Unit tests for package construction scripts
+  - Test structural metadata for inputs and outputs, file inclusion/exclusion
+    filters, script portability across environments
+- Installation tests which check that packages can be installed and used
+  - Package self-tests (example: [Python Packaging - Testing](/docs/packaging/python_packaging.md#testing))
+  - We built packages to be portably distributed, so install tests may run on
+    multiple operating systems / distros.
+  - Component usage tests (https://github.com/ROCm/TheRock/issues/5384)
+  - Integration and regression tests for interactions between multiple packages,
+    ensuring that ROCm packages are self-sufficient, don't conflict with system
+    packages, and can be used together with other ecosystem packages
 
-<!-- DRAFT -->
+> [!TIP]
+> Package installation tests should be modeled closely after user-facing install
+> instructions. If the installation instructions are complicated or include
+> workarounds, aim to improve that at the source rather than apply workarounds
+> local to CI tests.
 
-Types of packages:
+<!-- ### TheRock feature area: CI infrastructure
 
-- artifacts (the raw build system outputs)
-- tarballs/archives (folder distributions that are not associated with any particular package manager / ecosystem)
-- native linux packages (deb/rpm)
-- native windows packages (msi)
-- python packages
-
-Test for:
-
-- unit test: package construction (no crashes, outputs are not malformed, files are filtered as expected)
-- integration test: package install/usage behavior
-  - installable
-  - can load and call APIs - matching what user-facing instructions say to do
-  - install on multiple supported distros (e.g. build on manylinux -> test on Ubuntu and RHEL)
-- integration test: interaction between multiple packages
-  - ROCm packages should be self-sufficient and not conflict with system packages
-  - packages should be compatible/usable with other packages in the same ecosystem (e.g. PyTorch using ROCm python packages)
-
-<!-- DRAFT -->
-
-### TheRock feature area: CI infrastructure
-
-<!-- TODO: "infrastrcture" is overloaded here -->
-
-### TheRock feature area: Framework integration tooling
+TODO: document how we test changes to:
+* Build containers/dockerfiles
+* Self-hosted CPU build runners
+* Self-hosted GPU test runners
+* Cloud storage buckets
+* Cloud lambda functions
+* Cloud cache servers
+ -->
 
 ______________________________________________________________________
 
@@ -368,19 +301,3 @@ ______________________________________________________________________
 #### Testing changes to rocm-libraries and rocm-systems
 
 #### Testing changes to llvm-project
-
-______________________________________________________________________
-
-## Validating assembled ROCm
-
-### Validate artifact contents and dependencies
-
-### Install and test distributed packages
-
-### Run component tests against assembled ROCm
-
-### Test on supported GPU hardware
-
-### Validate downstream frameworks
-
-### Validate development and release pipelines
