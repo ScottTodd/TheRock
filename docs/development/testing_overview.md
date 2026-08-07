@@ -85,14 +85,7 @@ that balance time to signal and representative coverage. For example, Python
 packages should have both unit tests for package building and integration tests
 for package installation and runtime behavior.
 
-<!-- TODO: add subsections to each feature area:
-
-#### Scope
-#### Design for testing
-#### Validation methods
-#### Limitations and known gaps
-
- -->
+______________________________________________________________________
 
 ### TheRock feature area: CMake and super-project build logic
 
@@ -192,11 +185,12 @@ to build system files, we generally look for
 
 #### Super-project CMake build - Limitations and known gaps
 
-The full matrix of all build settings and feature combinations is too expensive
-to test as part of every change, so we rely on a progressively expanding list of
-jobs as part of our CI/CD systems. Some non-default build variants like
-Debug and Address Sanitizer (ASan) also stress the build system and CI servers
-in unique ways so they are particularly costly to test regularly.
+> [!WARNING]
+> The full matrix of all build settings and feature combinations is too expensive
+> to test as part of every change, so we rely on a progressively expanding list of
+> jobs as part of our CI/CD systems. Some non-default build variants like
+> Debug and Address Sanitizer (ASan) also stress the build system and CI servers
+> in unique ways so they are particularly costly to test regularly.
 
 > [!TIP]
 > As a general reference, here are some metrics for different CI jobs as of
@@ -210,6 +204,8 @@ in unique ways so they are particularly costly to test regularly.
 >
 > Our target is 30 minutes "time to signal" wall time including builds and tests.
 
+______________________________________________________________________
+
 ### TheRock feature area: GitHub Actions workflows
 
 #### GitHub Actions workflows - Scope
@@ -221,29 +217,19 @@ We use [GitHub Actions](https://github.com/features/actions) in the
 - CI/CD workflows: multi_arch_ci.yml, multi_arch_release.yml, etc.
 - Other automation: bump_submodules.yml, copy_release.yml, publish_build_manylinux_x86_64.yml
 
-#### GitHub Actions workflows - Design for testing
-
-#### GitHub Actions workflows - Validation methods
-
 Many of these workflows are central to day to day project development and
 official releases, so care must be taken to test them thoroughly.
 
-We test our GitHub Actions workflows using a combination of these practices:
+#### GitHub Actions workflows - Design for testing
 
-- Run workflows through [actionlint](https://github.com/rhysd/actionlint)
-  static analysis (this is required via a pre-commit hook).
-- Add unit tests like
-  [`build_tools/github_actions/tests/workflow_dispatch_inputs_test.py`](/build_tools/github_actions/tests/workflow_dispatch_inputs_test.py)
-  where actionlint falls short
+Workflows can take hours to run and can be difficult to debug, so we follow
+these practices to make testing managable:
+
 - Keep workflows as simple as possible, e.g. by putting logic in
   Python scripts rather than inline Bash and then writing unit tests for those
-  scripts (see [this section in `github_actions_style_guide.md`](/docs/development/style_guides/github_actions_style_guide.md#prefer-python-scripts-over-inline-bash))
-- Test changes to workflows using "CI" and "dev" environments isolated from
-  production (see
-  ["Testing release workflows" in `github_actions_debugging.md`](/docs/development/github_actions_debugging.md#testing-release-workflows)
-  and [`s3_buckets.md`](/docs/development/s3_buckets.md))
-- Make workflows fast and cheap to test by supporting runs using prebuilt
-  artifacts/packages and minimal matrices. For example,
+  scripts (see [this section in `github_actions_style_guide.md`](/docs/development/style_guides/github_actions_style_guide.md#prefer-python-scripts-over-inline-bash)).
+- Support running using prebuilt artifacts/packages and minimal matrices for
+  efficient testing. For example,
   [`test_rocm_wheels.yml`](/.github/workflows/test_rocm_wheels.yml)
   is used as part of the
   [`multi_arch_ci.yml`](/.github/workflows/multi_arch_ci.yml) workflow which
@@ -252,24 +238,62 @@ We test our GitHub Actions workflows using a combination of these practices:
   container image.
 - Where possible, support testing workflows in repository forks (see
   ["Working effectively from forks" in `github_actions_debugging.md`](/docs/development/github_actions_debugging.md#working-effectively-from-forks)).
-- When workflows and scripts are used across repositories, pin to specific commits
+- When workflows and scripts are used across repositories, pin to specific
+  commits so workflow runs are reproducible and updates can be tested prior
+  to rollout.
   - In https://github.com/ROCm/rocm-libraries and
     https://github.com/ROCm/rocm-systems, "TheRock CI" uses commit pins that
     receive regular update pull requests via
     [`build_tools/github_actions/bump_automation.py`](/build_tools/github_actions/bump_automation.py).
     These pull requests can be reviewed and fixed when there are breaking
     changes to the build system, workflows, or scripts.
-  - In https://github.com/ROCm/rockrel (our dedicated releases repository with
-    tighter access controls) we use unpinned references so nightly releases
-    always use the latest code:
-    ```yml
-    uses: ROCm/TheRock/.github/workflows/multi_arch_release.yml@main
-    ```
-    This has been a frequent source of breaks where workflow inputs differ
-    across repositories if parity commits are not merged together. See
-    https://github.com/ROCm/rockrel/issues/49 for ideas to improve that.
+
+#### GitHub Actions workflows - Validation methods
+
+We test our GitHub Actions workflows using a combination of these practices:
+
+- Run workflows through [actionlint](https://github.com/rhysd/actionlint)
+  static analysis (this is required via a pre-commit hook).
+- Add unit tests like
+  [`build_tools/github_actions/tests/workflow_dispatch_inputs_test.py`](/build_tools/github_actions/tests/workflow_dispatch_inputs_test.py)
+  where actionlint falls short.
+- Test changes to workflows using "CI" and "dev" environments isolated from
+  production (see
+  ["Testing release workflows" in `github_actions_debugging.md`](/docs/development/github_actions_debugging.md#testing-release-workflows)
+  and [`s3_buckets.md`](/docs/development/s3_buckets.md)).
+- If a workflow does not run on `pull_request` events, test manually with
+  `workflow_dispatch`
+  (https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow)
+  and link the test runs in the pull request description.
+
+#### GitHub Actions workflows - Limitations and known gaps
+
+Cross-repository workflow design and testing is difficult, so we try to limit
+such usage and review changes carefully.
+
+> [!WARNING]
+> In https://github.com/ROCm/rockrel (our dedicated releases repository with
+> tighter access controls) we use unpinned references so nightly releases
+> always use the latest code:
+>
+> ```yml
+> uses: ROCm/TheRock/.github/workflows/multi_arch_release.yml@main
+> ```
+>
+> This has been a frequent source of breaks where workflow inputs differ
+> across repositories if parity commits are not merged together. See
+> https://github.com/ROCm/rockrel/issues/49 for ideas to improve that.
+
+______________________________________________________________________
 
 ### TheRock feature area: Python scripts and tools
+
+#### Python scripts and tools - Scope
+
+Most build system and utility scripts are written in Python, not Bash or other
+languages.
+
+#### Python scripts and tools - Design for testing
 
 We test our Python scripts using [pytest](https://docs.pytest.org/), aiming to
 follow the style guidelines in
@@ -277,30 +301,50 @@ follow the style guidelines in
 and particularly the
 ["testing standards" section](/docs/development/style_guides/python_style_guide.md#testing-standards).
 
+#### Python scripts and tools - Validation methods
+
 All Python unit tests should be run as part of
 [`.github/workflows/unit_tests.yml`](/.github/workflows/unit_tests.yml), with
 the help of files like
-[`build_tools/pyproject.toml`](/build_tools/pyproject.toml). Some tests have
-been added without including them on CI, which is getting fixed via
-https://github.com/ROCm/TheRock/issues/6927.
+[`build_tools/pyproject.toml`](/build_tools/pyproject.toml).
+
+#### Python scripts and tools - Limitations and known gaps
+
+> [!WARNING]
+> Some tests have been added without including them on CI, which is getting
+> fixed via https://github.com/ROCm/TheRock/issues/6927.
+
+______________________________________________________________________
 
 ### TheRock feature area: Packaging
 
-The [artifacts](/docs/development/artifacts.md) produced by the build system
-are assembled into tarballs/archives, Python packages, and native operating
-system packages using the code at
-[`build_tools/packaging/`](/build_tools/packaging/).
+#### Packaging - Scope
+
+The artifacts produced by the build system are assembled into tarballs/archives,
+Python packages, and native operating system packages for distribution.
+
+#### Packaging - Design for testing
+
+- Packages should be buildable from ROCm
+  [artifacts](/docs/development/artifacts.md) using scripts in
+  [`build_tools/packaging/`](/build_tools/packaging/) with documentation in
+  [`docs/packaging/`](/docs/packaging/).
+- Packages should use dev/nightly/stable versions following
+  [`docs/packaging/versioning.md`](/docs/packaging/versioning.md) for
+  version/channel sorting and auditability.
+
+#### Packaging - Validation methods
 
 Packages are tested using a combination of these practices:
 
 - Unit tests for package construction scripts
   - Test structural metadata for inputs and outputs, file inclusion/exclusion
     filters, script portability across environments
-- Installation tests which check that packages can be installed and used
-  - Package self-tests (example: [Python Packaging - Testing](/docs/packaging/python_packaging.md#testing))
-  - We built packages to be portably distributed, so install tests may run on
-    multiple operating systems / distros.
-  - Component usage tests (https://github.com/ROCm/TheRock/issues/5384)
+- Installation tests which check that packages can be installed and used:
+  - Package self-tests (example: `rocm-sdk test`, see
+    [Python Packaging - Testing](/docs/packaging/python_packaging.md#testing)).
+  - Install tests may run on multiple operating systems / distros since we build
+    packages to be portably distributed.
   - Integration and regression tests for interactions between multiple packages,
     ensuring that ROCm packages are self-sufficient, don't conflict with system
     packages, and can be used together with other ecosystem packages
@@ -310,6 +354,20 @@ Packages are tested using a combination of these practices:
 > instructions. If the installation instructions are complicated or include
 > workarounds, aim to improve that at the source rather than apply workarounds
 > local to CI tests.
+
+#### Packaging - Limitations and known gaps
+
+> [!WARNING]
+> We currently only run packaging-focused tests on packages. This can miss when
+> subprojects pass their tests for one package type but fail for another
+> package type, such as when
+>
+> - Python packages are missing multi-arch / kpack split .kpack files
+> - Native Linux packages are missing xnack+ files for ASan
+>
+> See https://github.com/ROCm/TheRock/issues/5384.
+
+______________________________________________________________________
 
 <!-- ### TheRock feature area: CI infrastructure
 
