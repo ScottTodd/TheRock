@@ -119,7 +119,7 @@ The CMake build system is designed to be reproducible, configurable, and
 debuggable:
 
 - We use the same build system for Linux and Windows with minimal branching.
-- Subprojects builds can be run in isolation and their configured options can be
+- Subproject builds can be run in isolation and their configured options can be
   viewed via `_init.cmake` and `_toolchain.cmake` files (see
   [`build_system.md`](/docs/development/build_system.md)).
 - Build commands are routed through [`teatime.py`](/build_tools/teatime.py)
@@ -217,13 +217,13 @@ We use [GitHub Actions](https://github.com/features/actions) in the
 - CI/CD workflows: multi_arch_ci.yml, multi_arch_release.yml, etc.
 - Other automation: bump_submodules.yml, copy_release.yml, publish_build_manylinux_x86_64.yml
 
-Many of these workflows are central to day to day project development and
+Many of these workflows are central to day-to-day project development and
 official releases, so care must be taken to test them thoroughly.
 
 #### GitHub Actions workflows - Design for testing
 
 Workflows can take hours to run and can be difficult to debug, so we follow
-these practices to make testing managable:
+these practices to make testing manageable:
 
 - Keep workflows as simple as possible, e.g. by putting logic in
   Python scripts rather than inline Bash and then writing unit tests for those
@@ -291,7 +291,10 @@ ______________________________________________________________________
 #### Python scripts and tools - Scope
 
 Most build system and utility scripts are written in Python, not Bash or other
-languages.
+languages. GitHub Actions workflows also use Python scripts for the bulk of
+their logic (see the
+[GitHub Actions workflows](#therock-feature-area-github-actions-workflows)
+section above).
 
 #### Python scripts and tools - Design for testing
 
@@ -301,12 +304,21 @@ follow the style guidelines in
 and particularly the
 ["testing standards" section](/docs/development/style_guides/python_style_guide.md#testing-standards).
 
+When writing scripts, consider these tips:
+
+- Add `--dry-run` modes to scripts with dangerous or expensive side effects.
+- Design scripts so they can run locally and _then_ integrate them into
+  GitHub Actions workflows or other cloud pipeline as needed.
+
 #### Python scripts and tools - Validation methods
 
 All Python unit tests should be run as part of
 [`.github/workflows/unit_tests.yml`](/.github/workflows/unit_tests.yml), with
 the help of files like
 [`build_tools/pyproject.toml`](/build_tools/pyproject.toml).
+
+Note that simple unit tests do not fully replace integration testing using real
+build tools, packages, or remote APIs.
 
 #### Python scripts and tools - Limitations and known gaps
 
