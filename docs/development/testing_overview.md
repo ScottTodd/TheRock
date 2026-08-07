@@ -278,6 +278,8 @@ We test our GitHub Actions workflows using a combination of these practices:
   (https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow)
   and link the test runs in the pull request description.
 
+<!-- TODO: inline code/log example showing what each check catches? -->
+
 #### GitHub Actions workflows - Limitations and known gaps
 
 Cross-repository workflow design and testing is difficult, so we try to limit
@@ -388,6 +390,8 @@ Packages are tested using a combination of these practices:
 > instructions. If the installation instructions are complicated or include
 > workarounds, aim to improve that at the source rather than apply workarounds
 > local to CI tests.
+
+<!-- TODO: inline code samples for each test type? 10 lines max -->
 
 #### Packaging - Limitations and known gaps
 
