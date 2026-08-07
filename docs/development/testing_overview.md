@@ -114,7 +114,7 @@ The build system supports a broad matrix of configurations:
 | Matrix dimension          | Available configurations                                                                        | Typical CI coverage                             |
 | ------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------- |
 | Operating system          | Linux (multiple distros), WSL, Windows                                                          | Linux (manylinux), WSL, Windows                 |
-| Build variant             | Release, Debug, Address Sanitizer (ASan), etc.                                                  | Release, ASan                                   |
+| Build variant             | Release, Debug, Address Sanitizer (ASan), etc.                                                  | Release                                         |
 | AMDGPU build/test targets | `gfx942`, `gfx950`, `gfx1100`, `gfx1200`, etc.                                                  | 1-5 targets (based on test runner availability) |
 | Enabled subprojects       | `THEROCK_ENABLE_ALL`, `THEROCK_ENABLE_PROFILER`, etc.                                           | All enabled, subsets as an optimization         |
 | Enabled feature flags     | See [`FLAGS.cmake`](/FLAGS.cmake) and [`docs/development/flags.md`](/docs/development/flags.md) | Default values                                  |
@@ -122,19 +122,42 @@ The build system supports a broad matrix of configurations:
 
 #### Super-project CMake build - Design for testing
 
-<!-- DRAFT -->
+The CMake build system is designed to be reproducible, configurable, and
+debuggable:
 
-- Build architecture:
-  - `build/`, `stage/`, `dist/`
-  - same build system for Linux and Windows with minimal branches
-  - logging with `teatime.py` --> `build/logs/`
-  - ninja logs: `.ninja_log` --> `build_tools/github_actions/post_stage_upload.py` archive
-  - `workflow_outputs.md`
-- Dockerfiles for portable build environments
-- CMake presets for shared configurations
-- `BUILD_TOPOLOGY.toml` --> `build_tools/configure_stage.py`
+- We use the same build system for Linux and Windows with minimal branching.
+- Subprojects builds can be run in isolation and their configured options can be
+  viewed via `_init.cmake` and `_toolchain.cmake` files (see
+  [`build_system.md`](/docs/development/build_system.md)).
+- Build commands are routed through [`teatime.py`](/build_tools/teatime.py)
+  so all logs are written to `${build}/logs/`. CI/CD workflow runs upload
+  logs to S3 buckets (see [`s3_buckets.md`](/docs/development/s3_buckets.md))
+  following the schema in
+  [`workflow_outputs.md`](/docs/development/workflow_outputs.md).
+- Build performance logs are collected by [ninja](https://ninja-build.org/)
+  and uploaded together with other logs using
+  [`post_stage_upload.py`](/build_tools/github_actions/post_stage_upload.py).
+- Common base CMake option combinations are managed through
+  [`CMakePresets.json`](/CMakePresets.json).
 
-<!-- DRAFT -->
+Source code:
+
+- First-party dependencies are loaded through pinned git submodules.
+- Third-party dependencies are vendored with source mirrors in
+  [`third-party/`](/third-party/) (see also
+  [`dependencies.md`](/docs/development/dependencies.md) and
+  [`git_chores.md#updating-a-third-party-mirror`](/docs/development/git_chores.md#updating-a-third-party-mirror)).
+- Workflows generate commit manifest files and diff reports
+  ([`manifest_diff.md`](/docs/development/manifest_diff.md)).
+
+Build environments:
+
+- On Linux we recommend building inside a
+  [manylinux](https://github.com/pypa/manylinux) Docker container that includes a
+  known-working, *minimal* set of dependencies. See
+  [`dockerfiles/README.md`](/dockerfiles/README.md).
+- Other environments are also supported, though they aren't tested as regularly:
+  [`environment_setup_guide.md`](/docs/environment_setup_guide.md).
 
 #### Super-project CMake build - Validation methods
 
@@ -189,6 +212,8 @@ in unique ways so they are particularly costly to test regularly.
 
 ### TheRock feature area: GitHub Actions workflows
 
+#### GitHub Actions workflows - Scope
+
 We use [GitHub Actions](https://github.com/features/actions) in the
 [`.github/workflows`](/.github/workflows/) directory for a variety of workflows:
 
@@ -196,13 +221,17 @@ We use [GitHub Actions](https://github.com/features/actions) in the
 - CI/CD workflows: multi_arch_ci.yml, multi_arch_release.yml, etc.
 - Other automation: bump_submodules.yml, copy_release.yml, publish_build_manylinux_x86_64.yml
 
+#### GitHub Actions workflows - Design for testing
+
+#### GitHub Actions workflows - Validation methods
+
 Many of these workflows are central to day to day project development and
 official releases, so care must be taken to test them thoroughly.
 
 We test our GitHub Actions workflows using a combination of these practices:
 
 - Run workflows through [actionlint](https://github.com/rhysd/actionlint)
-  static analysis (this is required via a pre-commit hook)
+  static analysis (this is required via a pre-commit hook).
 - Add unit tests like
   [`build_tools/github_actions/tests/workflow_dispatch_inputs_test.py`](/build_tools/github_actions/tests/workflow_dispatch_inputs_test.py)
   where actionlint falls short
@@ -222,7 +251,7 @@ We test our GitHub Actions workflows using a combination of these practices:
   ROCm Python packages for any specific Python version, runner type, and test
   container image.
 - Where possible, support testing workflows in repository forks (see
-  ["Working effectively from forks" in `github_actions_debugging.md`](/docs/development/github_actions_debugging.md#working-effectively-from-forks))
+  ["Working effectively from forks" in `github_actions_debugging.md`](/docs/development/github_actions_debugging.md#working-effectively-from-forks)).
 - When workflows and scripts are used across repositories, pin to specific commits
   - In https://github.com/ROCm/rocm-libraries and
     https://github.com/ROCm/rocm-systems, "TheRock CI" uses commit pins that
