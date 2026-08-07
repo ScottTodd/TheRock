@@ -1,6 +1,6 @@
 # Testing overview
 
-**TheRock is the integration point for all build, test, packaging, and release
+**TheRock is the integration point for build, test, packaging, and release
 infrastructure for ROCm Core.** The code here is used by developers building
 ROCm from source, CI systems validating pull request contributions
 in repositories like [rocm-systems](https://github.com/ROCm/rocm-systems) and
@@ -33,8 +33,8 @@ provide consistent environments for validating changes across representative
 project-wide configurations and component boundaries.
 
 **ROCm Core is built and released as a single product.** Individual subprojects
-can validate their own behavior in isolation, but TheRock assembles and tests
-those projects together as often as practical throughout development, providing
+may validate their own behavior in isolation, then TheRock assembles and tests
+those projects together as often as practical throughout development to provide
 confidence in cross-component behavior and product-wide properties that
 component-level testing cannot evaluate.
 
@@ -43,6 +43,12 @@ component-level testing cannot evaluate.
 This page describes how these testing layers work together, how TheRock code
 can make good testing the easy path, and what good testing looks like for
 common types of contributions.
+
+______________________________________________________________________
+
+## Table of contents
+
+<!-- TODO: populate (just H2 and H3 sections, not H4) -->
 
 ______________________________________________________________________
 
@@ -248,6 +254,12 @@ these practices to make testing manageable:
     These pull requests can be reviewed and fixed when there are breaking
     changes to the build system, workflows, or scripts.
 
+<!-- TODO: mention how release workflows _dispatch_ test jobs after build jobs
+logs for test jobs can then be viewed individually
+test runs can be individually retried
+test runs do not block package promotion for failures _or_ long queues
+ -->
+
 #### GitHub Actions workflows - Validation methods
 
 We test our GitHub Actions workflows using a combination of these practices:
@@ -326,6 +338,16 @@ build tools, packages, or remote APIs.
 > Some tests have been added without including them on CI, which is getting
 > fixed via https://github.com/ROCm/TheRock/issues/6927.
 
+> [!WARNING]
+> We measure Python code coverage as part of
+> [`.github/workflows/unit_tests.yml`](/.github/workflows/unit_tests.yml), but
+> we do not yet track it continuously, surface the coverage diff on PRs, or set
+> any project-wide or area-specific target percentages.
+
+> [!WARNING]
+> A few tests require authenticated API access to use real services instead of
+> mocks. These tests are skipped automatically when credentials are missing.
+
 ______________________________________________________________________
 
 ### TheRock feature area: Packaging
@@ -396,6 +418,23 @@ ______________________________________________________________________
 
 ## Testing changes to ROCm subprojects with TheRock
 
+<!-- The previous section explained... -->
+
+This section focuses on how TheRock is used to test changes to ROCm subprojects
+such as amd-llvm, hip-clr, RCCL, MIOpen, etc.
+
+<!-- Flowchart/diagram? -->
+
+- Include project sources
+- Integrate into the build system
+- Add subproject tests
+  - build tests via CMake
+  - unit/integration tests via test runner
+    - Test triggering (modify A --> build and test A's consumers as well)
+- Integrate into packaging
+  - Native Linux/Windows
+  - Python
+
 <!-- TODO: mention therock_cmake_subproject_build_test -->
 
 <!-- TODO: mention build_tools/github_actions/test_executable_scripts/README.md -->
@@ -417,6 +456,29 @@ ______________________________________________________________________
 - developers _working on the projects_ and users/CI systems that _install test artifacts_ should have the same experience
 
 ### "TheRock CI" in component repositories
+
+<!-- flowchart/timeline diagram showing
+
+PR in rocm-libraries
+  runs component CI + TheRock CI (partial coverage)
+~daily submodule bump in TheRock
+  batch of commits runs TheRock CI (increased coverage)
+nightly release in rockrel
+  includes all submodule bump commits, infra code, etc.
+  runs full build x test matrix
+-->
+
+<!-- draft diagram... -->
+
+```mermaid
+flowchart LR
+    Component["Component pull request<br/>Component CI and targeted TheRock CI"]
+    Bump["TheRock submodule update<br/>Integrated build and broader testing"]
+    Main["TheRock main branch<br/>Postsubmit validation and monitoring"]
+    Release["Nightly and release pipelines<br/>Broad build, test, package, and hardware coverage"]
+
+    Component --> Bump --> Main --> Release
+```
 
 <!-- DRAFT -->
 
