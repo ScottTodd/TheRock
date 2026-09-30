@@ -40,12 +40,13 @@ THIS_SCRIPT_DIR = Path(__file__).resolve().parent
 def _env_flag(name: str, default: bool = True) -> bool:
     """Read a boolean capability flag set by the workflow.
 
-    On PRs from FORKS the GitHub App secrets are unavailable, so the fallback
-    GITHUB_TOKEN is READ-ONLY and every write (comment / label) returns HTTP
-    403. The workflow sets POST_COMMENTS / MUTATE_PR / READ_SECURITY_ALERTS to
-    'false' in that case so the bot can DEGRADE GRACEFULLY: it still evaluates
-    policy and sets the check's pass/fail exit code, but skips the writes it is
-    not permitted to perform instead of crashing.
+    The workflow uses a GitHub App token for comments and labels. If App
+    credentials are unavailable, it falls back to GITHUB_TOKEN, configured
+    read-only, and sets POST_COMMENTS / MUTATE_PR to 'false'. Policy checks
+    still run, but comments and label changes are skipped.
+
+    This depends on credential availability, not PR origin: pull_request_target
+    can access base-repository App secrets even for fork PRs.
     """
     val = os.environ.get(name)
     if val is None:
@@ -536,7 +537,7 @@ def upsert_comment(
     one self-updating comment per marker instead of spamming new ones.
     """
     if not CAN_POST_COMMENTS:
-        print("ℹ️  Skipping PR comment — no write access (e.g. fork PR).")
+        print("ℹ️  Skipping PR comment — POST_COMMENTS is disabled.")
         return
     try:
         comments = gh_get(
@@ -797,7 +798,7 @@ def add_label(owner: str, repo: str, pr_number: int, token: str, label: str) -> 
     we log a clear setup hint instead of creating it automatically.
     """
     if not CAN_MUTATE_PR:
-        print(f"ℹ️  Skipping add label '{label}' — no write access (fork PR).")
+        print(f"ℹ️  Skipping add label '{label}' — MUTATE_PR is disabled.")
         return
     try:
         gh_post(
@@ -821,7 +822,7 @@ def remove_label(owner: str, repo: str, pr_number: int, token: str, label: str) 
     removes the label association from the current pull request.
     """
     if not CAN_MUTATE_PR:
-        print(f"ℹ️  Skipping remove label '{label}' — no write access (fork PR).")
+        print(f"ℹ️  Skipping remove label '{label}' — MUTATE_PR is disabled.")
         return
     encoded = urllib.parse.quote(label, safe="")
     r = requests.delete(
@@ -1008,9 +1009,8 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # Each check appends its failure messages to `check_errors`; an empty list
     # means the check passed. We reset it before every check.
-    # NOTE: all policies are enforced for BOTH same-repo PRs and fork PRs.
-    # `pull_request_target` gives us secret access (required for posting PR
-    # comments) for forks, so there is no reason to skip the policy checks.
+    # Enforce all policies for both same-repo and fork PRs, even when missing
+    # App credentials disable comments and label changes.
     check_errors: List[str] = []
 
     check_errors = []

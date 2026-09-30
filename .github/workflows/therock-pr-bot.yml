@@ -3,7 +3,7 @@ name: TheRock PR Bot
 on:
   workflow_dispatch:
   # SECURITY: pull_request_target runs in the BASE-repo context, so secrets and
-  # a write token are available even for PRs opened from FORKS.
+  # App credentials are available even for PRs opened from FORKS.
   #
   # This is SAFE here ONLY because this workflow:
   #   • NEVER checks out or executes PR head code (see checkout step below),
@@ -18,12 +18,12 @@ on:
     branches: [main, pr-bot-test]
     types: [opened, synchronize, reopened, ready_for_review, edited]
 
-# Least privilege. Writes are needed to post the results comment and manage the
-# "Not ready to Review" label; everything else stays read-only.
+# GITHUB_TOKEN is read-only. Comments and labels use the GitHub App token;
+# without that token, the policy step disables mutations.
 permissions:
   contents: read
-  pull-requests: write   # post / update the policy results table comment
-  issues: write          # add / remove the "Not ready to Review" label
+  pull-requests: read
+  issues: read
   checks: read
 
 # Avoid two runs racing on the same PR's comment/label (e.g. fast pushes).
