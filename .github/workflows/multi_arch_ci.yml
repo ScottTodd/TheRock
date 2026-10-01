@@ -115,7 +115,7 @@ concurrency:
 
 jobs:
   setup:
-    uses: ./.github/workflows/setup_multi_arch.yml
+    uses: $/.github/workflows/setup_multi_arch.yml
     with:
       build_variant: "release"
       linux_amdgpu_families: ${{ inputs.linux_amdgpu_families || '' }}
@@ -141,7 +141,7 @@ jobs:
         needs.setup.outputs.linux_build_config != '' &&
         needs.setup.outputs.enable_build_jobs == 'true'
       }}
-    uses: ./.github/workflows/multi_arch_ci_linux.yml
+    uses: $/.github/workflows/multi_arch_ci_linux.yml
     with:
       build_config: ${{ needs.setup.outputs.linux_build_config }}
       test_labels: ${{ needs.setup.outputs.linux_test_labels }}
@@ -162,7 +162,7 @@ jobs:
         needs.setup.outputs.windows_build_config != '' &&
         needs.setup.outputs.enable_build_jobs == 'true'
       }}
-    uses: ./.github/workflows/multi_arch_ci_windows.yml
+    uses: $/.github/workflows/multi_arch_ci_windows.yml
     with:
       build_config: ${{ needs.setup.outputs.windows_build_config }}
       test_labels: ${{ needs.setup.outputs.windows_test_labels }}
@@ -178,7 +178,7 @@ jobs:
     # Refs are auto-derived from push / pull_request events only.
     # For manual runs, dispatch manifest-diff.yml directly with explicit refs.
     if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
-    uses: ./.github/workflows/manifest-diff.yml
+    uses: $/.github/workflows/manifest-diff.yml
     permissions:
       contents: read
       id-token: write

@@ -149,7 +149,7 @@ jobs:
           gh_app_private_key: ${{ secrets.GH_APP_HAULY_PRIVATE_KEY }}
 
   setup:
-    uses: ./.github/workflows/setup_multi_arch.yml
+    uses: $/.github/workflows/setup_multi_arch.yml
     with:
       build_variant: "release"
       release_type: ${{ inputs.release_type }}
@@ -168,7 +168,7 @@ jobs:
     name: Linux::${{ fromJSON(needs.setup.outputs.linux_build_config || '{}').build_variant_label || 'skip' }}
     needs: setup
     if: ${{ needs.setup.outputs.linux_build_config != '' }}
-    uses: ./.github/workflows/multi_arch_release_linux.yml
+    uses: $/.github/workflows/multi_arch_release_linux.yml
     secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       build_config: ${{ needs.setup.outputs.linux_build_config }}
@@ -193,7 +193,7 @@ jobs:
     name: Windows::${{ fromJSON(needs.setup.outputs.windows_build_config || '{}').build_variant_label || 'skip' }}
     needs: setup
     if: ${{ needs.setup.outputs.windows_build_config != '' }}
-    uses: ./.github/workflows/multi_arch_release_windows.yml
+    uses: $/.github/workflows/multi_arch_release_windows.yml
     secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       build_config: ${{ needs.setup.outputs.windows_build_config }}

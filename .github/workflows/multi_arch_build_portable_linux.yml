@@ -114,7 +114,7 @@ jobs:
   # ==========================================================================
   compiler-runtime:
     if: ${{ !cancelled() && !failure() && !contains(inputs.prebuilt_stages, 'compiler-runtime') && !contains(inputs.skip_stages, 'compiler-runtime') }}
-    uses: ./.github/workflows/multi_arch_build_portable_linux_artifacts.yml
+    uses: $/.github/workflows/multi_arch_build_portable_linux_artifacts.yml
     secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       stage_name: compiler-runtime
@@ -145,7 +145,7 @@ jobs:
         !contains(inputs.prebuilt_stages, 'emulation') &&
         !contains(inputs.skip_stages, 'emulation')
       }}
-    uses: ./.github/workflows/multi_arch_build_portable_linux_artifacts.yml
+    uses: $/.github/workflows/multi_arch_build_portable_linux_artifacts.yml
     secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       stage_name: emulation
@@ -176,7 +176,7 @@ jobs:
         !contains(inputs.prebuilt_stages, 'runtime-tests') &&
         !contains(inputs.skip_stages, 'runtime-tests')
       }}
-    uses: ./.github/workflows/multi_arch_build_portable_linux_artifacts.yml
+    uses: $/.github/workflows/multi_arch_build_portable_linux_artifacts.yml
     secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       stage_name: runtime-tests
@@ -207,7 +207,7 @@ jobs:
         !contains(inputs.prebuilt_stages, 'wsl-rocdxg') &&
         !contains(inputs.skip_stages, 'wsl-rocdxg')
       }}
-    uses: ./.github/workflows/multi_arch_build_wsl_rocdxg_artifacts.yml
+    uses: $/.github/workflows/multi_arch_build_wsl_rocdxg_artifacts.yml
     secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       stage_name: wsl-rocdxg
@@ -246,7 +246,7 @@ jobs:
       fail-fast: false
       matrix:
         family_info: ${{ fromJSON(inputs.matrix_per_family_json) }}
-    uses: ./.github/workflows/multi_arch_build_portable_linux_artifacts.yml
+    uses: $/.github/workflows/multi_arch_build_portable_linux_artifacts.yml
     secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       stage_name: math-libs
@@ -282,7 +282,7 @@ jobs:
         !contains(inputs.prebuilt_stages, 'comm-libs') &&
         !contains(inputs.skip_stages, 'comm-libs')
       }}
-    uses: ./.github/workflows/multi_arch_build_portable_linux_artifacts.yml
+    uses: $/.github/workflows/multi_arch_build_portable_linux_artifacts.yml
     secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       stage_name: comm-libs
@@ -315,7 +315,7 @@ jobs:
         !contains(inputs.prebuilt_stages, 'storage-libs') &&
         !contains(inputs.skip_stages, 'storage-libs')
       }}
-    uses: ./.github/workflows/multi_arch_build_portable_linux_artifacts.yml
+    uses: $/.github/workflows/multi_arch_build_portable_linux_artifacts.yml
     secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       stage_name: storage-libs
@@ -347,7 +347,7 @@ jobs:
         !contains(inputs.prebuilt_stages, 'debug-tools') &&
         !contains(inputs.skip_stages, 'debug-tools')
       }}
-    uses: ./.github/workflows/multi_arch_build_portable_linux_artifacts.yml
+    uses: $/.github/workflows/multi_arch_build_portable_linux_artifacts.yml
     secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       stage_name: debug-tools
@@ -378,7 +378,7 @@ jobs:
         !contains(inputs.prebuilt_stages, 'dctools-core') &&
         !contains(inputs.skip_stages, 'dctools-core')
       }}
-    uses: ./.github/workflows/multi_arch_build_portable_linux_artifacts.yml
+    uses: $/.github/workflows/multi_arch_build_portable_linux_artifacts.yml
     secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       stage_name: dctools-core
@@ -409,7 +409,7 @@ jobs:
         !contains(inputs.prebuilt_stages, 'profiler-apps') &&
         !contains(inputs.skip_stages, 'profiler-apps')
       }}
-    uses: ./.github/workflows/multi_arch_build_portable_linux_artifacts.yml
+    uses: $/.github/workflows/multi_arch_build_portable_linux_artifacts.yml
     secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       stage_name: profiler-apps
@@ -440,7 +440,7 @@ jobs:
         !contains(inputs.prebuilt_stages, 'cv-libs') &&
         !contains(inputs.skip_stages, 'cv-libs')
       }}
-    uses: ./.github/workflows/multi_arch_build_portable_linux_artifacts.yml
+    uses: $/.github/workflows/multi_arch_build_portable_linux_artifacts.yml
     secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       stage_name: cv-libs
@@ -471,7 +471,7 @@ jobs:
         !contains(inputs.prebuilt_stages, 'media-libs') &&
         !contains(inputs.skip_stages, 'media-libs')
       }}
-    uses: ./.github/workflows/multi_arch_build_portable_linux_artifacts.yml
+    uses: $/.github/workflows/multi_arch_build_portable_linux_artifacts.yml
     secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       stage_name: media-libs

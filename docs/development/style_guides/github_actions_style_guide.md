@@ -246,6 +246,28 @@ Confirm the findings you addressed no longer appear; unrelated findings may
 still produce a nonzero exit code. `--offline` skips audits requiring network
 access. Add `--no-ignores` to inspect suppressed findings too.
 
+#### Security - Reference actions and workflows in the same repository
+
+Use `$/` for actions and reusable workflows from the workflow's own repository
+and commit. See [self-repository](https://docs.zizmor.sh/audits/#self-repository)
+and [GitHub's announcement](https://github.blog/changelog/2026-07-30-reference-same-repository-actions-with-self-repository-syntax/).
+Self-hosted runners must use version 2.336.0 or newer.
+
+```yaml
+jobs:
+  build:
+    uses: $/.github/workflows/build.yml
+```
+
+Unlike workspace-relative `./` actions, `$/` action definitions do not depend
+on an earlier checkout or workspace edits. Scripts that an action runs using
+workspace-relative paths still come from the checkout. Keep checkout steps
+when those scripts or other steps need repository files.
+
+Use `./` only when an action intentionally comes from a different checkout
+revision or generated workspace content. Explain that requirement beside a
+`# zizmor: ignore[self-repository]` comment.
+
 #### Security - Avoid template injection
 
 Pass input values through step environment variables instead of inserting
@@ -338,7 +360,7 @@ on:
 
 jobs:
   test:
-    uses: ./.github/workflows/test.yml
+    uses: $/.github/workflows/test.yml
     # Note: not using 'secrets: inherit' here; no secrets are needed.
 ```
 
@@ -360,7 +382,7 @@ on:
 
 jobs:
   notify:
-    uses: ./.github/workflows/notify.yml
+    uses: $/.github/workflows/notify.yml
     secrets:
       GH_APP_HAULY_CID: ${{ secrets.GH_APP_HAULY_CID }}
       GH_APP_HAULY_PRIVATE_KEY: ${{ secrets.GH_APP_HAULY_PRIVATE_KEY }}
@@ -405,7 +427,7 @@ on:
 jobs:
   build:
     # Higher-trust entry points: triggered by maintainers or automation.
-    uses: ./.github/workflows/build.yml
+    uses: $/.github/workflows/build.yml
     secrets: inherit # zizmor: ignore[secrets-inherit]
 ```
 
@@ -421,7 +443,7 @@ on:
 
 jobs:
   test:
-    uses: ./.github/workflows/test.yml
+    uses: $/.github/workflows/test.yml
     secrets:
       GH_APP_HAULY_CID: ${{ secrets.GH_APP_HAULY_CID }}
       GH_APP_HAULY_PRIVATE_KEY: ${{ secrets.GH_APP_HAULY_PRIVATE_KEY }}
@@ -440,7 +462,7 @@ on:
 
 jobs:
   component:
-    uses: ./.github/workflows/test_component.yml
+    uses: $/.github/workflows/test_component.yml
     secrets: inherit # zizmor: ignore[secrets-inherit]
 ```
 
@@ -454,7 +476,7 @@ on:
 
 jobs:
   test:
-    uses: ./.github/workflows/test.yml
+    uses: $/.github/workflows/test.yml
     secrets: inherit
 ```
 
@@ -488,7 +510,7 @@ permissions:
 
 jobs:
   test:
-    uses: ./.github/workflows/test.yml
+    uses: $/.github/workflows/test.yml
 
   trigger_workflow:
     permissions:
@@ -524,7 +546,7 @@ permissions:
 
 jobs:
   test:
-    uses: ./.github/workflows/test.yml
+    uses: $/.github/workflows/test.yml
 
   trigger_workflow:
     runs-on: ubuntu-24.04

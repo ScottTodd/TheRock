@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   publish_no_rocm_image_ubi10:
-    uses: ./.github/workflows/publish_dockerfile.yml
+    uses: $/.github/workflows/publish_dockerfile.yml
     with:
       DOCKER_FILE_NAME: no_rocm_image_ubi10
       DOCKER_IMAGE_NAME: no_rocm_image_ubi10

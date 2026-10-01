@@ -121,7 +121,7 @@ jobs:
 
       - name: Configure AWS credentials for artifact uploads
         if: ${{ steps.gen-report.conclusion == 'success' }}
-        uses: ./.github/actions/configure_aws_artifacts_credentials
+        uses: $/.github/actions/configure_aws_artifacts_credentials
 
       - name: Upload Report to S3
         if: ${{ steps.gen-report.conclusion == 'success' }}

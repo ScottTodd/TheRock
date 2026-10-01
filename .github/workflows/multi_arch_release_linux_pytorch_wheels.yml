@@ -198,7 +198,7 @@ jobs:
       # job can trigger the full test workflow (a reusable workflow's job cannot
       # request more permissions than its caller grants).
       actions: write
-    uses: ./.github/workflows/multi_arch_build_portable_linux_pytorch_wheels.yml
+    uses: $/.github/workflows/multi_arch_build_portable_linux_pytorch_wheels.yml
     secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       amdgpu_families: ${{ matrix.amdgpu_families }}

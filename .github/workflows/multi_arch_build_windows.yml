@@ -113,7 +113,7 @@ jobs:
   # ==========================================================================
   compiler-runtime:
     if: ${{ !cancelled() && !failure() && !contains(inputs.prebuilt_stages, 'compiler-runtime') && !contains(inputs.skip_stages, 'compiler-runtime') }}
-    uses: ./.github/workflows/multi_arch_build_windows_artifacts.yml
+    uses: $/.github/workflows/multi_arch_build_windows_artifacts.yml
     secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       stage_name: compiler-runtime
@@ -144,7 +144,7 @@ jobs:
         !contains(inputs.prebuilt_stages, 'runtime-tests') &&
         !contains(inputs.skip_stages, 'runtime-tests')
       }}
-    uses: ./.github/workflows/multi_arch_build_windows_artifacts.yml
+    uses: $/.github/workflows/multi_arch_build_windows_artifacts.yml
     secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       stage_name: runtime-tests
@@ -184,7 +184,7 @@ jobs:
       fail-fast: false
       matrix:
         family_info: ${{ fromJSON(inputs.matrix_per_family_json) }}
-    uses: ./.github/workflows/multi_arch_build_windows_artifacts.yml
+    uses: $/.github/workflows/multi_arch_build_windows_artifacts.yml
     secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       stage_name: math-libs
@@ -217,7 +217,7 @@ jobs:
         !contains(inputs.prebuilt_stages, 'debug-tools') &&
         !contains(inputs.skip_stages, 'debug-tools')
       }}
-    uses: ./.github/workflows/multi_arch_build_windows_artifacts.yml
+    uses: $/.github/workflows/multi_arch_build_windows_artifacts.yml
     secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       stage_name: debug-tools
@@ -251,7 +251,7 @@ jobs:
         !contains(inputs.prebuilt_stages, 'media-libs') &&
         !contains(inputs.skip_stages, 'media-libs')
       }}
-    uses: ./.github/workflows/multi_arch_build_windows_artifacts.yml
+    uses: $/.github/workflows/multi_arch_build_windows_artifacts.yml
     secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       stage_name: media-libs

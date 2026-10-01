@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   publish_no_rocm_image_ubuntu24_04:
-    uses: ./.github/workflows/publish_dockerfile.yml
+    uses: $/.github/workflows/publish_dockerfile.yml
     with:
       DOCKER_FILE_NAME: no_rocm_image_ubuntu24_04
       DOCKER_IMAGE_NAME: no_rocm_image_ubuntu24_04
@@ -28,14 +28,14 @@ jobs:
   # version whenever the base version changes.
   publish_no_rocm_image_ubuntu24_04_rocgdb:
     needs: [publish_no_rocm_image_ubuntu24_04]
-    uses: ./.github/workflows/publish_dockerfile.yml
+    uses: $/.github/workflows/publish_dockerfile.yml
     with:
       DOCKER_FILE_NAME: no_rocm_image_ubuntu24_04_rocgdb
       DOCKER_IMAGE_NAME: no_rocm_image_ubuntu24_04_rocgdb
   # image used in ocltst execution
   publish_no_rocm_image_ubuntu24_04_ocl_rt:
     needs: [publish_no_rocm_image_ubuntu24_04]
-    uses: ./.github/workflows/publish_dockerfile.yml
+    uses: $/.github/workflows/publish_dockerfile.yml
     with:
       DOCKER_FILE_NAME: no_rocm_image_ubuntu24_04_ocl_rt
       DOCKER_IMAGE_NAME: no_rocm_image_ubuntu24_04_ocl_rt
@@ -44,7 +44,7 @@ jobs:
   # version whenever the base version changes.
   publish_no_rocm_image_ubuntu24_04_media:
     needs: [publish_no_rocm_image_ubuntu24_04]
-    uses: ./.github/workflows/publish_dockerfile.yml
+    uses: $/.github/workflows/publish_dockerfile.yml
     with:
       DOCKER_FILE_NAME: no_rocm_image_ubuntu24_04_media
       DOCKER_IMAGE_NAME: no_rocm_image_ubuntu24_04_media
@@ -53,7 +53,7 @@ jobs:
   # version whenever the base version changes.
   publish_no_rocm_image_ubuntu24_04_openmpi:
     needs: [publish_no_rocm_image_ubuntu24_04]
-    uses: ./.github/workflows/publish_dockerfile.yml
+    uses: $/.github/workflows/publish_dockerfile.yml
     with:
       DOCKER_FILE_NAME: no_rocm_image_ubuntu24_04_openmpi
       DOCKER_IMAGE_NAME: no_rocm_image_ubuntu24_04_openmpi

@@ -12,7 +12,7 @@ import yaml
 
 WORKFLOWS_DIR = Path(__file__).resolve().parents[3] / ".github" / "workflows"
 _MATRIX_REFERENCE_RE = re.compile(r"\bmatrix\.([A-Za-z_][A-Za-z0-9_]*)")
-_LOCAL_WORKFLOW_PREFIX = "./.github/workflows/"
+_LOCAL_WORKFLOW_PREFIXES = ("$/.github/workflows/", "./.github/workflows/")
 _WORKFLOW_DISPATCH_ACTION_NAME = "benc-uk/workflow-dispatch"
 
 
@@ -28,7 +28,7 @@ def get_workflow_job(workflow: dict, job_name: str) -> dict:
     For a workflow with:
         jobs:
           build_wheels:
-            uses: ./.github/workflows/build_wheels.yml
+            uses: $/.github/workflows/build_wheels.yml
             with:
               python_version: ${{ matrix.python_version }}
 
@@ -180,7 +180,7 @@ def get_transitive_workflow_uses(root_filenames: list[str]) -> set[str]:
     """Returns all workflow filenames transitively referenced via reusable workflow calls.
 
     Starting from the given root workflow filenames, follows all
-    `uses: ./.github/workflows/<name>.yml` references in job definitions
+    same-repository `uses:` references (`$/` or `./`) in job definitions
     and returns the complete set of workflow filenames (including the roots).
     """
     visited: set[str] = set()
@@ -203,7 +203,7 @@ def get_transitive_workflow_uses(root_filenames: list[str]) -> set[str]:
 class WorkflowEdge:
     """A single propagation edge from one workflow file to another.
 
-    `kind` is "reusable" for a `uses: ./.github/workflows/<name>.yml` job or
+    `kind` is "reusable" for a same-repository workflow call (`$/` or `./`) or
     "dispatch" for a `benc-uk/workflow-dispatch` step. `passed_inputs` is the
     set of input names forwarded across the edge (the `with:` keys for reusable
     jobs, the parsed JSON keys for dispatch steps).
@@ -238,7 +238,7 @@ def get_workflow_edges(workflow: dict, source: str) -> list[WorkflowEdge]:
             continue
 
         uses = job.get("uses")
-        if isinstance(uses, str) and uses.startswith(_LOCAL_WORKFLOW_PREFIX):
+        if isinstance(uses, str) and uses.startswith(_LOCAL_WORKFLOW_PREFIXES):
             with_block = job.get("with")
             passed = set(with_block.keys()) if isinstance(with_block, dict) else set()
             edges.append(
@@ -246,7 +246,7 @@ def get_workflow_edges(workflow: dict, source: str) -> list[WorkflowEdge]:
                     source=source,
                     kind="reusable",
                     label=job_name,
-                    target=uses.removeprefix(_LOCAL_WORKFLOW_PREFIX),
+                    target=uses.split("/.github/workflows/", 1)[1],
                     passed_inputs=passed,
                 )
             )

@@ -133,6 +133,23 @@ class GetWorkflowEdgesTest(unittest.TestCase):
         self.assertEqual(edge.target, "setup.yml")
         self.assertEqual(edge.passed_inputs, {"a", "quartz_tracking_id"})
 
+    def test_self_repository_edge_matches_workspace_relative_edge(self):
+        for prefix in ("$/", "./"):
+            with self.subTest(prefix=prefix):
+                workflow = {
+                    "jobs": {
+                        "setup": {
+                            "uses": f"{prefix}.github/workflows/setup.yml",
+                            "with": {"python_version": "3.12"},
+                        }
+                    }
+                }
+                edges = get_workflow_edges(workflow, "root.yml")
+                self.assertEqual(len(edges), 1)
+                self.assertEqual(edges[0].kind, "reusable")
+                self.assertEqual(edges[0].target, "setup.yml")
+                self.assertEqual(edges[0].passed_inputs, {"python_version"})
+
     def test_reusable_edge_without_with_block_has_no_inputs(self):
         workflow = {"jobs": {"j": {"uses": "./.github/workflows/x.yml"}}}
         edges = get_workflow_edges(workflow, "root.yml")

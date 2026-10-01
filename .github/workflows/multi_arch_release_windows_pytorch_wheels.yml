@@ -184,7 +184,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    uses: ./.github/workflows/multi_arch_build_windows_pytorch_wheels.yml
+    uses: $/.github/workflows/multi_arch_build_windows_pytorch_wheels.yml
     secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       amdgpu_families: ${{ matrix.amdgpu_families }}

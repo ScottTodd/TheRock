@@ -551,7 +551,7 @@ jobs:
           python build_tools/github_actions/write_torch_versions.py --dist-dir "%PACKAGE_DIST_DIR%"
 
       - name: Configure AWS Credentials
-        uses: ./.github/actions/configure_aws_product_publication_credentials
+        uses: $/.github/actions/configure_aws_product_publication_credentials
         with:
           release_type: ${{ inputs.release_type }}
           product: pytorch
@@ -627,7 +627,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.configure_pytorch_tests.outputs.matrix) }}
-    uses: ./.github/workflows/test_pytorch_wheels.yml
+    uses: $/.github/workflows/test_pytorch_wheels.yml
     secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       amdgpu_family: ${{ matrix.amdgpu_family }}

@@ -259,7 +259,7 @@ jobs:
             --dist-dir "${PACKAGE_DIST_DIR}"
 
       - name: Configure AWS Credentials
-        uses: ./.github/actions/configure_aws_artifacts_credentials
+        uses: $/.github/actions/configure_aws_artifacts_credentials
         with:
           release_type: ci
 
@@ -324,7 +324,7 @@ jobs:
       matrix: ${{ fromJSON(needs.configure_jax_tests.outputs.matrix) }}
     permissions:
       contents: read
-    uses: ./.github/workflows/test_multi_arch_linux_jax_wheels.yml
+    uses: $/.github/workflows/test_multi_arch_linux_jax_wheels.yml
     with:
       test_amdgpu_family: ${{ inputs.test_amdgpu_family }}
       # CI publishes the wheels it built to a run-scoped page rather than to a

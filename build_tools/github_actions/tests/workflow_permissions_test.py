@@ -125,8 +125,10 @@ def find_local_workflow_calls_with_permissions(
         if not isinstance(job_def, dict):
             continue
         uses = job_def.get("uses")
-        if isinstance(uses, str) and uses.startswith("./.github/workflows/"):
-            filename = uses.removeprefix("./.github/workflows/")
+        if isinstance(uses, str) and uses.startswith(
+            ("$/.github/workflows/", "./.github/workflows/")
+        ):
+            filename = uses.split("/.github/workflows/", 1)[1]
             effective_permissions = get_job_permissions(job_def, workflow_permissions)
             calls.append((job_name, filename, effective_permissions))
     return calls
@@ -134,6 +136,23 @@ def find_local_workflow_calls_with_permissions(
 
 class WorkflowPermissionsTest(unittest.TestCase):
     """Verifies callers have permissions required by callees."""
+
+    def test_local_call_permissions_support_both_reference_forms(self):
+        for prefix in ("$/", "./"):
+            with self.subTest(prefix=prefix):
+                workflow = {
+                    "permissions": {"contents": "read"},
+                    "jobs": {
+                        "build": {
+                            "uses": f"{prefix}.github/workflows/build.yml",
+                            "permissions": {"actions": "write"},
+                        }
+                    },
+                }
+                self.assertEqual(
+                    find_local_workflow_calls_with_permissions(workflow),
+                    [("build", "build.yml", {"actions": "write"})],
+                )
 
     def test_callers_have_required_permissions(self):
         """All callers must have permissions declared by their callees."""

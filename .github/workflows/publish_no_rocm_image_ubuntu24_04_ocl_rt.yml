@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   publish_no_rocm_image_ubuntu24_04_ocl_rt:
-    uses: ./.github/workflows/publish_dockerfile.yml
+    uses: $/.github/workflows/publish_dockerfile.yml
     with:
       DOCKER_FILE_NAME: no_rocm_image_ubuntu24_04_ocl_rt
       DOCKER_IMAGE_NAME: no_rocm_image_ubuntu24_04_ocl_rt

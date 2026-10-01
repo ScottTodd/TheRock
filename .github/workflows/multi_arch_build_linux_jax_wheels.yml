@@ -296,7 +296,7 @@ jobs:
             --dist-dir "${PACKAGE_DIST_DIR}"
 
       - name: Configure AWS Credentials
-        uses: ./.github/actions/configure_aws_product_publication_credentials
+        uses: $/.github/actions/configure_aws_product_publication_credentials
         with:
           release_type: ${{ inputs.release_type }}
           product: jax
@@ -370,7 +370,7 @@ jobs:
       matrix: ${{ fromJSON(needs.configure_jax_tests.outputs.matrix) }}
     permissions:
       contents: read
-    uses: ./.github/workflows/test_multi_arch_linux_jax_wheels.yml
+    uses: $/.github/workflows/test_multi_arch_linux_jax_wheels.yml
     secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       test_amdgpu_family: ${{ inputs.test_amdgpu_family }}
