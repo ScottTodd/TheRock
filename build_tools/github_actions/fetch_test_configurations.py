@@ -257,6 +257,10 @@ _rocgdb_common = {
 # A component's "skip_stages" lists build stages whose absence excludes the test.
 # If any listed stage is in SKIP_STAGES, the component is skipped. Reused stages
 # still supply artifacts and do not exclude tests. Omit the field for no stage gate.
+#
+# A component's "skip_build_variant" lists BUILD_VARIANT values (exact match) on which
+# it is not scheduled, e.g. ["asan", "host-asan", "asan-debug", "host-asan-debug"] for a
+# test that cannot work under ASAN. Omit the field to run on every build variant.
 
 test_matrix = {
     # Sanity runs first when compiler-runtime artifacts are available.
@@ -820,6 +824,8 @@ test_matrix = {
         "platform": ["linux"],
         "linux_cpu_runner": True,
         "test_types": ["standard", "comprehensive", "full"],
+        # StaticFDBSync skips itself at runtime under ASAN.
+        "skip_build_variant": ["asan", "host-asan", "asan-debug", "host-asan-debug"],
         "include_family": {
             "linux": ["gfx942", "gfx950"],
         },
@@ -1435,6 +1441,12 @@ def run():
         if excluded_stages:
             logging.info(
                 f"Excluding {job_name}: stages {sorted(excluded_stages)} are skipped"
+            )
+            continue
+
+        if build_variant in test_matrix[key].get("skip_build_variant", []):
+            logging.info(
+                f"Excluding job {job_name}: skip_build_variant lists {build_variant}"
             )
             continue
 
