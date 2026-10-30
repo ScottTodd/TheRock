@@ -50,14 +50,6 @@ class ConfigureCIPathFiltersTest(unittest.TestCase):
         run_ci = is_ci_run_required(paths)
         self.assertTrue(run_ci)
 
-        paths = [".github/workflows/multi_arch_build_portable_linux_artifacts.yml"]
-        run_ci = is_ci_run_required(paths)
-        self.assertTrue(run_ci)
-
-        paths = [".github/workflows/multi_arch_build_native_linux_packages.yml"]
-        run_ci = is_ci_run_required(paths)
-        self.assertTrue(run_ci)
-
     def test_dont_run_ci_if_unrelated_workflow_file_edited(self):
         paths = [".github/workflows/pre-commit.yml"]
         run_ci = is_ci_run_required(paths)
@@ -97,7 +89,6 @@ class ConfigureCIPathFiltersTest(unittest.TestCase):
             "build_tools/github_actions/test_executable_scripts/test_example.py",
             # Install tests for packages (run on CI after building packages)
             "build_tools/packaging/python/templates/example_test.py",
-            "build_tools/packaging/linux/example_test.py",
             # Integration tests for ROCm (run on CI after building artifacts)
             "tests/test_rocm_sanity.py",
         ]
@@ -245,6 +236,59 @@ class ConfigureCIPathFiltersTest(unittest.TestCase):
             )
         if errors:
             self.fail("\n".join(errors))
+
+
+class ConfigureCIPlatformPathFiltersTest(unittest.TestCase):
+    def assert_platform_ci_runs(self, paths: list[str], expected: set[str]) -> None:
+        for platform in ("linux", "windows"):
+            with self.subTest(paths=paths, platform=platform):
+                self.assertEqual(
+                    is_ci_run_required(paths, platform=platform), platform in expected
+                )
+
+    def test_run_only_linux_ci_for_linux_only_changes(self):
+        for path in (
+            "build_tools/packaging/linux/deb_package.py",
+            "build_tools/packaging/linux/native_linux_package_install_test.py",
+            "external-builds/jax/run_jax_tests.py",
+            "profiler/CMakeLists.txt",
+            ".github/workflows/multi_arch_build_native_linux_packages.yml",
+            ".github/workflows/multi_arch_build_portable_linux_artifacts.yml",
+            ".github/workflows/multi_arch_build_linux_jax_wheels_ci.yml",
+            ".github/workflows/multi_arch_ci_linux.yml",
+        ):
+            self.assert_platform_ci_runs([path, "README.md"], {"linux"})
+
+    def test_run_only_windows_ci_for_windows_only_changes(self):
+        for path in (
+            "build_tools/packaging/windows/generate_msi_wxs.py",
+            ".github/workflows/multi_arch_build_native_windows_packages.yml",
+            ".github/workflows/multi_arch_ci_windows.yml",
+        ):
+            self.assert_platform_ci_runs([path, "README.md"], {"windows"})
+
+    def test_run_both_platforms_for_mixed_platform_changes(self):
+        self.assert_platform_ci_runs(
+            [
+                "build_tools/packaging/linux/deb_package.py",
+                "build_tools/packaging/windows/generate_msi_wxs.py",
+            ],
+            {"linux", "windows"},
+        )
+
+    def test_run_both_platforms_for_platform_specific_and_shared_changes(self):
+        for shared_path in ("CMakeLists.txt", ".github/workflows/multi_arch_ci.yml"):
+            self.assert_platform_ci_runs(
+                ["build_tools/packaging/linux/deb_package.py", shared_path],
+                {"linux", "windows"},
+            )
+
+    def test_run_both_platforms_for_shared_debug_tools_changes(self):
+        for path in (
+            "debug-tools/CMakeLists.txt",
+            "debug-tools/artifact-amd-dbgapi.toml",
+        ):
+            self.assert_platform_ci_runs([path], {"linux", "windows"})
 
 
 if __name__ == "__main__":

@@ -24,7 +24,7 @@ Public API:
 """
 
 import fnmatch
-import os
+from functools import cache
 from pathlib import Path
 import re
 import subprocess
@@ -112,7 +112,9 @@ def _load_toml_file(path: Path) -> Optional[dict]:
         return None
 
 
-def _extract_skip_patterns_from_config(config: dict) -> list[str]:
+def _extract_skip_patterns_from_config(
+    config: dict, platform: str | None = None
+) -> list[str]:
     """Extract skip patterns from a parsed TOML config dict."""
     skip_ci = config.get("skip_ci", {})
     patterns: list[str] = []
@@ -122,13 +124,12 @@ def _extract_skip_patterns_from_config(config: dict) -> list[str]:
     if isinstance(common, list):
         patterns.extend(common)
 
-    # Platform-specific patterns (based on RUNNER_OS)
-    runner_os = os.environ.get("RUNNER_OS", "").lower()
-    if runner_os == "linux":
+    # Use the target platform, which may differ from the setup job's host OS.
+    if platform == "linux":
         linux_patterns = skip_ci.get("linux", [])
         if isinstance(linux_patterns, list):
             patterns.extend(linux_patterns)
-    elif runner_os == "windows":
+    elif platform == "windows":
         windows_patterns = skip_ci.get("windows", [])
         if isinstance(windows_patterns, list):
             patterns.extend(windows_patterns)
@@ -147,6 +148,8 @@ def _extract_ci_workflow_filenames(config: dict) -> set[str]:
 
 def load_skip_ci_config(
     extension_config_path: Optional[Path] = None,
+    *,
+    platform: str | None = None,
 ) -> tuple[list[str], set[str]]:
     """Load skip-CI patterns and CI workflow filenames from TOML configs.
 
@@ -157,6 +160,7 @@ def load_skip_ci_config(
     Args:
         extension_config_path: Path to the extension config file.
             If None, uses TheRock's skip-ci-config.toml.
+        platform: Target platform (linux/windows), or None for common patterns only.
 
     Returns:
         Tuple of (skip_patterns, ci_workflow_filenames):
@@ -169,7 +173,7 @@ def load_skip_ci_config(
     # Load base config (universal patterns)
     base_config = _load_toml_file(_BASE_CONFIG_PATH)
     if base_config:
-        base_patterns = _extract_skip_patterns_from_config(base_config)
+        base_patterns = _extract_skip_patterns_from_config(base_config, platform)
         patterns.extend(base_patterns)
         print(f"  Loaded {len(base_patterns)} base skip-CI patterns")
 
@@ -177,7 +181,7 @@ def load_skip_ci_config(
     ext_path = extension_config_path or _THEROCK_CONFIG_PATH
     ext_config = _load_toml_file(ext_path)
     if ext_config:
-        ext_patterns = _extract_skip_patterns_from_config(ext_config)
+        ext_patterns = _extract_skip_patterns_from_config(ext_config, platform)
         patterns.extend(ext_patterns)
         ci_filenames = _extract_ci_workflow_filenames(ext_config)
         print(f"  Loaded {len(ext_patterns)} extension skip-CI patterns")
@@ -187,17 +191,10 @@ def load_skip_ci_config(
     return patterns, ci_filenames
 
 
-# Cached config loaded at module import time for TheRock
-_cached_skip_patterns: Optional[list[str]] = None
-_cached_ci_workflow_filenames: Optional[set[str]] = None
-
-
-def _get_therock_config() -> tuple[list[str], set[str]]:
-    """Get TheRock's skip-CI config, loading and caching on first access."""
-    global _cached_skip_patterns, _cached_ci_workflow_filenames
-    if _cached_skip_patterns is None:
-        _cached_skip_patterns, _cached_ci_workflow_filenames = load_skip_ci_config()
-    return _cached_skip_patterns, _cached_ci_workflow_filenames or set()
+@cache
+def _get_therock_config(platform: str | None = None) -> tuple[list[str], set[str]]:
+    """Cache TheRock's skip-CI config separately for each target platform."""
+    return load_skip_ci_config(platform=platform)
 
 
 # Default path where external repo config is checked out in setup_multi_arch.yml
@@ -340,10 +337,18 @@ def get_git_submodule_paths(repo_root: Optional[str] = None) -> Optional[Iterabl
         return []
 
 
+# TODO: After the ci-framework-path-selection work lands, extend
+# get_jobs_for_changes() to classify paths once into a dataclass containing
+# per-platform job sets. Load common and both platform skip groups together;
+# preserve platform/job pairings, ignore the host OS, and return all applicable
+# jobs for an unavailable diff. Replace the repeated boolean checks below.
+# https://github.com/ROCm/TheRock/issues/6943#issuecomment-6535168388
 def is_ci_run_required(
     paths: Optional[Iterable[str]],
     skip_patterns: Optional[list[str]] = None,
     repo_name: str = "",
+    *,
+    platform: str | None = None,
 ) -> bool:
     """Checks if a CI run is required based on modified file paths.
 
@@ -361,6 +366,8 @@ def is_ci_run_required(
             If provided (external repo case), uses these patterns.
             If None (TheRock case), loads patterns from TOML configs.
         repo_name: Optional repo name for logging (e.g., "rocm-libraries")
+        platform: Target platform (linux/windows), or None for common patterns only.
+            Only used when loading TheRock's patterns.
 
     Returns:
         True if CI run is required, False if CI can be skipped
@@ -385,7 +392,7 @@ def is_ci_run_required(
         ci_workflow_filenames: set[str] = set()
     else:
         # TheRock: load from TOML configs
-        effective_patterns, ci_workflow_filenames = _get_therock_config()
+        effective_patterns, ci_workflow_filenames = _get_therock_config(platform)
 
     def is_skippable(path: str) -> bool:
         return _is_path_skippable_for_patterns(path, effective_patterns)
@@ -393,7 +400,9 @@ def is_ci_run_required(
     # For TheRock, also check CI workflow files
     if ci_workflow_filenames:
         github_workflows_paths = [
-            p for p in paths_list if p.startswith(".github/workflows")
+            p
+            for p in paths_list
+            if p.startswith(".github/workflows") and not is_skippable(p)
         ]
         other_paths = [p for p in paths_list if not p.startswith(".github/workflows")]
 

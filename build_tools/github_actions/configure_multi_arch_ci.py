@@ -875,6 +875,11 @@ def should_skip_ci(
             print("  External repo build: CI can be skipped")
             return True
 
+    # TODO: Compute per-platform affected job sets once using the planned
+    # get_jobs_for_changes() dataclass, then reuse that result for this gate,
+    # select_targets(), and decide_jobs(). Keep trigger/label/variant policy
+    # separate from path classification; do not rescan paths for each platform.
+    # https://github.com/ROCm/TheRock/issues/6943#issuecomment-6535168388
     # 2b. Local repo (TheRock): check changed files against built-in skip patterns.
     if not ci_inputs.external_repo and git_context.changed_files is not None:
         print(f"  Checking {len(git_context.changed_files)} changed file(s)...")
@@ -1046,7 +1051,9 @@ def _apply_platform_labels(
     )
 
 
-def select_targets(ci_inputs: CIInputs) -> TargetSelection:
+def select_targets(
+    ci_inputs: CIInputs, git_context: GitContext | None = None
+) -> TargetSelection:
     """Determine GPU families per platform based on trigger type and inputs.
 
     Trigger types run progressively larger sets of builds and tests:
@@ -1069,6 +1076,8 @@ def select_targets(ci_inputs: CIInputs) -> TargetSelection:
 
     Returns per-platform family lists, filtered to only include families
     that have a platform entry in amdgpu_family_matrix.py.
+    When git_context is provided, TheRock PR/push changes also filter platforms
+    using their target-specific skip patterns, independently of the setup host.
     """
     # All families for validation and "all" keyword expansion.
     # Empty trigger list returns all families (workflow_dispatch/schedule case).
@@ -1233,6 +1242,25 @@ def select_targets(ci_inputs: CIInputs) -> TargetSelection:
     windows_test_only = _filter_families_by_platform(
         windows_test_only, "windows", all_families
     )
+
+    # TODO: Replace these temporary per-platform scans with the affected job
+    # sets computed before the global skip gate (see should_skip_ci() above).
+    # The host OS is independent of the target platforms. Apply each platform's
+    # path filters independently, after selecting families/labels.
+    # External repositories use their own path filters in should_skip_ci.
+    if (
+        git_context is not None
+        and not ci_inputs.external_repo
+        and (ci_inputs.is_pull_request or ci_inputs.is_push)
+    ):
+        if not is_ci_run_required(git_context.changed_files, platform="linux"):
+            linux_names = []
+            linux_build_only = []
+            linux_test_only = []
+        if not is_ci_run_required(git_context.changed_files, platform="windows"):
+            windows_names = []
+            windows_build_only = []
+            windows_test_only = []
 
     return TargetSelection(
         linux_families=linux_names,
@@ -2166,7 +2194,7 @@ def configure(ci_inputs: CIInputs, git_context: GitContext) -> CIOutputs:
     print("Result: CI will run")
 
     print("\n=== Selecting GPU target families ===")
-    targets = select_targets(ci_inputs)
+    targets = select_targets(ci_inputs, git_context)
     targets.log()
 
     print("\n=== Deciding job configuration ===")

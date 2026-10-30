@@ -2735,6 +2735,57 @@ class TestConfigurePipeline(unittest.TestCase):
         self.assertEqual(outputs.linux_test_labels, [])
         self.assertEqual(outputs.windows_test_labels, [])
 
+    def test_platform_path_filters_from_linux_setup_job(self):
+        linux_path = "build_tools/packaging/linux/deb_package.py"
+        windows_path = "build_tools/packaging/windows/generate_msi_wxs.py"
+        cases = [
+            (["CMakeLists.txt"], True, True),
+            ([linux_path], True, False),
+            ([windows_path], False, True),
+            ([linux_path, windows_path], True, True),
+            ([linux_path, "CMakeLists.txt"], True, True),
+            (["debug-tools/rocgdb/source"], True, False),
+        ]
+        # One Linux setup job must independently configure both target platforms.
+        with patch.dict(os.environ, {"RUNNER_OS": "Linux", "STAGE_REUSE_MODE": "off"}):
+            for event_name in ("pull_request", "push"):
+                for paths, run_linux, run_windows in cases:
+                    with self.subTest(event=event_name, paths=paths):
+                        inputs = cm.CIInputs(
+                            run_id="12345",
+                            event_name=event_name,
+                            commit_ref="feature",
+                            base_ref="main",
+                            build_variant="release",
+                        )
+                        outputs = cm.configure(
+                            inputs, cm.GitContext(changed_files=paths)
+                        )
+                        self.assertTrue(outputs.is_ci_enabled)
+                        self.assertEqual(outputs.builds.linux is not None, run_linux)
+                        self.assertEqual(
+                            outputs.builds.windows is not None, run_windows
+                        )
+
+    def test_platform_path_filters_preserve_manual_and_scheduled_runs(self):
+        for event_name in ("workflow_dispatch", "schedule"):
+            with self.subTest(event=event_name):
+                inputs = cm.CIInputs(
+                    run_id="12345",
+                    event_name=event_name,
+                    commit_ref="main",
+                    base_ref="main",
+                    build_variant="release",
+                    linux_amdgpu_families=["all"],
+                    windows_amdgpu_families=["all"],
+                )
+                targets = cm.select_targets(
+                    inputs,
+                    cm.GitContext(changed_files=["debug-tools/rocgdb/source"]),
+                )
+                self.assertTrue(targets.linux_families)
+                self.assertTrue(targets.windows_families)
+
     @patch("configure_multi_arch_ci.decide_jobs")
     def test_configure_propagates_auto_reuse_baseline_run_id(self, mock_decide_jobs):
         """When auto reuse applies, the selected baseline run id reaches BuildConfig."""
