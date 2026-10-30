@@ -52,14 +52,48 @@ common = [
     "test_tools/tests/*",
 ]
 
-# Additional patterns for Linux-only skip
-linux = []
+# Skip Linux CI for Windows-only changes.
+linux = [
+    # Workflow files.
+    ".github/workflows/*windows*.yml",
 
-# Additional patterns for Windows-only skip
-windows = []
+    # Packaging.
+    "build_tools/packaging/windows/*",
+
+    # Components: no Windows-only patterns yet.
+]
+
+# Skip Windows CI for Linux-only changes.
+windows = [
+    # Workflow files.
+    ".github/workflows/*linux*.yml",
+
+    # Packaging.
+    "build_tools/packaging/linux/*",
+
+    # Components.
+    # JAX builds and tests currently run only on Linux.
+    "external-builds/jax/*",
+    "build_tools/github_actions/*jax*.py",
+
+    # Disabled on Windows in BUILD_TOPOLOGY.toml.
+    "dctools/*",
+    "emulation/*",
+    "profiler/*",
+    "storage-libs/*",
+
+    # ROCgdb and rocr-debug-agent are Linux-only; Windows builds amd-dbgapi
+    # from rocm-systems/projects/rocdbgapi, not debug-tools/rocgdb/source.
+    # Keep shared debug-tools/CMakeLists.txt and amd-dbgapi artifacts unfiltered.
+    "debug-tools/rocgdb/*",
+    "debug-tools/pre_hook_rocgdb.cmake",
+    "debug-tools/artifact-rocgdb.toml",
+    "debug-tools/artifact-rocr-debug-agent*.toml",
+]
 
 # GitHub workflow files that are used by CI workflows. Changes to any of
-# these trigger CI runs. This is an explicit list (not glob patterns) so that
+# these trigger CI runs unless skipped above for the current platform.
+# This is an explicit list (not glob patterns) so that
 # unrelated workflows are never accidentally included.
 #
 # This list is maintained manually and a unit test verifies that every
